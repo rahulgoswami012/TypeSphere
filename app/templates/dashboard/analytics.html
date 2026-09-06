@@ -1,0 +1,146 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="card">
+  <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 1.25rem; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
+    <div>
+      <h1 style="font-size: 1.8rem; font-weight: 700; margin-bottom: 0.25rem;">Progression & Biometric Analytics</h1>
+      <p style="color: var(--text-muted); font-size: 0.9rem;">Historical trajectory analysis across verified typing sessions.</p>
+    </div>
+    <div style="display: flex; gap: 0.75rem;">
+      <a href="{{ url_for('dashboard.dna_profile') }}" class="btn">Typing DNA Profile &rarr;</a>
+      <a href="{{ url_for('dashboard.index') }}" class="btn">&larr; Pilot Dashboard</a>
+    </div>
+  </div>
+
+  <!-- Primary Lifetime Statistics -->
+  <div class="stats-hud" style="grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));">
+    <div class="stat-box">
+      <div class="stat-label">Total Words Typed</div>
+      <div class="stat-value">{{ total_words }}</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-label">Hours Logged</div>
+      <div class="stat-value">{{ total_hours }}h</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-label">All-Time Peak WPM</div>
+      <div class="stat-value" style="color: var(--success);">{{ best_wpm }}</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-label">Lifetime Accuracy</div>
+      <div class="stat-value">{{ avg_accuracy }}%</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-label">Velocity Growth</div>
+      <div class="stat-value" style="color: {{ 'var(--success)' if improvement_rate >= 0 else 'var(--danger)' }};">
+        {{ '+' if improvement_rate > 0 else '' }}{{ improvement_rate }}%
+      </div>
+    </div>
+  </div>
+
+  <!-- Chart Tab Selector -->
+  <div style="display: flex; justify-content: space-between; align-items: center; margin: 2rem 0 1rem; flex-wrap: wrap; gap: 1rem;">
+    <h3 id="chart-view-title" style="font-size: 1.2rem; margin: 0;">Net WPM Trajectory</h3>
+    <div style="display: flex; gap: 0.5rem;">
+      <button id="btn-chart-wpm" onclick="switchChart('wpm')" class="btn btn-primary" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;">Speed (WPM)</button>
+      <button id="btn-chart-acc" onclick="switchChart('accuracy')" class="btn" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;">Accuracy (%)</button>
+      <button id="btn-chart-con" onclick="switchChart('consistency')" class="btn" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;">Consistency (%)</button>
+    </div>
+  </div>
+
+  <!-- SVG Chart Container -->
+  <div id="analytics-chart" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 1.5rem; min-height: 260px; display: flex; align-items: center; justify-content: center;">
+    <span style="color: var(--text-muted); font-size: 0.9rem;">Aggregating sessions...</span>
+  </div>
+
+  <!-- Telemetry Diagnostic Cards -->
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-top: 2rem;">
+    <div class="card" style="margin-bottom: 0; background: var(--bg-card);">
+      <h4 style="margin-bottom: 0.75rem; color: var(--accent);">Biomechanical Consistency</h4>
+      <p style="color: var(--text-muted); font-size: 0.85rem; line-height: 1.6;">
+        Your average keystroke consistency is <strong>{{ avg_consistency }}%</strong>. A tighter interval variance indicates stable forward cadence without hesitation between complex syllables.
+      </p>
+    </div>
+
+    <div class="card" style="margin-bottom: 0; background: var(--bg-card);">
+      <h4 style="margin-bottom: 0.75rem; color: var(--success);">Pace Progression</h4>
+      <p style="color: var(--text-muted); font-size: 0.85rem; line-height: 1.6;">
+        Across {{ total_tests }} verified benchmark runs, your average net velocity is <strong>{{ avg_wpm }} WPM</strong>, representing steady compound gains through muscle memory reinforcement.
+      </p>
+    </div>
+
+    <div class="card" style="margin-bottom: 0; background: var(--bg-card);">
+      <h4 style="margin-bottom: 0.75rem; color: var(--warning);">Cognitive Fatigue Limit</h4>
+      <p style="color: var(--text-muted); font-size: 0.85rem; line-height: 1.6;">
+        Speed drops typically begin appearing past 90 consecutive seconds of intense typing. Use 60-second recovery intervals to sustain peak neurological reaction speed.
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const rawPoints = {{ data_points|tojson|safe }};
+let currentMetric = 'wpm';
+
+function renderSvgChart(metric, color) {
+  const container = document.getElementById('analytics-chart');
+  if (!container || !rawPoints || rawPoints.length < 2) {
+    container.innerHTML = '<div style="padding: 3rem; text-align: center; color: var(--text-muted);">Complete at least two tests to populate the progression curve.</div>';
+    return;
+  }
+
+  const width = container.clientWidth || 800;
+  const height = 240;
+  const padding = 40;
+
+  const values = rawPoints.map(p => p[metric]);
+  const maxVal = Math.max(...values, metric === 'accuracy' ? 100 : 60);
+  const minVal = Math.min(...values, 0);
+
+  const getX = (idx) => padding + (idx / (rawPoints.length - 1)) * (width - 2 * padding);
+  const getY = (val) => height - padding - ((val - minVal) / (maxVal - minVal || 1)) * (height - 2 * padding);
+
+  let pathD = `M ${getX(0)} ${getY(values[0])}`;
+  for (let i = 1; i < values.length; i++) {
+    pathD += ` L ${getX(i)} ${getY(values[i])}`;
+  }
+
+  const svg = `
+    <svg width="100%" height="${height}" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">
+      <line x1="${padding}" y1="${height - padding}" x2="${width - padding}" y2="${height - padding}" stroke="#30363d" stroke-width="1"/>
+      <line x1="${padding}" y1="${padding}" x2="${padding}" y2="${height - padding}" stroke="#30363d" stroke-width="1"/>
+      <path d="${pathD}" fill="none" stroke="${color}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      ${values.map((v, i) => `
+        <circle cx="${getX(i)}" cy="${getY(v)}" r="4" fill="${color}"/>
+      `).join('')}
+    </svg>
+  `;
+  container.innerHTML = svg;
+}
+
+function switchChart(metric) {
+  currentMetric = metric;
+  document.getElementById('btn-chart-wpm').className = metric === 'wpm' ? 'btn btn-primary' : 'btn';
+  document.getElementById('btn-chart-acc').className = metric === 'accuracy' ? 'btn btn-primary' : 'btn';
+  document.getElementById('btn-chart-con').className = metric === 'consistency' ? 'btn btn-primary' : 'btn';
+
+  if (metric === 'wpm') {
+    document.getElementById('chart-view-title').textContent = 'Net WPM Trajectory';
+    renderSvgChart('wpm', '#58a6ff');
+  } else if (metric === 'accuracy') {
+    document.getElementById('chart-view-title').textContent = 'Keystroke Accuracy Stability Curve';
+    renderSvgChart('accuracy', '#3fb950');
+  } else {
+    document.getElementById('chart-view-title').textContent = 'Interval Consistency & Regularity (%)';
+    renderSvgChart('consistency', '#d29922');
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  switchChart('wpm');
+});
+</script>
+{% endblock %}

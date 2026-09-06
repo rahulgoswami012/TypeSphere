@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="card">
+  <!-- Dashboard Top Header -->
+  <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 1.25rem; margin-bottom: 1.75rem; flex-wrap: wrap; gap: 1rem;">
+    <div>
+      <h1 style="font-size: 1.8rem; font-weight: 700; margin: 0;">Pilot Dashboard: {{ current_user.username }}</h1>
+      <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.35rem;">Member since {{ current_user.created_at.strftime('%B %Y') }}</p>
+    </div>
+    <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+      <a href="{{ url_for('dashboard.achievements_showcase') }}" class="btn" style="border-color: #f59e0b; color: #f59e0b; font-weight: 700;">
+        🏆 Trophy Hall ({{ achievements|length }})
+      </a>
+      <a href="{{ url_for('dashboard.dna_profile') }}" class="btn">Typing DNA &rarr;</a>
+      <a href="{{ url_for('dashboard.analytics') }}" class="btn btn-primary">Full Analytics &rarr;</a>
+    </div>
+  </div>
+
+  <!-- Primary Lifetime Statistics HUD -->
+  <div class="stats-hud" style="grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));">
+    <div class="stat-box">
+      <div class="stat-label">Tests Completed</div>
+      <div class="stat-value">{{ total_tests }}</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-label">Average Speed</div>
+      <div class="stat-value">{{ avg_wpm }} <span style="font-size: 0.8rem; color: var(--text-muted);">WPM</span></div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-label">Personal Best</div>
+      <div class="stat-value" style="color: var(--success);">{{ best_wpm }} <span style="font-size: 0.8rem; color: var(--text-muted);">WPM</span></div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-label">Average Accuracy</div>
+      <div class="stat-value">{{ avg_accuracy }}%</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-label">Typing Time</div>
+      <div class="stat-value">{{ total_time_minutes }}m</div>
+    </div>
+  </div>
+
+  <!-- Two Columns: Recent Runs & Trophy Preview -->
+  <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem; margin-top: 1.5rem;">
+    <!-- Recent Runs -->
+    <div class="card" style="margin-bottom: 0;">
+      <h3 style="font-size: 1.15rem; margin-bottom: 1rem;">Recent Verified Runs</h3>
+      <table style="width: 100%; border-collapse: collapse; text-align: left;">
+        <thead>
+          <tr style="border-bottom: 1px solid var(--border-color); color: var(--text-muted); font-size: 0.8rem;">
+            <th style="padding: 0.5rem;">Date</th>
+            <th style="padding: 0.5rem;">Mode</th>
+            <th style="padding: 0.5rem;">Speed</th>
+            <th style="padding: 0.5rem;">Accuracy</th>
+            <th style="padding: 0.5rem;">Audit</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for t in recent_tests %}
+          <tr style="border-bottom: 1px solid var(--border-color); font-size: 0.85rem;">
+            <td style="padding: 0.6rem; color: var(--text-muted);">{{ t.completed_at.strftime('%m-%d %H:%M') }}</td>
+            <td style="padding: 0.6rem;"><span style="background: var(--bg-card); padding: 0.2rem 0.4rem; border-radius: 4px;">{{ t.mode|capitalize }}</span></td>
+            <td style="padding: 0.6rem; font-weight: 700; color: var(--accent);">{{ t.wpm }} WPM</td>
+            <td style="padding: 0.6rem;">{{ test_accuracy if false else t.accuracy }}%</td>
+            <td style="padding: 0.6rem;">
+              <a href="{{ url_for('typing.result_page', test_id=t.id) }}" class="btn" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;">Analysis</a>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="5" style="padding: 2rem; text-align: center; color: var(--text-muted);">No verified runs logged yet. Head to the test track!</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Trophy Preview Showcase -->
+    <div class="card" style="margin-bottom: 0;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h3 style="font-size: 1.15rem; margin: 0;">Trophy Showcase</h3>
+        <a href="{{ url_for('dashboard.achievements_showcase') }}" style="font-size: 0.8rem; color: var(--accent); text-decoration: none; font-weight: 600;">View All &rarr;</a>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+        {% for ua in achievements %}
+          <div style="display: flex; align-items: center; gap: 0.75rem; background: var(--bg-card); padding: 0.65rem 0.85rem; border-radius: var(--radius); border-left: 3px solid var(--accent);">
+            <span style="font-size: 1.2rem;">🏆</span>
+            <div>
+              <div style="font-weight: 600; font-size: 0.85rem;">{{ ua.achievement.title }}</div>
+              <div style="font-size: 0.7rem; color: var(--text-muted);">{{ ua.unlocked_at.strftime('%b %d, %Y') }}</div>
+            </div>
+          </div>
+        {% else %}
+          <p style="color: var(--text-muted); font-size: 0.85rem; line-height: 1.6;">
+            Complete verified runs (50 WPM, 100% accuracy, survival wins) to populate your trophy showcase.
+          </p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

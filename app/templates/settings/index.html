@@ -1,0 +1,147 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="card" style="max-width: 900px; margin: 0 auto;">
+  <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 1.25rem; margin-bottom: 1.75rem;">
+    <div>
+      <h1 style="font-size: 1.8rem; font-weight: 700;">Preferences & Ergonomics</h1>
+      <p style="color: var(--text-muted); font-size: 0.9rem;">Every adjustment updates immediately in the live sandbox below.</p>
+    </div>
+    <span id="save-status" style="font-size: 0.85rem; color: var(--success); font-weight: 600; display: none;">Saved & Applied &check;</span>
+  </div>
+
+  <!-- Live Interactive Sandbox Preview -->
+  <div style="margin-bottom: 2.25rem;">
+    <div style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 0.5rem;">
+      Live Interactive Sandbox (Type below to test sound, font, & caret)
+    </div>
+    <div class="typing-container focus-ring" style="min-height: 120px; padding: 1.5rem;" onclick="document.getElementById('sandbox-input').focus()">
+      <div id="caret" class="caret caret-smooth" style="left: 24px; top: 24px;"></div>
+      <div id="sandbox-display" class="typing-text-display">
+        The quick brown fox jumps over the lazy dog. Type here to test live keystroke acoustics!
+      </div>
+      <input type="text" id="sandbox-input" style="opacity: 0; position: absolute; left: 0; top: 0;" onkeydown="handleSandboxKey(event)">
+    </div>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 2rem;">
+    <!-- 1. Theme Selection -->
+    <div>
+      <h3 style="font-size: 1.1rem; margin-bottom: 0.75rem;">Aesthetic Theme</h3>
+      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem;">
+        <button data-theme-btn="dark" onclick="selectTheme('dark')" class="btn" style="justify-content: center;">Dark Matter</button>
+        <button data-theme-btn="light" onclick="selectTheme('light')" class="btn" style="justify-content: center;">Clean White</button>
+        <button data-theme-btn="cyber" onclick="selectTheme('cyber')" class="btn" style="justify-content: center;">Neon Cyber</button>
+        <button data-theme-btn="sepia" onclick="selectTheme('sepia')" class="btn" style="justify-content: center;">Warm Sepia</button>
+      </div>
+    </div>
+
+    <!-- 2. Typography -->
+    <div>
+      <h3 style="font-size: 1.1rem; margin-bottom: 0.75rem;">Monospace Typography</h3>
+      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem;">
+        <button data-font-btn="JetBrains Mono" onclick="selectFont('JetBrains Mono')" class="btn" style="font-family: 'JetBrains Mono', monospace; justify-content: center;">JetBrains Mono</button>
+        <button data-font-btn="Fira Code" onclick="selectFont('Fira Code')" class="btn" style="font-family: 'Fira Code', monospace; justify-content: center;">Fira Code</button>
+        <button data-font-btn="Courier New" onclick="selectFont('Courier New')" class="btn" style="font-family: 'Courier New', monospace; justify-content: center;">Courier New</button>
+        <button data-font-btn="Consolas" onclick="selectFont('Consolas')" class="btn" style="font-family: 'Consolas', monospace; justify-content: center;">Consolas</button>
+      </div>
+    </div>
+
+    <!-- 3. Font Size & Caret Variant -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+      <div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 0.75rem;">
+          <h3 style="font-size: 1.1rem;">Font Size</h3>
+          <span id="font-size-label" style="font-weight: 700; color: var(--accent);">20px</span>
+        </div>
+        <input type="range" min="16" max="32" value="20" id="font-size-slider" oninput="selectFontSize(this.value)" style="width: 100%; cursor: pointer;">
+      </div>
+
+      <div>
+        <h3 style="font-size: 1.1rem; margin-bottom: 0.75rem;">Caret Rendering</h3>
+        <div style="display: flex; gap: 0.5rem;">
+          <button data-caret-btn="smooth" onclick="selectCaret('smooth')" class="btn" style="flex: 1; justify-content: center;">Smooth Line</button>
+          <button data-caret-btn="block" onclick="selectCaret('block')" class="btn" style="flex: 1; justify-content: center;">Solid Block</button>
+          <button data-caret-btn="underline" onclick="selectCaret('underline')" class="btn" style="flex: 1; justify-content: center;">Underline</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. Sound Synthesis Profiles -->
+    <div>
+      <h3 style="font-size: 1.1rem; margin-bottom: 0.75rem;">Tactile Acoustic Profile (Click to preview sound)</h3>
+      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem;">
+        <button data-sound-btn="mechanical" onclick="selectSound('mechanical')" class="btn" style="justify-content: center;">Mechanical Click</button>
+        <button data-sound-btn="bubble" onclick="selectSound('bubble')" class="btn" style="justify-content: center;">Bubble Pop</button>
+        <button data-sound-btn="beep" onclick="selectSound('beep')" class="btn" style="justify-content: center;">Digital Synth</button>
+        <button id="audio-toggle-btn" onclick="toggleMute()" class="btn" style="justify-content: center;">Mute All Sound</button>
+      </div>
+    </div>
+
+    <!-- 5. On-Screen Keyboard -->
+    <div style="display: flex; justify-content: space-between; align-items: center; background: var(--bg-card); padding: 1.1rem 1.25rem; border-radius: var(--radius);">
+      <div>
+        <div style="font-weight: 600;">Display Biometric On-Screen Keyboard</div>
+        <div style="font-size: 0.8rem; color: var(--text-muted);">Visual tactile heatmap under the test track.</div>
+      </div>
+      <button id="kb-toggle-btn" onclick="toggleKeyboard()" class="btn btn-primary">Enabled</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function flashNotice() {
+  const s = document.getElementById('save-status');
+  s.style.display = 'inline';
+  setTimeout(() => s.style.display = 'none', 1200);
+}
+
+function selectTheme(theme) {
+  window.settingsManager.update('theme', theme);
+  flashNotice();
+}
+
+function selectFont(font) {
+  window.settingsManager.update('font_family', font);
+  flashNotice();
+}
+
+function selectFontSize(size) {
+  window.settingsManager.update('font_size', parseInt(size));
+  flashNotice();
+}
+
+function selectCaret(caret) {
+  window.settingsManager.update('caret_style', caret);
+  flashNotice();
+}
+
+function selectSound(theme) {
+  window.settingsManager.update('sound_theme', theme);
+  window.settingsManager.update('sound_enabled', true);
+  window.soundEngine.init();
+  window.soundEngine.playKey(false);
+  flashNotice();
+}
+
+function toggleMute() {
+  const next = !window.settingsManager.current.sound_enabled;
+  window.settingsManager.update('sound_enabled', next);
+  flashNotice();
+}
+
+function toggleKeyboard() {
+  const next = !window.settingsManager.current.show_keyboard;
+  window.settingsManager.update('show_keyboard', next);
+  flashNotice();
+}
+
+function handleSandboxKey(e) {
+  if (['Shift', 'Control', 'Alt', 'Meta'].includes(e.key)) return;
+  window.soundEngine.init();
+  window.soundEngine.playKey(e.key === 'Backspace');
+}
+</script>
+{% endblock %}

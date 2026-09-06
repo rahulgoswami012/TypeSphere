@@ -1,0 +1,125 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="card" style="max-width: 840px; margin: 0 auto;">
+  <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 1.25rem; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
+    <div>
+      <h1 style="font-size: 1.8rem; font-weight: 700; margin: 0;">Custom Text Practice Studio</h1>
+      <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.35rem;">
+        Paste your text, choose your timer countdown, and launch your personalized benchmark.
+      </p>
+    </div>
+    <a href="{{ url_for('typing.test_page') }}" class="btn">&larr; Return to Test Track</a>
+  </div>
+
+  <!-- Real-time Text Telemetry -->
+  <div class="stats-hud" style="grid-template-columns: repeat(3, 1fr); margin-bottom: 1.5rem;">
+    <div class="stat-box">
+      <div class="stat-label">Word Count</div>
+      <div class="stat-value" id="stat-word-count">0</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-label">Character Count</div>
+      <div class="stat-value" id="stat-char-count">0</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-label">Est. Time (@ 60 WPM)</div>
+      <div class="stat-value" id="stat-est-time">0s</div>
+    </div>
+  </div>
+
+  <!-- Duration Mode Selection -->
+  <div style="margin-bottom: 1.5rem; background: var(--bg-card); padding: 1rem 1.25rem; border-radius: var(--radius); border: 1px solid var(--border-color);">
+    <label style="display: block; font-size: 0.85rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">
+      Select Test Timer (Countdown Limit)
+    </label>
+    <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;" id="duration-selector">
+      <button type="button" class="btn active-choice" onclick="selectDuration(60, this)" data-tooltip="Timer will start at 60s and count down to 0, automatically finishing test">1 Minute (60s Countdown)</button>
+      <button type="button" class="btn" onclick="selectDuration(120, this)" data-tooltip="Timer will start at 120s and count down to 0">2 Minutes (120s Countdown)</button>
+      <button type="button" class="btn" onclick="selectDuration(180, this)" data-tooltip="Timer will start at 180s and count down to 0">3 Minutes (180s Countdown)</button>
+      <button type="button" class="btn" onclick="selectDuration(0, this)" data-tooltip="No countdown limit. Test runs until you type the entire custom paragraph">Full Passage (No Time Limit)</button>
+    </div>
+  </div>
+
+  <!-- Main Text Input -->
+  <div style="margin-bottom: 1.5rem;">
+    <label style="display: block; font-size: 0.85rem; margin-bottom: 0.5rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">
+      Paste Content Below
+    </label>
+    <textarea id="custom-studio-input" rows="8" placeholder="Paste your custom study text, lyrics, or programming code here..." oninput="updateStats()" style="width: 100%; padding: 1rem; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius); color: var(--text-primary); font-family: var(--font-mono); font-size: 1rem; line-height: 1.6; outline: none;"></textarea>
+  </div>
+
+  <!-- Quick Presets -->
+  <div style="margin-bottom: 2rem;">
+    <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">Or load a curated preset:</div>
+    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+      <button onclick="loadPreset('tech')" class="btn" style="padding: 0.3rem 0.65rem; font-size: 0.8rem;">Distributed Systems</button>
+      <button onclick="loadPreset('lit')" class="btn" style="padding: 0.3rem 0.65rem; font-size: 0.8rem;">Classic Literature</button>
+      <button onclick="loadPreset('code')" class="btn" style="padding: 0.3rem 0.65rem; font-size: 0.8rem;">Python Quicksort</button>
+    </div>
+  </div>
+
+  <!-- Action Button -->
+  <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
+    <button onclick="clearText()" class="btn">Clear</button>
+    <button onclick="launchCustomTest()" class="btn btn-primary" style="padding: 0.75rem 2rem; font-size: 1rem; font-weight: 700;">
+      Launch Custom Practice Track &rarr;
+    </button>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let selectedCustomDuration = 60; // default 1 min
+
+const PRESETS = {
+  tech: "Distributed event streaming architectures enable microservices to communicate asynchronously with high throughput and horizontal scalability. By decoupling producers from consumers through immutable partitioned logs, systems achieve resilience against node failures.",
+  lit: "It was the best of times, it was the worst of times, it was the age of wisdom, it was the age of foolishness, it was the epoch of belief, it was the epoch of incredulity, it was the season of light, it was the season of darkness.",
+  code: "def binary_search(array, target):\n    low, high = 0, len(array) - 1\n    while low <= high:\n        mid = (low + high) // 2\n        if array[mid] == target:\n            return mid\n        elif array[mid] < target:\n            low = mid + 1\n        else:\n            high = mid - 1\n    return -1"
+};
+
+function selectDuration(seconds, btn) {
+  selectedCustomDuration = seconds;
+  document.querySelectorAll('#duration-selector .btn').forEach(b => b.classList.remove('active-choice'));
+  btn.classList.add('active-choice');
+}
+
+function updateStats() {
+  const text = document.getElementById('custom-studio-input').value.trim();
+  const words = text ? text.split(/\s+/).length : 0;
+  const chars = text.length;
+  const estSeconds = Math.round((words / 60) * 60);
+
+  document.getElementById('stat-word-count').textContent = words;
+  document.getElementById('stat-char-count').textContent = chars;
+  document.getElementById('stat-est-time').textContent = `${estSeconds}s`;
+}
+
+function loadPreset(key) {
+  document.getElementById('custom-studio-input').value = PRESETS[key];
+  updateStats();
+}
+
+function clearText() {
+  document.getElementById('custom-studio-input').value = '';
+  updateStats();
+}
+
+function launchCustomTest() {
+  const text = document.getElementById('custom-studio-input').value.trim();
+  if (!text || text.length < 5) {
+    alert('Please enter at least 5 characters to start a custom typing test.');
+    return;
+  }
+
+  sessionStorage.setItem('typesphere_custom_text', text);
+  sessionStorage.setItem('typesphere_custom_duration', selectedCustomDuration.toString());
+  window.location.href = "{{ url_for('typing.test_page') }}?mode=custom";
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  updateStats();
+});
+</script>
+{% endblock %}

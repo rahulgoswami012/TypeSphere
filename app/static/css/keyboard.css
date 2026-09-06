@@ -1,0 +1,63 @@
+.keyboard-wrapper {
+  margin-top: 2rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  align-items: center;
+}
+
+.keyboard-row {
+  display: flex;
+  gap: 0.45rem;
+  width: 100%;
+  justify-content: center;
+}
+
+.k-key {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  height: 44px;
+  min-width: 44px;
+  padding: 0 0.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  cursor: pointer;
+  transition: transform 0.05s ease, background-color 0.15s ease;
+}
+
+.k-key.active {
+  background: var(--accent);
+  color: #fff;
+  transform: translateY(2px);
+  box-shadow: 0 0 8px var(--accent-glow);
+}
+
+.k-key.weak {
+  border-color: var(--danger);
+  background: rgba(248, 81, 73, 0.15);
+}
+
+.k-key.space { min-width: 320px; }
+.k-key.backspace { min-width: 75px; }
+.k-key.tab { min-width: 60px; }
+.k-key.caps { min-width: 70px; }
+.k-key.enter { min-width: 80px; }
+.k-key.shift { min-width: 90px; }
+
+.key-error-badge {
+  font-size: 0.65rem;
+  color: var(--danger);
+  position: absolute;
+  bottom: 2px;
+}

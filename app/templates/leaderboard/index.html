@@ -1,0 +1,134 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="card">
+  <!-- Title and Sort Controls -->
+  <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 1.25rem; margin-bottom: 1.75rem; flex-wrap: wrap; gap: 1rem;">
+    <div>
+      <h1 style="font-size: 1.8rem; font-weight: 700; margin: 0;">Global Championship Leaderboard</h1>
+      <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.35rem;">
+        Anti-cheat verified rankings. Click any typist to inspect their telemetry profile, or race their ghost run.
+      </p>
+    </div>
+    
+    <!-- Sort Toggles -->
+    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+      <a href="{{ url_for('leaderboard.index', sort='wpm', mode=current_mode) }}" class="btn {{ 'btn-primary' if current_sort == 'wpm' else '' }}">Speed (WPM)</a>
+      <a href="{{ url_for('leaderboard.index', sort='accuracy', mode=current_mode) }}" class="btn {{ 'btn-primary' if current_sort == 'accuracy' else '' }}">Accuracy</a>
+      <a href="{{ url_for('leaderboard.index', sort='consistency', mode=current_mode) }}" class="btn {{ 'btn-primary' if current_sort == 'consistency' else '' }}">Consistency</a>
+    </div>
+  </div>
+
+  <!-- Mode Filter Pills -->
+  <div style="display: flex; gap: 0.5rem; margin-bottom: 2rem; flex-wrap: wrap;">
+    <a href="{{ url_for('leaderboard.index', sort=current_sort, mode='all') }}" class="btn {{ 'btn-primary' if current_mode == 'all' else '' }}" style="padding: 0.35rem 0.75rem; font-size: 0.85rem;">All Categories</a>
+    <a href="{{ url_for('leaderboard.index', sort=current_sort, mode='timed_60') }}" class="btn {{ 'btn-primary' if current_mode == 'timed_60' else '' }}" style="padding: 0.35rem 0.75rem; font-size: 0.85rem;">1-Min Benchmark</a>
+    <a href="{{ url_for('leaderboard.index', sort=current_sort, mode='timed_30') }}" class="btn {{ 'btn-primary' if current_mode == 'timed_30' else '' }}" style="padding: 0.35rem 0.75rem; font-size: 0.85rem;">30s Sprint</a>
+    <a href="{{ url_for('leaderboard.index', sort=current_sort, mode='code') }}" class="btn {{ 'btn-primary' if current_mode == 'code' else '' }}" style="padding: 0.35rem 0.75rem; font-size: 0.85rem;">Programming Code</a>
+    <a href="{{ url_for('leaderboard.index', sort=current_sort, mode='daily') }}" class="btn {{ 'btn-primary' if current_mode == 'daily' else '' }}" style="padding: 0.35rem 0.75rem; font-size: 0.85rem;">Daily Challenge</a>
+  </div>
+
+  <!-- Top 3 Championship Podium Cards -->
+  {% if podium|length >= 3 %}
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; margin-bottom: 2.5rem;">
+    <!-- 2nd Place Silver -->
+    <div class="card" style="background: var(--bg-card); border-color: #94a3b8; text-align: center; margin-bottom: 0; transform: translateY(10px);">
+      <div style="font-size: 2rem; margin-bottom: 0.25rem;">🥈</div>
+      <div style="font-size: 0.8rem; font-weight: 700; color: #94a3b8; text-transform: uppercase;">Rank #2 (Silver)</div>
+      <div style="font-size: 1.25rem; font-weight: 700; margin: 0.35rem 0;">
+        <a href="{{ url_for('dashboard.public_profile', username=podium[1].user.username) }}" style="color: var(--text-primary); text-decoration: none;">
+          {{ podium[1].user.username }}
+        </a>
+      </div>
+      <div style="font-size: 1.8rem; font-family: var(--font-mono); font-weight: 800; color: var(--accent);">{{ podium[1].wpm }} <span style="font-size: 0.85rem;">WPM</span></div>
+      <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">{{ podium[1].accuracy }}% Acc &bull; {{ podium[1].consistency }}% Cons</div>
+      <a href="{{ url_for('typing.test_page') }}?ghost_race={{ podium[1].id }}" class="btn" style="width: 100%; justify-content: center; font-size: 0.8rem; border-color: #a371f7; color: #a371f7;">
+        👻 Race #2 Ghost
+      </a>
+    </div>
+
+    <!-- 1st Place Gold Champion -->
+    <div class="card" style="background: var(--bg-card); border-color: #f59e0b; text-align: center; margin-bottom: 0; box-shadow: 0 0 20px rgba(245, 158, 11, 0.15);">
+      <div style="font-size: 2.5rem; margin-bottom: 0.25rem;">👑</div>
+      <div style="font-size: 0.8rem; font-weight: 800; color: #f59e0b; text-transform: uppercase;">World Champion (Gold)</div>
+      <div style="font-size: 1.4rem; font-weight: 800; margin: 0.35rem 0;">
+        <a href="{{ url_for('dashboard.public_profile', username=podium[0].user.username) }}" style="color: #f59e0b; text-decoration: none;">
+          {{ podium[0].user.username }}
+        </a>
+      </div>
+      <div style="font-size: 2.2rem; font-family: var(--font-mono); font-weight: 800; color: #f59e0b;">{{ podium[0].wpm }} <span style="font-size: 0.9rem;">WPM</span></div>
+      <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">{{ podium[0].accuracy }}% Acc &bull; {{ podium[0].consistency }}% Cons</div>
+      <a href="{{ url_for('typing.test_page') }}?ghost_race={{ podium[0].id }}" class="btn btn-primary" style="width: 100%; justify-content: center; font-size: 0.85rem; background: #f59e0b; border-color: #f59e0b; color: #000; font-weight: 700;">
+        👻 Race Champion Ghost
+      </a>
+    </div>
+
+    <!-- 3rd Place Bronze -->
+    <div class="card" style="background: var(--bg-card); border-color: #b45309; text-align: center; margin-bottom: 0; transform: translateY(15px);">
+      <div style="font-size: 2rem; margin-bottom: 0.25rem;">🥉</div>
+      <div style="font-size: 0.8rem; font-weight: 700; color: #b45309; text-transform: uppercase;">Rank #3 (Bronze)</div>
+      <div style="font-size: 1.25rem; font-weight: 700; margin: 0.35rem 0;">
+        <a href="{{ url_for('dashboard.public_profile', username=podium[2].user.username) }}" style="color: var(--text-primary); text-decoration: none;">
+          {{ podium[2].user.username }}
+        </a>
+      </div>
+      <div style="font-size: 1.8rem; font-family: var(--font-mono); font-weight: 800; color: var(--accent);">{{ podium[2].wpm }} <span style="font-size: 0.85rem;">WPM</span></div>
+      <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">{{ podium[2].accuracy }}% Acc &bull; {{ podium[2].consistency }}% Cons</div>
+      <a href="{{ url_for('typing.test_page') }}?ghost_race={{ podium[2].id }}" class="btn" style="width: 100%; justify-content: center; font-size: 0.8rem; border-color: #a371f7; color: #a371f7;">
+        👻 Race #3 Ghost
+      </a>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Comprehensive Standings Table -->
+  <table style="width: 100%; border-collapse: collapse; text-align: left;">
+    <thead>
+      <tr style="border-bottom: 1px solid var(--border-color); color: var(--text-muted); font-size: 0.85rem;">
+        <th style="padding: 0.75rem;">Rank</th>
+        <th style="padding: 0.75rem;">Typist</th>
+        <th style="padding: 0.75rem;">Mode</th>
+        <th style="padding: 0.75rem;">Speed</th>
+        <th style="padding: 0.75rem;">Accuracy</th>
+        <th style="padding: 0.75rem;">Consistency</th>
+        <th style="padding: 0.75rem;">Ghost Challenge</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for test in tests %}
+      <tr style="border-bottom: 1px solid var(--border-color); font-size: 0.9rem;">
+        <td style="padding: 0.85rem; font-weight: 800; color: {{ '#f59e0b' if loop.index == 1 else ('#94a3b8' if loop.index == 2 else ('#b45309' if loop.index == 3 else 'var(--text-muted)')) }};">
+          #{{ loop.index }}
+        </td>
+        <td style="padding: 0.85rem; font-weight: 600;">
+          <a href="{{ url_for('dashboard.public_profile', username=test.user.username) }}" style="color: var(--accent); text-decoration: none;">
+            {{ test.user.username }}
+          </a>
+        </td>
+        <td style="padding: 0.85rem;">
+          <span style="background: var(--bg-card); padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.8rem;">
+            {{ test.mode|capitalize }} ({{ test.duration }}s)
+          </span>
+        </td>
+        <td style="padding: 0.85rem; font-family: var(--font-mono); font-weight: 800; color: var(--accent);">
+          {{ test.wpm }} WPM
+        </td>
+        <td style="padding: 0.85rem;">{{ test.accuracy }}%</td>
+        <td style="padding: 0.85rem;">{{ test.consistency }}%</td>
+        <td style="padding: 0.85rem;">
+          <a href="{{ url_for('typing.test_page') }}?ghost_race={{ test.id }}" class="btn" style="padding: 0.25rem 0.6rem; font-size: 0.8rem; border-color: #a371f7; color: #a371f7;">
+            👻 Race Ghost
+          </a>
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="7" style="padding: 3rem; text-align: center; color: var(--text-muted);">
+          No verified runs found for this category filter. Complete a benchmark test to claim Rank #1!
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

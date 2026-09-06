@@ -1,0 +1,260 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="card">
+  <!-- Header with Room Controls -->
+  <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 1.25rem; margin-bottom: 1.75rem; flex-wrap: wrap; gap: 1rem;">
+    <div>
+      <h1 style="font-size: 1.8rem; font-weight: 700; margin: 0;">Multiplayer Kinetic Arena</h1>
+      <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.35rem;">
+        Synchronized real-time WebSockets race. Share the room code with friends to duel live!
+      </p>
+    </div>
+
+    <!-- Room Switcher and Start Controls -->
+    <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+      <input type="text" id="room-input" value="public-arena" style="padding: 0.5rem 0.75rem; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius); color: var(--text-primary); font-family: inherit; font-size: 0.85rem;">
+      <button onclick="joinRoom()" class="btn">Join Room</button>
+      <button onclick="generatePrivateCode()" class="btn">Create Code</button>
+      <button onclick="requestCountdown()" class="btn btn-primary" style="background: var(--success); border-color: var(--success); font-weight: 700;">
+        🏁 Start Race (3..2..1)
+      </button>
+      <button onclick="startAiBotRace()" class="btn" style="border-color: var(--warning); color: var(--warning);">
+        + Add AI Bot
+      </button>
+    </div>
+  </div>
+
+  <!-- Synchronized Countdown Overlay -->
+  <div id="countdown-banner" style="display: none; text-align: center; margin-bottom: 1.5rem; background: var(--bg-card); border: 2px solid var(--accent); border-radius: var(--radius); padding: 1rem;">
+    <div style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted);">Racers On Your Marks</div>
+    <div id="countdown-number" style="font-size: 3rem; font-family: var(--font-mono); font-weight: 800; color: var(--accent); margin: 0.25rem 0;">3</div>
+  </div>
+
+  <!-- Race Track Visualization -->
+  <div style="margin-bottom: 2rem;">
+    <h3 style="font-size: 1.15rem; margin-bottom: 1rem;">Live Race Tracks</h3>
+    <div id="race-tracks" style="display: flex; flex-direction: column; gap: 0.85rem;">
+      <div style="padding: 1.5rem; text-align: center; color: var(--text-muted); background: var(--bg-card); border-radius: var(--radius);">
+        Connecting to the grid...
+      </div>
+    </div>
+  </div>
+
+  <!-- Active Typing Track Box -->
+  <div>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+      <h3 style="font-size: 1.15rem; margin: 0;">Your Cockpit</h3>
+      <span id="mp-status-lbl" style="font-size: 0.85rem; color: var(--text-muted);">Waiting for countdown...</span>
+    </div>
+    <div id="mp-typing-box" class="typing-container focus-ring" tabindex="0" style="min-height: 160px; padding: 1.5rem;">
+      <div id="mp-caret" class="caret"></div>
+      <div id="mp-text" class="typing-text-display">Speed is nothing without precision. Keep your hands balanced, breathe calmly, and glide across the keys with absolute rhythm.</div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<script>
+let socket;
+try {
+  socket = io();
+} catch(e) {
+  console.warn("Socket.io initialization warning:", e);
+}
+
+const currentUserName = "{{ current_user.username if current_user.is_authenticated else 'Pilot_' }}" + Math.floor(Math.random() * 900 + 100);
+let targetSentence = "Speed is nothing without precision. Keep your hands balanced, breathe calmly, and glide across the keys with absolute rhythm.";
+let currentIndex = 0;
+let mpStartTime = null;
+let raceActive = false;
+let botProgress = 0;
+let botInterval = null;
+
+function initMpText() {
+  const display = document.getElementById('mp-text');
+  display.innerHTML = '';
+  for (let i = 0; i < targetSentence.length; i++) {
+    const span = document.createElement('span');
+    span.className = 'char';
+    span.textContent = targetSentence[i];
+    display.appendChild(span);
+  }
+  updateMpCaret();
+}
+
+function updateMpCaret() {
+  const spans = document.querySelectorAll('#mp-text .char');
+  const caret = document.getElementById('mp-caret');
+  if (currentIndex < spans.length) {
+    caret.style.left = spans[currentIndex].offsetLeft + 'px';
+    caret.style.top = spans[currentIndex].offsetTop + 4 + 'px';
+  }
+}
+
+function generatePrivateCode() {
+  const code = 'SPHERE-' + Math.floor(1000 + Math.random() * 9000);
+  document.getElementById('room-input').value = code;
+  joinRoom();
+}
+
+function joinRoom() {
+  const r = document.getElementById('room-input').value.trim() || 'public-arena';
+  if (socket) {
+    socket.emit('join_race', { room: r, name: currentUserName });
+  }
+}
+
+function requestCountdown() {
+  const r = document.getElementById('room-input').value.trim() || 'public-arena';
+  if (socket) {
+    socket.emit('start_countdown', { room: r });
+  }
+}
+
+if (socket) {
+  socket.on('connect', () => joinRoom());
+  socket.on('room_update', (d) => renderMpTracks(d.players));
+  socket.on('race_progress', (d) => renderMpTracks(d.players));
+
+  socket.on('race_countdown_started', (data) => {
+    if (data.text) {
+      targetSentence = data.text;
+      initMpText();
+    }
+    runCountdownSequence();
+  });
+
+  socket.on('player_finished', (data) => {
+    const badge = data.place === 1 ? '🥇 1st Place' : (data.place === 2 ? '🥈 2nd Place' : '🥉 3rd Place');
+    alert(`${badge}: ${data.name} finished at ${data.wpm} WPM!`);
+  });
+}
+
+function runCountdownSequence() {
+  const banner = document.getElementById('countdown-banner');
+  const num = document.getElementById('countdown-number');
+  const status = document.getElementById('mp-status-lbl');
+  banner.style.display = 'block';
+  raceActive = false;
+  currentIndex = 0;
+  mpStartTime = null;
+
+  const spans = document.querySelectorAll('#mp-text .char');
+  spans.forEach(s => s.className = 'char');
+  updateMpCaret();
+
+  let count = 3;
+  num.textContent = count;
+  status.textContent = 'Get Ready...';
+
+  const cdTimer = setInterval(() => {
+    count--;
+    if (count > 0) {
+      num.textContent = count;
+    } else if (count === 0) {
+      num.textContent = 'GO!';
+      num.style.color = 'var(--success)';
+      status.textContent = 'RACE IN PROGRESS!';
+      raceActive = true;
+      mpStartTime = performance.now();
+    } else {
+      clearInterval(cdTimer);
+      banner.style.display = 'none';
+      num.style.color = 'var(--accent)';
+    }
+  }, 1000);
+}
+
+window.addEventListener('keydown', (e) => {
+  if (!raceActive) return;
+  if (['Shift', 'Control', 'Alt', 'Meta', 'CapsLock'].includes(e.key)) return;
+
+  const spans = document.querySelectorAll('#mp-text .char');
+  if (currentIndex >= spans.length) return;
+
+  if (e.key === spans[currentIndex].textContent) {
+    spans[currentIndex].className = 'char correct';
+    currentIndex++;
+    window.soundEngine.playKey(false);
+  } else if (e.key.length === 1) {
+    spans[currentIndex].className = 'char incorrect';
+    window.soundEngine.playKey(true);
+  }
+
+  updateMpCaret();
+
+  const progress = Math.min(100, Math.round((currentIndex / spans.length) * 100));
+  const elapsedMinutes = (performance.now() - mpStartTime) / 60000;
+  const wpm = elapsedMinutes > 0 ? Math.round((currentIndex / 5) / elapsedMinutes) : 0;
+
+  if (socket && socket.connected) {
+    socket.emit('progress_update', {
+      room: document.getElementById('room-input').value,
+      progress: progress,
+      wpm: wpm
+    });
+  }
+
+  if (progress >= 100) {
+    raceActive = false;
+    document.getElementById('mp-status-lbl').textContent = `Finished! Clocked in at ${wpm} WPM.`;
+  }
+});
+
+function startAiBotRace() {
+  clearInterval(botInterval);
+  botProgress = 0;
+  botInterval = setInterval(() => {
+    if (!raceActive && botProgress === 0) return;
+    botProgress += 1.6;
+    const tracks = document.getElementById('race-tracks');
+    let botTrack = document.getElementById('bot-track');
+    if (!botTrack) {
+      botTrack = document.createElement('div');
+      botTrack.id = 'bot-track';
+      botTrack.style.background = 'var(--bg-card)';
+      botTrack.style.padding = '0.75rem';
+      botTrack.style.borderRadius = 'var(--radius)';
+      tracks.appendChild(botTrack);
+    }
+    botTrack.innerHTML = `
+      <div style="display:flex; justify-content:space-between; font-size:0.85rem; margin-bottom:0.3rem;">
+        <span>🤖 <strong>CyberRacer (AI Challenger)</strong></span>
+        <span>72 WPM (${Math.min(100, Math.round(botProgress))}%)</span>
+      </div>
+      <div style="background:var(--bg-secondary); height:10px; border-radius:5px; overflow:hidden;">
+        <div style="width:${Math.min(100, botProgress)}%; height:100%; background:var(--warning); transition:width 0.2s;"></div>
+      </div>
+    `;
+    if (botProgress >= 100) clearInterval(botInterval);
+  }, 200);
+}
+
+function renderMpTracks(players) {
+  const container = document.getElementById('race-tracks');
+  container.innerHTML = '';
+  Object.keys(players).forEach(id => {
+    const p = players[id];
+    const div = document.createElement('div');
+    div.style.background = 'var(--bg-card)';
+    div.style.padding = '0.75rem 1rem';
+    div.style.borderRadius = 'var(--radius)';
+    div.innerHTML = `
+      <div style="display:flex; justify-content:space-between; font-size:0.85rem; margin-bottom:0.35rem;">
+        <span>🏎️ <strong>${p.name}</strong> ${p.place ? `<span style="color:#f59e0b; font-weight:800;">(#${p.place})</span>` : ''}</span>
+        <span><strong>${p.wpm || 0} WPM</strong> (${Math.round(p.progress || 0)}%)</span>
+      </div>
+      <div style="background:var(--bg-secondary); height:10px; border-radius:5px; overflow:hidden;">
+        <div style="width:${p.progress || 0}%; height:100%; background:${p.progress >= 100 ? 'var(--success)' : 'var(--accent)'}; transition:width 0.12s ease;"></div>
+      </div>
+    `;
+    container.appendChild(div);
+  });
+}
+
+document.addEventListener('DOMContentLoaded', initMpText);
+</script>
+{% endblock %}

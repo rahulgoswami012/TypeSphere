@@ -1,0 +1,1 @@
+web: gunicorn --worker-class threading -w 1 run:app

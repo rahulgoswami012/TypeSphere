@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="card">
+  <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 1.25rem; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
+    <div>
+      <h1 style="font-size: 1.8rem; font-weight: 700; margin: 0;">Typing Prompts Database</h1>
+      <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.35rem;">Manage the passages served to typists across all test modes.</p>
+    </div>
+    <a href="{{ url_for('admin.index') }}" class="btn">&larr; Back to Admin Overview</a>
+  </div>
+
+  <!-- Add New Prompt Form -->
+  <form method="POST" style="background: var(--bg-card); padding: 1.5rem; border-radius: var(--radius); margin-bottom: 2.5rem; border: 1px solid var(--border-color);">
+    <h3 style="font-size: 1.15rem; margin-bottom: 1rem;">Add New Prompt Text</h3>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+      <div>
+        <label style="display: block; font-size: 0.85rem; margin-bottom: 0.4rem;">Category</label>
+        <input type="text" name="category" placeholder="General, Literature, Technology, Science, etc." required style="width: 100%; padding: 0.65rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-primary); font-family: inherit;">
+      </div>
+      <div>
+        <label style="display: block; font-size: 0.85rem; margin-bottom: 0.4rem;">Programming Language (Optional)</label>
+        <input type="text" name="code_lang" placeholder="python, javascript, sql" style="width: 100%; padding: 0.65rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-primary); font-family: inherit;">
+      </div>
+    </div>
+
+    <div style="margin-bottom: 1rem;">
+      <label style="display: block; font-size: 0.85rem; margin-bottom: 0.4rem;">Passage Content</label>
+      <textarea name="content" rows="4" required style="width: 100%; padding: 0.75rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-primary); font-family: var(--font-mono);"></textarea>
+    </div>
+
+    <div style="margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
+      <input type="checkbox" name="is_code" id="is_code">
+      <label for="is_code" style="font-size: 0.85rem; cursor: pointer;">This prompt represents code syntax</label>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Save Prompt</button>
+  </form>
+
+  <!-- Existing Prompts Table -->
+  <h3 style="font-size: 1.15rem; margin-bottom: 1rem;">Configured Prompts ({{ texts|length }})</h3>
+  <table style="width: 100%; border-collapse: collapse; text-align: left;">
+    <thead>
+      <tr style="border-bottom: 1px solid var(--border-color); color: var(--text-muted); font-size: 0.85rem;">
+        <th style="padding: 0.6rem;">ID</th>
+        <th style="padding: 0.6rem;">Category</th>
+        <th style="padding: 0.6rem;">Excerpt</th>
+        <th style="padding: 0.6rem;">Is Code</th>
+        <th style="padding: 0.6rem;">Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for t in texts %}
+      <tr style="border-bottom: 1px solid var(--border-color); font-size: 0.85rem;">
+        <td style="padding: 0.75rem;">#{{ t.id }}</td>
+        <td style="padding: 0.75rem;"><span style="background: var(--bg-card); padding: 0.2rem 0.5rem; border-radius: 4px;">{{ t.category }}</span></td>
+        <td style="padding: 0.75rem; max-width: 420px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-mono);">{{ t.content }}</td>
+        <td style="padding: 0.75rem;">{{ 'Yes (' + t.code_lang + ')' if t.is_code else 'No' }}</td>
+        <td style="padding: 0.75rem;">
+          <form method="POST" action="{{ url_for('admin.delete_text', text_id=t.id) }}" onsubmit="return confirm('Delete this prompt permanently?');">
+            <button type="submit" class="btn" style="padding: 0.2rem 0.5rem; font-size: 0.75rem; border-color: var(--danger); color: var(--danger);">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

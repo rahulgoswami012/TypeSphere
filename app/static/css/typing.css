@@ -1,0 +1,203 @@
+.mode-selectors {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  padding: 0.6rem 1.25rem;
+  margin: 0 auto 2.5rem;
+  width: fit-content;
+}
+
+.mode-group {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.mode-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 0.3rem 0.6rem;
+  border-radius: 4px;
+  transition: var(--transition);
+}
+
+.mode-btn.active, .mode-btn:hover {
+  color: var(--accent);
+  background: var(--bg-card);
+}
+
+/* Primary Telemetry HUD */
+.stats-hud {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.stat-box {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  padding: 0.85rem;
+  text-align: center;
+  position: relative;
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.25rem;
+}
+
+.stat-value {
+  font-size: 1.6rem;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  color: var(--accent);
+}
+
+/* Dynamic Speedometer Arc */
+.speedometer-svg {
+  position: absolute;
+  right: -10px;
+  bottom: -10px;
+  width: 58px;
+  height: 58px;
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.speedo-bg {
+  fill: none;
+  stroke: var(--border-color);
+  stroke-width: 3.5;
+}
+
+.speedo-fill {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 3.8;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.15s ease-out;
+}
+
+/* Typing Container with Smooth Auto-Centering Viewport */
+.typing-container {
+  position: relative;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  padding: 2.25rem;
+  min-height: 220px;
+  max-height: 320px;
+  cursor: text;
+  outline: none;
+  user-select: none;
+  overflow-y: hidden; /* Programmatically scrolled to keep active line centered */
+  scroll-behavior: smooth;
+}
+
+.typing-container.focus-ring {
+  border-color: var(--accent);
+  box-shadow: 0 0 15px var(--accent-glow);
+}
+
+.typing-text-display {
+  font-family: var(--font-mono);
+  font-size: var(--typing-font-size);
+  line-height: 2.2;
+  color: var(--text-muted);
+  position: relative;
+  word-break: break-word;
+  transition: filter 0.2s ease;
+}
+
+.char {
+  position: relative;
+  transition: color 0.05s ease;
+}
+
+.char.correct {
+  color: var(--text-primary);
+}
+
+.char.incorrect {
+  color: var(--danger);
+  text-decoration: underline 2px solid var(--danger);
+}
+
+.char.extra {
+  color: #ff7b72;
+  opacity: 0.85;
+}
+
+/* Caret Variants */
+.caret {
+  position: absolute;
+  pointer-events: none;
+  transition: left 0.08s ease, top 0.08s ease;
+  animation: blink 1.1s infinite;
+  z-index: 10;
+}
+
+.caret.caret-smooth {
+  width: 3px;
+  height: 1.5rem;
+  background: var(--accent);
+  border-radius: 2px;
+}
+
+.caret.caret-block {
+  width: 14px;
+  height: 1.5rem;
+  background: var(--accent);
+  opacity: 0.55;
+  border-radius: 0;
+}
+
+.caret.caret-underline {
+  width: 14px;
+  height: 4px;
+  background: var(--accent);
+  border-radius: 1px;
+  transform: translateY(1.2rem);
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.ghost-caret {
+  position: absolute;
+  width: 2px;
+  height: 1.35rem;
+  background: #a371f7;
+  pointer-events: none;
+  transition: left 0.1s linear, top 0.1s linear;
+  opacity: 0.65;
+}
+
+/* Distraction-Free Focus Mode */
+body.focus-mode .navbar,
+body.focus-mode .stats-hud,
+body.focus-mode .mode-selectors,
+body.focus-mode .keyboard-wrapper,
+body.focus-mode footer {
+  display: none !important;
+}
+
+body.focus-mode .container {
+  max-width: 900px;
+  margin-top: 15vh;
+}

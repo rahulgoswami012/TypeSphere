@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="card" style="max-width: 960px; margin: 0 auto;">
+  <!-- Pilot Profile Header -->
+  <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 1.5rem; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
+    <div style="display: flex; align-items: center; gap: 1.25rem;">
+      <div style="width: 64px; height: 64px; border-radius: 50%; background: var(--bg-card); border: 2px solid var(--accent); display: flex; align-items: center; justify-content: center; font-size: 1.8rem; font-weight: 800; color: var(--accent);">
+        {{ profile_user.username[0]|upper }}
+      </div>
+      <div>
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <h1 style="font-size: 1.8rem; font-weight: 700; margin: 0;">{{ profile_user.username }}</h1>
+          {% if profile_user.is_admin %}
+            <span style="font-size: 0.75rem; background: rgba(210, 153, 34, 0.2); color: var(--warning); padding: 0.15rem 0.5rem; border-radius: 4px; font-weight: 700;">ADMIN</span>
+          {% endif %}
+        </div>
+        <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.25rem;">
+          Pilot on TypeSphere since {{ profile_user.created_at.strftime('%B %Y') }}
+        </p>
+      </div>
+    </div>
+
+    <!-- Ghost Race CTA -->
+    {% if best_test %}
+    <a href="{{ url_for('typing.test_page') }}?ghost_race={{ best_test.id }}" class="btn btn-primary" style="background: #a371f7; border-color: #a371f7; font-weight: 700;">
+      👻 Race {{ profile_user.username }}'s Ghost ({{ best_wpm }} WPM)
+    </a>
+    {% endif %}
+  </div>
+
+  <!-- Primary Stats Grid -->
+  <div class="stats-hud" style="grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));">
+    <div class="stat-box">
+      <div class="stat-label">Personal Best</div>
+      <div class="stat-value" style="color: var(--success);">{{ best_wpm }} <span style="font-size: 0.8rem; color: var(--text-muted);">WPM</span></div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-label">Average Speed</div>
+      <div class="stat-value">{{ avg_wpm }} <span style="font-size: 0.8rem; color: var(--text-muted);">WPM</span></div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-label">Average Accuracy</div>
+      <div class="stat-value">{{ avg_accuracy }}%</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-label">Verified Tests</div>
+      <div class="stat-value">{{ total_tests }}</div>
+    </div>
+  </div>
+
+  <!-- Biometric DNA & Badges Grid -->
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem; margin-top: 1.5rem;">
+    <!-- Biomechanical Hand Balance -->
+    <div class="card" style="margin-bottom: 0; background: var(--bg-card);">
+      <h3 style="font-size: 1.15rem; margin-bottom: 1rem;">Biomechanical Hand Telemetry</h3>
+      <div style="display: flex; flex-direction: column; gap: 0.75rem; font-size: 0.95rem;">
+        <div style="display: flex; justify-content: space-between;">
+          <span style="color: var(--text-muted);">Left Hand Balance:</span>
+          <strong>{{ dna.left_hand_accuracy if dna else 98.0 }}%</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+          <span style="color: var(--text-muted);">Right Hand Balance:</span>
+          <strong>{{ dna.right_hand_accuracy if dna else 98.5 }}%</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+          <span style="color: var(--text-muted);">Punctuation Precision:</span>
+          <strong>{{ dna.punctuation_accuracy if dna else 95.0 }}%</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+          <span style="color: var(--text-muted);">Numeric Row Cadence:</span>
+          <strong>{{ dna.numbers_accuracy if dna else 94.0 }}%</strong>
+        </div>
+      </div>
+    </div>
+
+    <!-- Trophy Case -->
+    <div class="card" style="margin-bottom: 0; background: var(--bg-card);">
+      <h3 style="font-size: 1.15rem; margin-bottom: 1rem;">Unlocked Trophy Case ({{ achievements|length }})</h3>
+      <div style="display: flex; flex-direction: column; gap: 0.65rem;">
+        {% for ua in achievements %}
+        <div style="display: flex; align-items: center; justify-content: space-between; background: var(--bg-secondary); padding: 0.6rem 0.85rem; border-radius: var(--radius); border-left: 3px solid var(--accent);">
+          <span style="font-weight: 600; font-size: 0.9rem;">🏆 {{ ua.achievement.title }}</span>
+          <span style="font-size: 0.75rem; color: var(--text-muted);">{{ ua.unlocked_at.strftime('%b %d, %Y') }}</span>
+        </div>
+        {% else %}
+        <p style="color: var(--text-muted); font-size: 0.85rem;">No trophy badges unlocked yet.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

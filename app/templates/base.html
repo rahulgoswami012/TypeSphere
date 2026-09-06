@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>{% block title %}TypeSphere | Next-Generation Typing Intelligence{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/typing.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/keyboard.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}">
+</head>
+<body>
+  <!-- Top Navigation (Quick Search Removed) -->
+  <nav class="navbar">
+    <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; max-width: 1200px; margin: 0 auto;">
+      <a href="{{ url_for('typing.test_page') }}" class="brand" data-tooltip="Navigate to primary typing test track" data-tooltip-title="TYPESPHERE HOME">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <path d="M12 6v6l4 2"></path>
+        </svg>
+        TypeSphere
+      </a>
+
+      <!-- Mobile Hamburger Toggle -->
+      <button class="mobile-nav-toggle" onclick="toggleMobileNav()" aria-label="Toggle navigation">
+        ☰
+      </button>
+    </div>
+
+    <!-- Navigation Links -->
+    <ul class="nav-links" id="main-nav-links">
+      <li><a href="{{ url_for('typing.test_page') }}" class="nav-link" data-tooltip="Open speed typing test track" data-tooltip-title="TEST TRACK">Test</a></li>
+      <li><a href="{{ url_for('typing.custom_text_page') }}" class="nav-link" data-tooltip="Paste your own articles, study notes, or code" data-tooltip-title="CUSTOM STUDIO">Custom Text</a></li>
+      <li><a href="{{ url_for('challenges.index') }}" class="nav-link" data-tooltip="Compete in Survival, Accuracy, and Daily Challenge modes" data-tooltip-title="CHALLENGES">Challenges</a></li>
+      <li><a href="{{ url_for('leaderboard.index') }}" class="nav-link" data-tooltip="View global verified rankings" data-tooltip-title="LEADERBOARD">Leaderboard</a></li>
+      <li><a href="{{ url_for('multiplayer.index') }}" class="nav-link" data-tooltip="Join real-time synchronized typing races" data-tooltip-title="MULTIPLAYER">Multiplayer</a></li>
+      <li><a href="{{ url_for('settings.index') }}" class="nav-link" data-tooltip="Customize themes, mechanical sounds, carets, and typography" data-tooltip-title="SETTINGS">Settings</a></li>
+      {% if current_user.is_authenticated %}
+        <li><a href="{{ url_for('dashboard.index') }}" class="nav-link" data-tooltip="View personal records and streaks" data-tooltip-title="DASHBOARD">Dashboard</a></li>
+        <li><a href="{{ url_for('dashboard.dna_profile') }}" class="nav-link" data-tooltip="Inspect left vs right hand balance" data-tooltip-title="TYPING DNA">Typing DNA</a></li>
+        {% if current_user.is_admin %}
+          <li><a href="{{ url_for('admin.index') }}" class="nav-link" style="color: var(--warning);" data-tooltip="Manage prompts and anti-cheat" data-tooltip-title="ADMIN PANEL">Admin</a></li>
+        {% endif %}
+        <li><a href="{{ url_for('auth.logout') }}" class="btn" data-tooltip="Securely end current session" data-tooltip-title="LOGOUT">Logout ({{ current_user.username }})</a></li>
+      {% else %}
+        <li><a href="{{ url_for('auth.login') }}" class="nav-link" data-tooltip="Sign in to save scores" data-tooltip-title="SIGN IN">Sign In</a></li>
+        <li><a href="{{ url_for('auth.register') }}" class="btn btn-primary" data-tooltip="Create a free account" data-tooltip-title="JOIN SPHERE">Join Sphere</a></li>
+      {% endif %}
+    </ul>
+  </nav>
+
+  <!-- Main Content Container -->
+  <div class="container">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, msg in messages %}
+          <div class="alert alert-{{ category }}" style="padding: 0.75rem 1rem; border-radius: 6px; margin-bottom: 1.5rem; background: var(--bg-card); border-left: 4px solid var(--accent);">
+            {{ msg }}
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </div>
+
+  <!-- Aesthetic Registered Copyright Footer -->
+  <footer class="app-footer">
+    <div class="footer-container">
+      <div class="footer-grid">
+        <!-- Brand & Tagline -->
+        <div class="footer-brand-col">
+          <div class="footer-brand-title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <path d="M12 6v6l4 2"></path>
+            </svg>
+            TypeSphere
+          </div>
+          <p class="footer-tagline">
+            Next-Generation Typing Intelligence & Biometric Telemetry Engine. Engineered for speed enthusiasts, software developers, and competitive typists worldwide.
+          </p>
+          <div class="footer-status-pill">
+            <span class="status-dot"></span>
+            <span>All Systems Operational &bull; Version 1.0.0 Production</span>
+          </div>
+        </div>
+
+        <!-- Quick Links -->
+        <div class="footer-links-col">
+          <h4>Platform</h4>
+          <ul>
+            <li><a href="{{ url_for('typing.test_page') }}">Speed Benchmark</a></li>
+            <li><a href="{{ url_for('typing.custom_text_page') }}">Custom Studio</a></li>
+            <li><a href="{{ url_for('challenges.index') }}">Challenge Arenas</a></li>
+            <li><a href="{{ url_for('multiplayer.index') }}">Multiplayer Grid</a></li>
+          </ul>
+        </div>
+
+        <!-- Telemetry Links -->
+        <div class="footer-links-col">
+          <h4>Intelligence</h4>
+          <ul>
+            <li><a href="{{ url_for('dashboard.dna_profile') }}">Biometric Typing DNA</a></li>
+            <li><a href="{{ url_for('dashboard.analytics') }}">Progression Curves</a></li>
+            <li><a href="{{ url_for('leaderboard.index') }}">Global Championship</a></li>
+            <li><a href="{{ url_for('settings.index') }}">Ergonomics & Themes</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Legal & Copyright Bar -->
+      <div class="footer-bottom-bar">
+        <div class="copyright-text">
+          &copy; 2026 TypeSphere. All rights reserved. Registered Trademark &reg;.
+        </div>
+        <div class="footer-meta-links">
+          <span>Non-Medical Biometric Telemetry</span>
+          <span>&bull;</span>
+          <span>Cryptographic Anti-Cheat Protected</span>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+  function toggleMobileNav() {
+    const nav = document.getElementById('main-nav-links');
+    nav.classList.toggle('mobile-open');
+  }
+  </script>
+
+  <!-- Global Sound Engine -->
+  <script src="{{ url_for('static', filename='js/audio.js') }}"></script>
+  <!-- Global Settings & Theme Engine -->
+  <script src="{{ url_for('static', filename='js/settings.js') }}"></script>
+  <!-- Pure SVG Charting Engine -->
+  <script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+  <!-- Predictive Tooltip Engine -->
+  <script src="{{ url_for('static', filename='js/tooltips.js') }}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

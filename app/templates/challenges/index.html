@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="card">
+  <div style="border-bottom: 1px solid var(--border-color); padding-bottom: 1.25rem; margin-bottom: 2rem;">
+    <h1 style="font-size: 1.8rem; font-weight: 700; margin-bottom: 0.5rem;">Competitive Challenge Arenas</h1>
+    <p style="color: var(--text-muted); font-size: 0.95rem;">
+      Specialized game modes engineered to test biometric precision, survival stamina, and real-time stress tolerance.
+    </p>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.75rem;">
+    <!-- Daily Challenge -->
+    <div class="card" style="background: var(--bg-card); border-color: var(--accent); margin-bottom: 0; display: flex; flex-direction: column; justify-content: space-between;">
+      <div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+          <h3 style="color: var(--accent); margin: 0;">Daily Challenge</h3>
+          <span style="font-size: 0.75rem; background: var(--accent); color: #fff; padding: 0.15rem 0.5rem; border-radius: 4px; font-weight: 700;">DAILY 24H</span>
+        </div>
+        <p style="color: var(--text-muted); font-size: 0.85rem; line-height: 1.6; margin-bottom: 1.25rem;">
+          One universal passage for all typists worldwide every 24 hours. Ranked on an immutable daily leaderboard.
+        </p>
+      </div>
+      <a href="{{ url_for('challenges.daily') }}" class="btn btn-primary" style="width: 100%; justify-content: center;">
+        View & Enter Daily Run &rarr;
+      </a>
+    </div>
+
+    <!-- Survival Mode -->
+    <div class="card" style="background: var(--bg-card); border-color: var(--danger); margin-bottom: 0; display: flex; flex-direction: column; justify-content: space-between;">
+      <div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+          <h3 style="color: var(--danger); margin: 0;">Survival (3 Hearts)</h3>
+          <span style="font-size: 0.75rem; background: rgba(248, 81, 73, 0.2); color: var(--danger); padding: 0.15rem 0.5rem; border-radius: 4px; font-weight: 700;">SUDDEN DEATH</span>
+        </div>
+        <p style="color: var(--text-muted); font-size: 0.85rem; line-height: 1.6; margin-bottom: 1.25rem;">
+          Start with 3 lives. Every mistyped character deducts one heart. Survive the entire passage or face elimination.
+        </p>
+      </div>
+      <a href="{{ url_for('typing.test_page') }}?mode=survival" class="btn" style="border-color: var(--danger); color: var(--danger); width: 100%; justify-content: center;">
+        Enter Survival Arena &rarr;
+      </a>
+    </div>
+
+    <!-- Accuracy Challenge -->
+    <div class="card" style="background: var(--bg-card); border-color: var(--success); margin-bottom: 0; display: flex; flex-direction: column; justify-content: space-between;">
+      <div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+          <h3 style="color: var(--success); margin: 0;">Flawless Accuracy</h3>
+          <span style="font-size: 0.75rem; background: rgba(63, 185, 80, 0.2); color: var(--success); padding: 0.15rem 0.5rem; border-radius: 4px; font-weight: 700;">100% REQUIRED</span>
+        </div>
+        <p style="color: var(--text-muted); font-size: 0.85rem; line-height: 1.6; margin-bottom: 1.25rem;">
+          Speed is secondary. Absolute perfection is mandatory. The benchmark resets immediately upon a single error.
+        </p>
+      </div>
+      <a href="{{ url_for('typing.test_page') }}?mode=accuracy" class="btn" style="border-color: var(--success); color: var(--success); width: 100%; justify-content: center;">
+        Launch Accuracy Test &rarr;
+      </a>
+    </div>
+
+    <!-- 5-Minute Endurance -->
+    <div class="card" style="background: var(--bg-card); border-color: var(--warning); margin-bottom: 0; display: flex; flex-direction: column; justify-content: space-between;">
+      <div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+          <h3 style="color: var(--warning); margin: 0;">Endurance Marathon</h3>
+          <span style="font-size: 0.75rem; background: rgba(210, 153, 34, 0.2); color: var(--warning); padding: 0.15rem 0.5rem; border-radius: 4px; font-weight: 700;">300 SECONDS</span>
+        </div>
+        <p style="color: var(--text-muted); font-size: 0.85rem; line-height: 1.6; margin-bottom: 1.25rem;">
+          A rigorous 5-minute sustained typing test engineered to chart cognitive stamina and physical finger fatigue.
+        </p>
+      </div>
+      <a href="{{ url_for('typing.test_page') }}?mode=timed&duration=300" class="btn" style="border-color: var(--warning); color: var(--warning); width: 100%; justify-content: center;">
+        Start 5-Minute Run &rarr;
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}
