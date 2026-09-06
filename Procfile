@@ -1,1 +1,1 @@
-web: gunicorn --worker-class threading -w 1 run:app
+web: gunicorn -k gthread --threads 8 -w 1 run:app
