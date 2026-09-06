@@ -10,19 +10,19 @@ multiplayer_bp = Blueprint('multiplayer', __name__)
 
 ROOMS = {}
 
-MATCH_PASSAGES = {
+PASSAGES = {
     'standard': [
-        "Speed is nothing without precision. Keep your hands balanced, breathe calmly, and glide across the keys with absolute rhythm.",
-        "Real velocity is born from economy of motion. Eliminate tension from your fingers and allow tactile muscle memory to guide every stroke.",
-        "Consistency is the hallmark of the master typist. Every accurate strike compounds into pure flow and unmatched velocity."
+        "other given death course stand heard ready come thinking started each part been ask hand however whether close seems night himself control real taking lights story found does done back get we water then",
+        "speed is nothing without precision keep your hands balanced breathe calmly and glide across the keys with absolute rhythm",
+        "consistency is the hallmark of the master typist every accurate strike compounds into pure flow and unmatched velocity"
     ],
     'code': [
-        "def quicksort(arr):\n    if len(arr) <= 1:\n        return arr\n    pivot = arr[len(arr) // 2]\n    left = [x for x in arr if x < pivot]\n    middle = [x for x in arr if x == pivot]\n    right = [x for x in arr if x > pivot]\n    return quicksort(left) + middle + quicksort(right)",
-        "const calculateCadence = (events) => {\n  return events.reduce((acc, curr, idx, arr) => {\n    if (idx === 0) return acc;\n    return acc + (curr.timestamp - arr[idx - 1].timestamp);\n  }, 0) / (events.length - 1);\n};"
+        "def quicksort(arr):\n    if len(arr) <= 1:\n        return arr\n    pivot = arr[len(arr) // 2]\n    left = [x for x in arr if x < pivot]\n    return quicksort(left) + [pivot]",
+        "const calculateCadence = (events) => {\n  return events.reduce((acc, curr, idx, arr) => {\n    if (idx === 0) return acc;\n    return acc + (curr.timestamp - arr[idx - 1].timestamp);\n  }, 0);\n};"
     ],
     'quotes': [
-        "It is a truth universally acknowledged, that a single man in possession of a good fortune, must be in want of a wife.",
-        "It was the best of times, it was the worst of times, it was the age of wisdom, it was the age of foolishness."
+        "It is a truth universally acknowledged that a single man in possession of a good fortune must be in want of a wife.",
+        "It was the best of times it was the worst of times it was the age of wisdom it was the age of foolishness."
     ]
 }
 
@@ -66,8 +66,10 @@ def handle_join(data):
     join_room(room)
     if room not in ROOMS:
         ROOMS[room] = {
-            'text': random.choice(MATCH_PASSAGES['standard']),
+            'text': random.choice(PASSAGES['standard']),
             'mode': 'standard',
+            'duration': 60,
+            'blind_mode': False,
             'status': 'lobby',
             'host_sid': sid,
             'players': {}
@@ -78,21 +80,39 @@ def handle_join(data):
         'name': name,
         'progress': 0,
         'wpm': 0,
+        'accuracy': 100,
         'finished': False,
-        'place': None
+        'place': None,
+        'is_host': (ROOMS[room]['host_sid'] == sid)
     }
 
     emit('room_update', ROOMS[room], room=room)
 
-@socketio.on('set_match_mode')
-def handle_set_mode(data):
+@socketio.on('update_room_settings')
+def handle_update_settings(data):
     room = (data.get('room') or 'public-arena').strip()
-    chosen_mode = data.get('mode', 'standard')
     if room in ROOMS and ROOMS[room]['status'] in ['lobby', 'finished']:
-        ROOMS[room]['mode'] = chosen_mode
-        passages = MATCH_PASSAGES.get(chosen_mode, MATCH_PASSAGES['standard'])
-        ROOMS[room]['text'] = random.choice(passages)
-        emit('mode_updated', {'mode': chosen_mode, 'text': ROOMS[room]['text']}, room=room)
+        custom_p = (data.get('custom_paragraph') or '').strip()
+        mode = data.get('mode', 'standard')
+        duration = int(data.get('duration', 60))
+        blind = bool(data.get('blind_mode', False))
+
+        ROOMS[room]['mode'] = mode
+        ROOMS[room]['duration'] = duration
+        ROOMS[room]['blind_mode'] = blind
+
+        if custom_p and len(custom_p) >= 5:
+            ROOMS[room]['text'] = custom_p
+        else:
+            p_list = PASSAGES.get(mode, PASSAGES['standard'])
+            ROOMS[room]['text'] = random.choice(p_list)
+
+        emit('room_settings_synced', {
+            'text': ROOMS[room]['text'],
+            'mode': mode,
+            'duration': duration,
+            'blind_mode': blind
+        }, room=room)
 
 @socketio.on('start_countdown')
 def handle_countdown(data):
@@ -102,18 +122,18 @@ def handle_countdown(data):
             return
 
         ROOMS[room]['status'] = 'countdown'
-        passages = MATCH_PASSAGES.get(ROOMS[room].get('mode', 'standard'), MATCH_PASSAGES['standard'])
-        ROOMS[room]['text'] = random.choice(passages)
-
         for p_sid in ROOMS[room]['players']:
             ROOMS[room]['players'][p_sid]['progress'] = 0
             ROOMS[room]['players'][p_sid]['wpm'] = 0
+            ROOMS[room]['players'][p_sid]['accuracy'] = 100
             ROOMS[room]['players'][p_sid]['finished'] = False
             ROOMS[room]['players'][p_sid]['place'] = None
 
         emit('race_countdown_started', {
             'text': ROOMS[room]['text'],
-            'room': room
+            'room': room,
+            'duration': ROOMS[room].get('duration', 60),
+            'blind_mode': ROOMS[room].get('blind_mode', False)
         }, room=room)
 
 @socketio.on('race_active_status')
@@ -127,11 +147,13 @@ def handle_progress(data):
     room = data.get('room')
     progress = data.get('progress', 0)
     wpm = data.get('wpm', 0)
+    accuracy = data.get('accuracy', 100)
     sid = request.sid
 
     if room in ROOMS and sid in ROOMS[room]['players']:
         ROOMS[room]['players'][sid]['progress'] = progress
         ROOMS[room]['players'][sid]['wpm'] = wpm
+        ROOMS[room]['players'][sid]['accuracy'] = accuracy
 
         if progress >= 100 and not ROOMS[room]['players'][sid]['finished']:
             ROOMS[room]['players'][sid]['finished'] = True
@@ -141,12 +163,21 @@ def handle_progress(data):
             if finished_count >= len(ROOMS[room]['players']):
                 ROOMS[room]['status'] = 'finished'
 
-            emit('player_finished', {
-                'id': sid,
-                'name': ROOMS[room]['players'][sid]['name'],
-                'place': finished_count,
-                'wpm': wpm,
-                'all_finished': (ROOMS[room]['status'] == 'finished')
+            # Build Full Results Payload for both Casual and Ranked
+            results_roster = []
+            for p in sorted(ROOMS[room]['players'].values(), key=lambda x: (not x['finished'], x.get('place') or 99)):
+                results_roster.append({
+                    'id': p['id'],
+                    'name': p['name'],
+                    'place': p.get('place') or 'DNF',
+                    'wpm': p['wpm'],
+                    'accuracy': p['accuracy']
+                })
+
+            emit('match_results_summary', {
+                'winner_name': ROOMS[room]['players'][sid]['name'],
+                'results': results_roster,
+                'is_ranked': ROOMS[room].get('is_ranked', False)
             }, room=room)
 
         emit('race_progress', {'players': ROOMS[room]['players']}, room=room)

@@ -8,7 +8,7 @@
   border: 1px solid var(--border-color);
   border-radius: var(--radius);
   padding: 0.6rem 1.25rem;
-  margin: 0 auto 2.5rem;
+  margin: 0 auto 2rem;
   width: fit-content;
 }
 
@@ -39,7 +39,7 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
   gap: 1rem;
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
 }
 
 .stat-box {
@@ -91,19 +91,19 @@
   transition: stroke-dashoffset 0.15s ease-out;
 }
 
-/* Typing Container with Smooth Auto-Centering Viewport */
+/* Typing Container & Visual Typography (Screenshot 2 Styling) */
 .typing-container {
   position: relative;
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
   border-radius: var(--radius);
-  padding: 2.25rem;
-  min-height: 220px;
-  max-height: 320px;
+  padding: 2rem 2.25rem;
+  min-height: 190px;
+  max-height: 280px;
   cursor: text;
   outline: none;
   user-select: none;
-  overflow-y: hidden; /* Programmatically scrolled to keep active line centered */
+  overflow-y: hidden;
   scroll-behavior: smooth;
 }
 
@@ -114,74 +114,56 @@
 
 .typing-text-display {
   font-family: var(--font-mono);
-  font-size: var(--typing-font-size);
-  line-height: 2.2;
-  color: var(--text-muted);
+  font-size: 1.45rem;
+  letter-spacing: 0.15em;
+  line-height: 2.3;
+  color: var(--text-primary);
   position: relative;
   word-break: break-word;
-  transition: filter 0.2s ease;
 }
 
 .char {
   position: relative;
-  transition: color 0.05s ease;
+  transition: color 0.05s ease, background-color 0.05s ease;
+  color: #94a3b8;
 }
 
+/* Correct Letters: Crisp Green */
 .char.correct {
-  color: var(--text-primary);
+  color: #10b981 !important;
+  font-weight: 600;
 }
 
+/* Incorrect Letters: Red Underline */
 .char.incorrect {
-  color: var(--danger);
-  text-decoration: underline 2px solid var(--danger);
+  color: #ef4444 !important;
+  text-decoration: underline 3px solid #ef4444;
+  background: rgba(239, 68, 68, 0.15);
 }
 
-.char.extra {
-  color: #ff7b72;
-  opacity: 0.85;
-}
-
-/* Caret Variants */
+/* High-Visibility Amber Block Caret (Screenshot 2) */
 .caret {
   position: absolute;
   pointer-events: none;
   transition: left 0.08s ease, top 0.08s ease;
-  animation: blink 1.1s infinite;
   z-index: 10;
-}
-
-.caret.caret-smooth {
-  width: 3px;
-  height: 1.5rem;
-  background: var(--accent);
+  width: 15px;
+  height: 1.65rem;
+  background: #f59e0b !important;
+  opacity: 0.9;
   border-radius: 2px;
+  animation: blockPulse 1s infinite alternate;
 }
 
-.caret.caret-block {
-  width: 14px;
-  height: 1.5rem;
-  background: var(--accent);
-  opacity: 0.55;
-  border-radius: 0;
-}
-
-.caret.caret-underline {
-  width: 14px;
-  height: 4px;
-  background: var(--accent);
-  border-radius: 1px;
-  transform: translateY(1.2rem);
-}
-
-@keyframes blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
+@keyframes blockPulse {
+  0% { opacity: 0.95; }
+  100% { opacity: 0.55; }
 }
 
 .ghost-caret {
   position: absolute;
-  width: 2px;
-  height: 1.35rem;
+  width: 3px;
+  height: 1.5rem;
   background: #a371f7;
   pointer-events: none;
   transition: left 0.1s linear, top 0.1s linear;
