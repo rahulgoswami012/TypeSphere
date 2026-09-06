@@ -49,7 +49,6 @@
       <textarea id="cfg-custom-text" rows="4" placeholder="Paste your own unlimited length story, technical notes, or article for all players in this room..." style="width: 100%; padding: 0.75rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius); color: var(--text-primary); font-family: var(--font-mono); font-size: 0.9rem; line-height: 1.6;"></textarea>
     </div>
 
-    <!-- Modal Action Buttons -->
     <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
       <button type="button" onclick="document.getElementById('room-settings-modal').style.display='none'" class="btn">Cancel</button>
       <button type="button" onclick="applyAndBroadcastSettings()" class="btn btn-primary" style="padding: 0.65rem 1.5rem; font-weight: 800;">
@@ -59,16 +58,14 @@
   </div>
 </div>
 
-<!-- 2. Dedicated Multiplayer Results & Podium Modal -->
+<!-- 2. Results & Podium Modal -->
 <div id="mp-results-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 2010; align-items: center; justify-content: center; backdrop-filter: blur(8px); padding: 1rem;">
   <div class="card" style="width: 100%; max-width: 520px; text-align: center; border-color: var(--accent); box-shadow: 0 25px 50px rgba(0,0,0,0.9);">
     <div style="font-size: 3rem; margin-bottom: 0.25rem;">🏆</div>
     <h2 style="font-size: 1.7rem; font-weight: 800; color: var(--accent); margin-bottom: 0.25rem;">Race Concluded</h2>
     <p id="res-winner-lbl" style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 1.5rem;">Winner has crossed the finish line</p>
 
-    <!-- Podium Standings Table -->
     <div id="res-podium-table" style="display: flex; flex-direction: column; gap: 0.6rem; margin-bottom: 1.75rem; text-align: left;">
-      <!-- Standings injected dynamically -->
     </div>
 
     <div style="display: flex; gap: 0.75rem; justify-content: center;">
@@ -91,7 +88,7 @@
         </span>
       </div>
       <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.35rem;">
-        Record: <strong style="color: var(--success);">{{ wins }}W</strong> - <strong style="color: var(--danger);">{{ losses }}L</strong> &bull; Synchronized multi-device typing duel.
+        Record: <strong style="color: var(--success);">{{ wins }}W</strong> - <strong style="color: var(--danger);">{{ losses }}L</strong> &bull; Cross-device synchronized race.
       </p>
     </div>
 
@@ -120,7 +117,7 @@
       </div>
 
       <div style="display: flex; align-items: center; gap: 0.5rem;">
-        <button onclick="requestCountdown()" id="start-btn" class="btn btn-primary" style="background: var(--success); border-color: var(--success); font-weight: 800; padding: 0.65rem 1.5rem; font-size: 1rem;">
+        <button onclick="startRaceTrigger()" id="start-btn" class="btn btn-primary" style="background: var(--success); border-color: var(--success); font-weight: 800; padding: 0.65rem 1.5rem; font-size: 1rem;">
           🏁 Start Race (3..2..1)
         </button>
         <button onclick="addBotRival()" id="bot-btn" class="btn" style="border-color: var(--warning); color: var(--warning); font-size: 0.85rem;">
@@ -140,7 +137,7 @@
 
   <!-- Countdown Banner Overlay -->
   <div id="countdown-banner" style="display: none; text-align: center; margin-bottom: 1.5rem; background: var(--bg-card); border: 2px solid var(--accent); border-radius: var(--radius); padding: 1.25rem;">
-    <div style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted);">Racers On Your Marks</div>
+    <div style="font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted);">Racers On Your Marks</div>
     <div id="countdown-num" style="font-size: 3.5rem; font-family: var(--font-mono); font-weight: 900; color: var(--accent); margin: 0.25rem 0;">3</div>
   </div>
 
@@ -150,7 +147,7 @@
     <div id="tracks-container" style="display: flex; flex-direction: column; gap: 0.75rem;"></div>
   </div>
 
-  <!-- Target Passage Display (Clean Screenshot 2 Aesthetics) -->
+  <!-- Target Passage Display -->
   <div style="margin-bottom: 1rem;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
       <span style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted);">Target Passage</span>
@@ -158,13 +155,12 @@
     </div>
     
     <div id="passage-box" class="typing-container focus-ring" style="min-height: 140px; max-height: 240px; overflow-y: hidden; position: relative;">
-      <!-- High-visibility Amber Block Caret -->
-      <div id="mp-caret" class="caret"></div>
+      <div id="mp-caret" class="caret caret-block"></div>
       <div id="mp-text" class="typing-text-display"></div>
     </div>
   </div>
 
-  <!-- Unified Mobile & Desktop Input (Direct tap opens phone keyboard 100% reliably) -->
+  <!-- Cockpit Input Box -->
   <div>
     <label for="cockpit-input" style="display: block; font-size: 0.85rem; font-weight: 700; margin-bottom: 0.4rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em;">
       Cockpit Typing Area (Tap here to open keyboard)
@@ -184,7 +180,7 @@ const loggedName = "{{ current_user.username if current_user.is_authenticated el
 const myRacerName = loggedName ? loggedName : `Pilot_${deviceLabel}_${Math.floor(100 + Math.random() * 900)}`;
 
 let activeRoom = 'public-arena';
-let currentPassage = "other given death course stand heard ready come thinking started each part been ask hand however whether close seems night himself control real taking lights story found does done back get we water then";
+let currentPassage = "";
 let typedIndex = 0;
 let raceStarted = false;
 let isCountingDown = false;
@@ -209,7 +205,6 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('room-input').value = r;
   }
 
-  renderPassage();
   connectSocket();
   bindUnifiedInput();
 });
@@ -228,7 +223,12 @@ function connectSocket() {
     document.getElementById('conn-text').textContent = 'Disconnected. Reconnecting...';
   });
 
+  // Automatically syncs the room text on every update so phone and PC always show identical text
   socket.on('room_update', (data) => {
+    if (data.text && data.text !== currentPassage) {
+      currentPassage = data.text;
+      renderPassage();
+    }
     updateRoster(data.players);
     updateTracks(data.players);
   });
@@ -252,7 +252,6 @@ function connectSocket() {
     runCountdown();
   });
 
-  // Dedicated Results & Podium Summary Modal
   socket.on('match_results_summary', (data) => {
     showResultsModal(data);
   });
@@ -372,7 +371,6 @@ function showResultsModal(data) {
   modal.style.display = 'flex';
 }
 
-// Room Settings Config Actions
 function selectCfgMode(mode, btn) {
   cfgMode = mode;
   document.querySelectorAll('#cfg-mode-group .btn').forEach(b => b.classList.remove('active-choice'));
@@ -441,7 +439,6 @@ function startRaceTrigger() {
 }
 
 function runCountdown() {
-  if (isCountingDown) return;
   isCountingDown = true;
   raceStarted = false;
   typedIndex = 0;
@@ -484,13 +481,12 @@ function runCountdown() {
       clearInterval(timer);
       banner.style.display = 'none';
       num.style.color = 'var(--accent)';
+      btn.disabled = false;
+      btn.style.opacity = '1';
     }
   }, 1000);
 }
 
-// ----------------------------------------------------
-// Bulletproof Unified Input (Phone Soft & Physical Keyboard)
-// ----------------------------------------------------
 function bindUnifiedInput() {
   const input = document.getElementById('cockpit-input');
 

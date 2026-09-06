@@ -4,6 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>{% block title %}TypeSphere | Next-Generation Typing Intelligence{% endblock %}</title>
+
+  <!-- Google Fonts: JetBrains Mono, Fira Code, Source Code Pro, Courier Prime -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&family=Fira+Code:wght@400;600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700;800&family=Source+Code+Pro:wght@400;600;700&display=swap" rel="stylesheet">
+
   <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/typing.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/keyboard.css') }}">
@@ -136,7 +142,6 @@
     }
   }
 
-  // Automatically dismiss notifications after 3 seconds
   document.addEventListener('DOMContentLoaded', () => {
     const alerts = document.querySelectorAll('.alert-box');
     alerts.forEach(alertBox => {

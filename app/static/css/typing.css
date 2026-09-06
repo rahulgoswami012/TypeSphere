@@ -91,7 +91,7 @@
   transition: stroke-dashoffset 0.15s ease-out;
 }
 
-/* Typing Container & Visual Typography (Screenshot 2 Styling) */
+/* Typing Container & Typography */
 .typing-container {
   position: relative;
   background: var(--bg-secondary);
@@ -114,9 +114,9 @@
 
 .typing-text-display {
   font-family: var(--font-mono);
-  font-size: 1.45rem;
-  letter-spacing: 0.15em;
-  line-height: 2.3;
+  font-size: var(--typing-font-size, 22px);
+  letter-spacing: 0.08em;
+  line-height: 2.2;
   color: var(--text-primary);
   position: relative;
   word-break: break-word;
@@ -141,23 +141,46 @@
   background: rgba(239, 68, 68, 0.15);
 }
 
-/* High-Visibility Amber Block Caret (Screenshot 2) */
+/* ==========================================
+   Caret Rendering (Smooth, Block, Underline)
+   ========================================== */
 .caret {
   position: absolute;
   pointer-events: none;
   transition: left 0.08s ease, top 0.08s ease;
   z-index: 10;
-  width: 15px;
-  height: 1.65rem;
-  background: #f59e0b !important;
-  opacity: 0.9;
-  border-radius: 2px;
-  animation: blockPulse 1s infinite alternate;
+  animation: caretBlink 1.1s infinite;
 }
 
-@keyframes blockPulse {
-  0% { opacity: 0.95; }
-  100% { opacity: 0.55; }
+/* 1. Smooth Line Caret */
+.caret.caret-smooth {
+  width: 3px;
+  height: 1.65rem;
+  background: var(--accent);
+  border-radius: 2px;
+}
+
+/* 2. Solid Block Caret */
+.caret.caret-block {
+  width: 14px;
+  height: 1.65rem;
+  background: #f59e0b;
+  opacity: 0.85;
+  border-radius: 2px;
+}
+
+/* 3. Underline Caret */
+.caret.caret-underline {
+  width: 14px;
+  height: 4px;
+  background: var(--accent);
+  border-radius: 1px;
+  transform: translateY(1.35rem);
+}
+
+@keyframes caretBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.25; }
 }
 
 .ghost-caret {

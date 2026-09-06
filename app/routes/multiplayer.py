@@ -12,9 +12,9 @@ ROOMS = {}
 
 PASSAGES = {
     'standard': [
-        "other given death course stand heard ready come thinking started each part been ask hand however whether close seems night himself control real taking lights story found does done back get we water then",
-        "speed is nothing without precision keep your hands balanced breathe calmly and glide across the keys with absolute rhythm",
-        "consistency is the hallmark of the master typist every accurate strike compounds into pure flow and unmatched velocity"
+        "Yes, the story is real, but the Taj Mahal did not physically disappear. The magician was P. C. Sorcar Jr., one of India's most famous illusionists. On 8 November 2000, he performed an illusion in Agra in which the Taj Mahal appeared to vanish for about two minutes.",
+        "Speed is nothing without precision. Keep your hands balanced, breathe calmly, and glide across the keys with absolute rhythm.",
+        "Consistency is the hallmark of the master typist. Every accurate strike compounds into pure flow and unmatched velocity."
     ],
     'code': [
         "def quicksort(arr):\n    if len(arr) <= 1:\n        return arr\n    pivot = arr[len(arr) // 2]\n    left = [x for x in arr if x < pivot]\n    return quicksort(left) + [pivot]",
@@ -86,12 +86,13 @@ def handle_join(data):
         'is_host': (ROOMS[room]['host_sid'] == sid)
     }
 
+    # Broadcast updated room including active text so all joining devices sync passage
     emit('room_update', ROOMS[room], room=room)
 
 @socketio.on('update_room_settings')
 def handle_update_settings(data):
     room = (data.get('room') or 'public-arena').strip()
-    if room in ROOMS and ROOMS[room]['status'] in ['lobby', 'finished']:
+    if room in ROOMS:
         custom_p = (data.get('custom_paragraph') or '').strip()
         mode = data.get('mode', 'standard')
         duration = int(data.get('duration', 60))
@@ -107,6 +108,8 @@ def handle_update_settings(data):
             p_list = PASSAGES.get(mode, PASSAGES['standard'])
             ROOMS[room]['text'] = random.choice(p_list)
 
+        ROOMS[room]['status'] = 'lobby'
+
         emit('room_settings_synced', {
             'text': ROOMS[room]['text'],
             'mode': mode,
@@ -118,9 +121,7 @@ def handle_update_settings(data):
 def handle_countdown(data):
     room = (data.get('room') or 'public-arena').strip()
     if room in ROOMS:
-        if ROOMS[room]['status'] in ['countdown', 'racing']:
-            return
-
+        # Allow countdown whenever in lobby or finished
         ROOMS[room]['status'] = 'countdown'
         for p_sid in ROOMS[room]['players']:
             ROOMS[room]['players'][p_sid]['progress'] = 0
@@ -163,7 +164,6 @@ def handle_progress(data):
             if finished_count >= len(ROOMS[room]['players']):
                 ROOMS[room]['status'] = 'finished'
 
-            # Build Full Results Payload for both Casual and Ranked
             results_roster = []
             for p in sorted(ROOMS[room]['players'].values(), key=lambda x: (not x['finished'], x.get('place') or 99)):
                 results_roster.append({
