@@ -2,18 +2,46 @@ from app import create_app, db
 from app.models.user import User
 from app.models.typing import TypingText
 from app.models.challenge import Achievement, DailyChallenge
+from sqlalchemy import text
 from datetime import date
 
 app = create_app()
 
 def seed_database():
     with app.app_context():
+        # 1. Create tables if they do not exist
         db.create_all()
 
-        # 1. Admin & Test Typist with verified emails
+        # 2. Automatically patch missing columns if an existing database file was used
+        try:
+            with db.engine.connect() as conn:
+                res = conn.execute(text("PRAGMA table_info(users)"))
+                existing_cols = {row[1] for row in res.fetchall()}
+                if existing_cols:
+                    if 'is_verified' not in existing_cols:
+                        conn.execute(text("ALTER TABLE users ADD COLUMN is_verified BOOLEAN DEFAULT 1"))
+                    if 'elo_rating' not in existing_cols:
+                        conn.execute(text("ALTER TABLE users ADD COLUMN elo_rating INTEGER DEFAULT 1000"))
+                    if 'ranked_wins' not in existing_cols:
+                        conn.execute(text("ALTER TABLE users ADD COLUMN ranked_wins INTEGER DEFAULT 0"))
+                    if 'ranked_losses' not in existing_cols:
+                        conn.execute(text("ALTER TABLE users ADD COLUMN ranked_losses INTEGER DEFAULT 0"))
+                    conn.commit()
+        except Exception as e:
+            print("Auto-migration note:", e)
+
+        # 3. Seed Admin & Test Typist
         admin = User.query.filter_by(username='admin').first()
         if not admin:
-            admin = User(username='admin', email='admin@typesphere.io', role='admin', is_verified=True)
+            admin = User(
+                username='admin',
+                email='admin@typesphere.io',
+                role='admin',
+                is_verified=True,
+                elo_rating=1200,
+                ranked_wins=0,
+                ranked_losses=0
+            )
             admin.set_password('AdminMaster2026!')
             db.session.add(admin)
         else:
@@ -21,13 +49,21 @@ def seed_database():
 
         typist = User.query.filter_by(username='speeddemon').first()
         if not typist:
-            typist = User(username='speeddemon', email='speed@typesphere.io', role='user', is_verified=True)
+            typist = User(
+                username='speeddemon',
+                email='speed@typesphere.io',
+                role='user',
+                is_verified=True,
+                elo_rating=1350,
+                ranked_wins=5,
+                ranked_losses=1
+            )
             typist.set_password('SpeedPass123!')
             db.session.add(typist)
         else:
             typist.is_verified = True
 
-        # 2. Universal Achievement Catalog
+        # 4. Universal Achievement Catalog
         badges = [
             ('first_test', 'First Contact', 'Complete your very first typing test on TypeSphere.', 'zap'),
             ('wpm_50', 'Cruising Velocity', 'Reach a verified speed of 50 WPM.', 'award'),
@@ -44,7 +80,7 @@ def seed_database():
             if not Achievement.query.filter_by(code=code).first():
                 db.session.add(Achievement(code=code, title=title, description=desc, icon=icon))
 
-        # 3. Categorized Typing Prompts
+        # 5. Categorized Typing Prompts
         prompts = [
             ("Literature", "It is a truth universally acknowledged, that a single man in possession of a good fortune, must be in want of a wife. However little known the feelings or views of such a man may be on his first entering a neighbourhood, this truth is so well fixed in the minds of the surrounding families, that he is considered as the rightful property of some one or other of their daughters.", False, None),
             ("Technology", "Distributed ledger systems and asynchronous message brokers provide high fault-tolerance across modern decoupled server meshes. Ensuring sub-millisecond execution demands rigorous attention to serialization overhead, kernel context switches, and cache locality.", False, None),
@@ -58,7 +94,7 @@ def seed_database():
             if not TypingText.query.filter_by(content=content).first():
                 db.session.add(TypingText(category=cat, content=content, is_code=is_code, code_lang=code_lang))
 
-        # 4. Daily Challenge
+        # 6. Daily Challenge
         today = date.today()
         if not DailyChallenge.query.filter_by(target_date=today).first():
             db.session.add(DailyChallenge(
@@ -68,7 +104,7 @@ def seed_database():
             ))
 
         db.session.commit()
-        print("Database initialized for Version 1.0.0 (Pre-verified starter accounts ready).")
+        print("✅ Database successfully initialized and seeded with all columns intact.")
 
 if __name__ == '__main__':
     seed_database()

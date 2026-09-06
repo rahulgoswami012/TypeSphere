@@ -13,7 +13,7 @@ class User(UserMixin, db.Model):
     role = db.Column(db.String(20), default='user') # 'user' or 'admin'
     is_verified = db.Column(db.Boolean, default=True, nullable=True)
     
-    # Version 2.0 Ranked Competitive System
+    # Version 2.0 Ranked Fields
     elo_rating = db.Column(db.Integer, default=1000, nullable=False, index=True)
     ranked_wins = db.Column(db.Integer, default=0, nullable=False)
     ranked_losses = db.Column(db.Integer, default=0, nullable=False)

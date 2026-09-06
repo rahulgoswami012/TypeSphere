@@ -1,0 +1,8 @@
+venv/
+*.pyc
+__pycache__/
+instance/
+*.db
+typesphere.db
+.pytest_cache/
+.DS_Store

@@ -8,8 +8,8 @@ from app.models.user import User
 
 multiplayer_bp = Blueprint('multiplayer', __name__)
 
-# ROOMS structure: room_id -> { 'text': str, 'status': 'lobby'|'countdown'|'racing'|'finished', 'host_sid': str, 'players': {} }
-ROOMS = {}
+ROOMS = {} # room_id -> { text, players, status, is_ranked }
+RANKED_QUEUE = [] # list of { sid, user_id, username, elo }
 
 COMPETITIVE_TEXTS = [
     "Speed is nothing without precision. Keep your hands balanced, breathe calmly, and glide across the keys with absolute rhythm.",
@@ -46,25 +46,20 @@ def handle_join(data):
     name = (data.get('name') or 'Pilot').strip()
     sid = request.sid
 
-    # Remove from previous rooms
+    # Remove player from any previous rooms first
     for r_id, r_data in list(ROOMS.items()):
         if sid in r_data['players']:
             leave_room(r_id)
             del r_data['players'][sid]
-            if not r_data['players']:
-                del ROOMS[r_id]
-            else:
-                if r_data['host_sid'] == sid:
-                    r_data['host_sid'] = next(iter(r_data['players']))
-                emit('room_update', r_data, room=r_id)
+            emit('room_update', r_data, room=r_id)
 
     join_room(room)
     if room not in ROOMS:
         ROOMS[room] = {
             'text': random.choice(COMPETITIVE_TEXTS),
-            'status': 'lobby', # 'lobby', 'countdown', 'racing', 'finished'
-            'host_sid': sid,
-            'players': {}
+            'players': {},
+            'status': 'lobby',
+            'is_ranked': False
         }
 
     ROOMS[room]['players'][sid] = {
@@ -73,8 +68,7 @@ def handle_join(data):
         'progress': 0,
         'wpm': 0,
         'finished': False,
-        'place': None,
-        'is_host': (ROOMS[room]['host_sid'] == sid)
+        'place': None
     }
 
     emit('room_update', ROOMS[room], room=room)
@@ -82,21 +76,19 @@ def handle_join(data):
 @socketio.on('start_countdown')
 def handle_countdown(data):
     room = (data.get('room') or 'public-arena').strip()
-    sid = request.sid
-
     if room in ROOMS:
-        # STRICT LOCK: Only allow starting from 'lobby' or 'finished'
+        # Reject start if already running
         if ROOMS[room]['status'] in ['countdown', 'racing']:
             return
 
         ROOMS[room]['status'] = 'countdown'
         ROOMS[room]['text'] = random.choice(COMPETITIVE_TEXTS)
 
-        for p_sid in ROOMS[room]['players']:
-            ROOMS[room]['players'][p_sid]['progress'] = 0
-            ROOMS[room]['players'][p_sid]['wpm'] = 0
-            ROOMS[room]['players'][p_sid]['finished'] = False
-            ROOMS[room]['players'][p_sid]['place'] = None
+        for sid in ROOMS[room]['players']:
+            ROOMS[room]['players'][sid]['progress'] = 0
+            ROOMS[room]['players'][sid]['wpm'] = 0
+            ROOMS[room]['players'][sid]['finished'] = False
+            ROOMS[room]['players'][sid]['place'] = None
 
         emit('race_countdown_started', {
             'text': ROOMS[room]['text'],
@@ -125,29 +117,98 @@ def handle_progress(data):
             finished_count = sum(1 for p in ROOMS[room]['players'].values() if p['finished'])
             ROOMS[room]['players'][sid]['place'] = finished_count
 
-            # If all human players in room have finished, unlock for rematch
+            # Check if all participants finished to reset room status
             if finished_count >= len(ROOMS[room]['players']):
-                ROOMS[room]['status'] = 'finished'
+                ROOMS[room]['status'] = 'lobby'
 
-            emit('player_finished', {
-                'name': ROOMS[room]['players'][sid]['name'],
-                'place': finished_count,
-                'wpm': wpm,
-                'all_finished': (ROOMS[room]['status'] == 'finished')
-            }, room=room)
+            # Ranked 1v1 Elo recalculation
+            if ROOMS[room].get('is_ranked'):
+                players_list = list(ROOMS[room]['players'].values())
+                if len(players_list) == 2 and finished_count == 1:
+                    winner = ROOMS[room]['players'][sid]
+                    loser = players_list[1] if players_list[0]['id'] == sid else players_list[0]
+                    elo_delta = calculate_elo_change(winner['elo'], loser['elo'], a_won=True)
+
+                    if winner.get('user_id'):
+                        u_win = User.query.get(winner['user_id'])
+                        if u_win:
+                            u_win.elo_rating = max(100, u_win.elo_rating + elo_delta)
+                            u_win.ranked_wins = (u_win.ranked_wins or 0) + 1
+
+                    if loser.get('user_id'):
+                        u_lose = User.query.get(loser['user_id'])
+                        if u_lose:
+                            u_lose.elo_rating = max(100, u_lose.elo_rating - elo_delta)
+                            u_lose.ranked_losses = (u_lose.ranked_losses or 0) + 1
+
+                    db.session.commit()
+
+                    emit('ranked_game_over', {
+                        'winner_name': winner['name'],
+                        'elo_delta': elo_delta,
+                        'winner_new_elo': winner['elo'] + elo_delta,
+                        'loser_new_elo': max(100, loser['elo'] - elo_delta)
+                    }, room=room)
+
+            emit('player_finished', {'name': ROOMS[room]['players'][sid]['name'], 'place': finished_count, 'wpm': wpm}, room=room)
 
         emit('race_progress', {'players': ROOMS[room]['players']}, room=room)
+
+@socketio.on('join_ranked_queue')
+def handle_ranked_queue(data):
+    sid = request.sid
+    username = (data.get('username') or 'Pilot').strip()
+    elo = int(data.get('elo', 1000))
+    user_id = current_user.id if current_user.is_authenticated else None
+
+    for q in list(RANKED_QUEUE):
+        if q['sid'] == sid:
+            RANKED_QUEUE.remove(q)
+
+    if len(RANKED_QUEUE) > 0:
+        opponent = RANKED_QUEUE.pop(0)
+        match_room = f"ranked-{uuid.uuid4().hex[:6]}"
+        selected_passage = random.choice(COMPETITIVE_TEXTS)
+
+        ROOMS[match_room] = {
+            'text': selected_passage,
+            'status': 'countdown',
+            'is_ranked': True,
+            'players': {
+                sid: {'id': sid, 'user_id': user_id, 'name': username, 'elo': elo, 'progress': 0, 'wpm': 0, 'finished': False, 'place': None},
+                opponent['sid']: {'id': opponent['sid'], 'user_id': opponent['user_id'], 'name': opponent['username'], 'elo': opponent['elo'], 'progress': 0, 'wpm': 0, 'finished': False, 'place': None}
+            }
+        }
+
+        join_room(match_room, sid=sid)
+        join_room(match_room, sid=opponent['sid'])
+
+        emit('ranked_match_found', {
+            'room': match_room,
+            'text': selected_passage,
+            'player_a': {'name': username, 'elo': elo},
+            'player_b': {'name': opponent['username'], 'elo': opponent['elo']}
+        }, room=match_room)
+    else:
+        RANKED_QUEUE.append({'sid': sid, 'user_id': user_id, 'username': username, 'elo': elo})
+        emit('ranked_searching', {'message': 'Waiting for opponent to enter queue...'})
+
+@socketio.on('leave_ranked_queue')
+def handle_leave_queue():
+    sid = request.sid
+    for q in list(RANKED_QUEUE):
+        if q['sid'] == sid:
+            RANKED_QUEUE.remove(q)
+    emit('ranked_queue_cancelled', {'message': 'Queue search cancelled.'})
 
 @socketio.on('disconnect')
 def handle_disconnect():
     sid = request.sid
+    for q in list(RANKED_QUEUE):
+        if q['sid'] == sid:
+            RANKED_QUEUE.remove(q)
+
     for room, rdata in list(ROOMS.items()):
         if sid in rdata['players']:
             del rdata['players'][sid]
-            if not rdata['players']:
-                del ROOMS[room]
-            else:
-                if rdata['host_sid'] == sid:
-                    rdata['host_sid'] = next(iter(rdata['players']))
-                    rdata['players'][rdata['host_sid']]['is_host'] = True
-                emit('room_update', rdata, room=room)
+            emit('room_update', rdata, room=room)
