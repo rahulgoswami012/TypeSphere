@@ -10,7 +10,6 @@ from app.models.typing import TypingTest
 
 multiplayer_bp = Blueprint('multiplayer', __name__)
 
-# In-memory storage for active rooms and matchmaking queue
 ROOMS = {}         # room_code -> room_dict
 QUICK_QUEUE = []   # list of {'sid': sid, 'user_id': uid, 'name': str, 'queued_at': float}
 SID_TO_ROOM = {}   # sid -> room_code
@@ -27,7 +26,7 @@ CURATED_PASSAGES = {
         "Distributed event streaming architectures enable modern services to communicate asynchronously with high throughput and resilience against failures by decoupling producers from consumers through immutable append-only logs."
     ],
     120: [
-        "It was the best of times, it was the worst of times, it was the age of wisdom, it was the age of foolishness, it was the epoch of belief, it was the epoch of incredulity, it was the season of light, it was the season of darkness, it was the spring of hope, it was the winter of despair. We had everything before us, we had nothing before us, we were all going direct to Heaven, we were all going direct the other way. In short, the period was so far like the present period, that some of its noisiest authorities insisted on its being received, for good or for evil, in the superlative degree of comparison only."
+        "It was the best of times, it was the worst of times, it was the age of wisdom, it was the age of foolishness, it was the epoch of belief, it was the epoch of incredulity, it was the season of light, it was the season of darkness, it was the spring of hope, it was the winter of despair. We had everything before us, we had nothing before us, we were all going direct to Heaven, we were all going direct the other way."
     ]
 }
 
@@ -55,6 +54,11 @@ def serialize_public_rooms():
             })
     return public_list
 
+def get_sorted_standings(room):
+    plist = list(room['players'].values())
+    plist.sort(key=lambda x: (not x['finished'], x.get('place') or 999, -x['wpm'], -x['accuracy']))
+    return plist
+
 @multiplayer_bp.route('/')
 def index():
     return render_template('multiplayer/room.html')
@@ -64,7 +68,7 @@ def get_public_rooms():
     return jsonify({'rooms': serialize_public_rooms()})
 
 # ==========================================
-# Socket.IO Multiplayer Lifecycle Handlers
+# Socket.IO Handlers
 # ==========================================
 
 @socketio.on('request_public_rooms')
@@ -81,7 +85,6 @@ def handle_create_room(data):
     max_players = 2 if room_type == 'private' else int(data.get('max_players', 4))
     custom_text = (data.get('custom_text') or '').strip()
 
-    # Clean up prior rooms for this socket
     cleanup_player(sid)
 
     code_prefix = "1V1" if room_type == 'private' else "PUB"
@@ -95,6 +98,7 @@ def handle_create_room(data):
         'host_name': player_name,
         'max_players': max_players,
         'duration': duration,
+        'custom_text': custom_text,
         'text': get_passage(duration, custom_text),
         'status': 'waiting',
         'created_at': time.time(),
@@ -105,7 +109,7 @@ def handle_create_room(data):
         'sid': sid,
         'user_id': current_user.id if current_user.is_authenticated else None,
         'name': player_name,
-        'ready': True, # Host is ready by default
+        'ready': True,
         'is_host': True,
         'progress': 0,
         'wpm': 0,
@@ -128,20 +132,19 @@ def handle_join_room(data):
     player_name = (data.get('player_name') or 'Pilot').strip()
 
     if room_code not in ROOMS:
-        emit('join_error', {'message': f"Room '{room_code}' does not exist or has closed."})
+        emit('join_error', {'message': f"Room '{room_code}' was not found or has concluded."})
         return
 
     room = ROOMS[room_code]
 
     if room['status'] != 'waiting':
-        emit('join_error', {'message': "This match is already in progress or completed."})
+        emit('join_error', {'message': "This room is currently racing or finished."})
         return
 
     if len(room['players']) >= room['max_players']:
-        emit('join_error', {'message': "This room is full."})
+        emit('join_error', {'message': f"Room '{room_code}' has reached maximum player capacity."})
         return
 
-    # Check if this player is already inside
     if sid in room['players']:
         emit('room_joined', {'room': room, 'your_sid': sid})
         return
@@ -195,16 +198,14 @@ def handle_start_match():
     if room['status'] != 'waiting':
         return
 
-    # Only host can start
     if room['host_sid'] != sid:
-        emit('action_error', {'message': 'Only the room host can initiate the match.'})
+        emit('action_error', {'message': 'Only the room host can start the match.'})
         return
 
     players = room['players']
 
-    # For 1v1 or private rooms, both players must be ready
     if room['type'] in ['private', 'quick'] and len(players) < 2:
-        emit('action_error', {'message': 'Cannot start a 1v1 match without an opponent.'})
+        emit('action_error', {'message': 'Both players must be in the room before starting a 1v1.'})
         return
 
     not_ready = [p['name'] for p in players.values() if not p['ready']]
@@ -212,7 +213,6 @@ def handle_start_match():
         emit('action_error', {'message': f"Waiting for racers to ready up: {', '.join(not_ready)}"})
         return
 
-    # Lock room state
     room['status'] = 'countdown'
     for p in players.values():
         p['progress'] = 0
@@ -267,7 +267,6 @@ def handle_progress_update(data):
         finished_count = sum(1 for p in room['players'].values() if p['finished'])
         player['place'] = finished_count
 
-        # Save result to database for authenticated users
         if player.get('user_id'):
             try:
                 test_rec = TypingTest(
@@ -286,25 +285,44 @@ def handle_progress_update(data):
             except Exception:
                 db.session.rollback()
 
-        # Check if entire room is finished
         if finished_count >= len(room['players']):
             room['status'] = 'finished'
 
+        standings = get_sorted_standings(room)
         emit('player_crossed_finish', {
             'player': player,
             'all_finished': (room['status'] == 'finished'),
-            'standings': get_standings(room)
+            'standings': standings
         }, room=room_code)
 
     emit('room_progress_update', {'players': list(room['players'].values())}, room=room_code)
 
-def get_standings(room):
-    plist = list(room['players'].values())
-    plist.sort(key=lambda x: (not x['finished'], x.get('place') or 999, -x['wpm']))
-    return plist
+@socketio.on('rematch_request')
+def handle_rematch_request():
+    sid = request.sid
+    room_code = SID_TO_ROOM.get(sid)
+    if not room_code or room_code not in ROOMS:
+        return
+
+    room = ROOMS[room_code]
+    # Reset room status back to lobby with fresh text
+    room['status'] = 'waiting'
+    room['text'] = get_passage(room['duration'], room.get('custom_text'))
+
+    for p in room['players'].values():
+        p['progress'] = 0
+        p['wpm'] = 0
+        p['accuracy'] = 100
+        p['errors'] = 0
+        p['finished'] = False
+        p['place'] = None
+        p['ready'] = (p['sid'] == room['host_sid'])
+
+    emit('rematch_accepted', {'room': room}, room=room_code)
+    emit('public_rooms_update', {'rooms': serialize_public_rooms()}, broadcast=True)
 
 # ==========================================
-# Quick Match Matchmaking Queue
+# Quick Match Queue
 # ==========================================
 
 @socketio.on('join_quick_queue')
@@ -313,10 +331,8 @@ def handle_join_quick_queue(data):
     player_name = (data.get('name') or 'Pilot').strip()
     user_id = current_user.id if current_user.is_authenticated else None
 
-    # Clean up prior room or queue membership
     cleanup_player(sid)
 
-    # Ensure not already in queue
     for q in list(QUICK_QUEUE):
         if q['sid'] == sid:
             QUICK_QUEUE.remove(q)
@@ -324,7 +340,6 @@ def handle_join_quick_queue(data):
     if len(QUICK_QUEUE) > 0:
         opponent = QUICK_QUEUE.pop(0)
 
-        # Check that opponent socket is still active
         if opponent['sid'] == sid:
             QUICK_QUEUE.append({'sid': sid, 'user_id': user_id, 'name': player_name, 'queued_at': time.time()})
             emit('quick_queue_waiting')
@@ -342,6 +357,7 @@ def handle_join_quick_queue(data):
             'host_name': player_name,
             'max_players': 2,
             'duration': duration,
+            'custom_text': '',
             'text': text,
             'status': 'waiting',
             'created_at': time.time(),
@@ -396,7 +412,7 @@ def handle_cancel_quick_queue():
     emit('quick_queue_cancelled')
 
 # ==========================================
-# Disconnect & Voluntary Exit Cleanup
+# Disconnect & Navigation Cleanup
 # ==========================================
 
 @socketio.on('leave_room_voluntary')
@@ -411,12 +427,10 @@ def handle_disconnect():
     emit('public_rooms_update', {'rooms': serialize_public_rooms()}, broadcast=True)
 
 def cleanup_player(sid):
-    # 1. Remove from quick match queue
     for q in list(QUICK_QUEUE):
         if q['sid'] == sid:
             QUICK_QUEUE.remove(q)
 
-    # 2. Remove from active room
     room_code = SID_TO_ROOM.pop(sid, None)
     if not room_code or room_code not in ROOMS:
         return
@@ -427,12 +441,10 @@ def cleanup_player(sid):
     if sid in room['players']:
         del room['players'][sid]
 
-    # Delete empty rooms
     if not room['players']:
         del ROOMS[room_code]
         return
 
-    # If host departed, assign next player as host
     if room['host_sid'] == sid:
         next_sid = next(iter(room['players']))
         room['host_sid'] = next_sid
