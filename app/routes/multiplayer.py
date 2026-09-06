@@ -12,9 +12,10 @@ ROOMS = {} # room_id -> { text, players, status, is_ranked }
 RANKED_QUEUE = [] # list of { sid, user_id, username, elo }
 
 COMPETITIVE_TEXTS = [
-    "Synchronization demands calm recognition. The disciplined mind strikes keys with measured rhythm, compounding focus into unstoppable speed.",
+    "Speed is nothing without precision. Keep your hands balanced, breathe calmly, and glide across the keys with absolute rhythm.",
     "Real velocity is born from economy of motion. Eliminate tension from your fingers and allow tactile muscle memory to guide every stroke.",
-    "Competitive mastery requires balance under high pressure. Accuracy establishes the foundation upon which raw velocity flourishes."
+    "Competitive mastery requires balance under high pressure. Accuracy establishes the foundation upon which raw velocity flourishes.",
+    "Consistency is the hallmark of the master typist. Every accurate strike compounds into pure flow and unmatched velocity."
 ]
 
 def calculate_elo_change(player_a_elo, player_b_elo, a_won):
@@ -42,13 +43,20 @@ def index():
     )
 
 # ==========================================
-# 1. Casual Room Handling
+# Room Management & Synchronization
 # ==========================================
 @socketio.on('join_race')
 def handle_join(data):
     room = (data.get('room') or 'public-arena').strip()
     name = (data.get('name') or 'Pilot').strip()
     sid = request.sid
+
+    # Leave any prior rooms
+    for r_id, r_data in list(ROOMS.items()):
+        if sid in r_data['players']:
+            leave_room(r_id)
+            del r_data['players'][sid]
+            emit('room_update', r_data, room=r_id)
 
     join_room(room)
     if room not in ROOMS:
@@ -74,34 +82,50 @@ def handle_join(data):
 def handle_countdown(data):
     room = (data.get('room') or 'public-arena').strip()
     if room in ROOMS:
+        # Prevent starting if already counting down or racing
+        if ROOMS[room]['status'] in ['countdown', 'racing']:
+            return
+
         ROOMS[room]['status'] = 'countdown'
+        ROOMS[room]['text'] = random.choice(COMPETITIVE_TEXTS) # Pick fresh text for the race
+
         for sid in ROOMS[room]['players']:
             ROOMS[room]['players'][sid]['progress'] = 0
             ROOMS[room]['players'][sid]['wpm'] = 0
             ROOMS[room]['players'][sid]['finished'] = False
             ROOMS[room]['players'][sid]['place'] = None
 
-        emit('race_countdown_started', {'status': 'countdown', 'text': ROOMS[room]['text']}, room=room)
+        emit('race_countdown_started', {
+            'status': 'countdown',
+            'text': ROOMS[room]['text'],
+            'room': room
+        }, room=room)
+
+@socketio.on('race_active_status')
+def handle_race_active(data):
+    room = (data.get('room') or 'public-arena').strip()
+    if room in ROOMS:
+        ROOMS[room]['status'] = 'racing'
 
 # ==========================================
-# 2. Version 2.0 Ranked 1v1 Queue & Matchmaker
+# Ranked 1v1 Queue
 # ==========================================
 @socketio.on('join_ranked_queue')
 def handle_ranked_queue(data):
     sid = request.sid
-    username = data.get('username', 'Pilot')
+    username = (data.get('username') or 'Pilot').strip()
     elo = int(data.get('elo', 1000))
     user_id = current_user.id if current_user.is_authenticated else None
 
-    # Remove stale entry if re-queuing
+    # Clear prior queue entries
     for q in list(RANKED_QUEUE):
         if q['sid'] == sid:
             RANKED_QUEUE.remove(q)
 
-    # Check if an opponent is waiting
+    # Check for live opponent in queue
     if len(RANKED_QUEUE) > 0:
         opponent = RANKED_QUEUE.pop(0)
-        match_room = f"ranked-match-{uuid.uuid4().hex[:8]}"
+        match_room = f"ranked-{uuid.uuid4().hex[:6]}"
 
         selected_passage = random.choice(COMPETITIVE_TEXTS)
         ROOMS[match_room] = {
@@ -123,7 +147,6 @@ def handle_ranked_queue(data):
             'player_a': {'name': username, 'elo': elo},
             'player_b': {'name': opponent['username'], 'elo': opponent['elo']}
         }, room=match_room)
-
     else:
         RANKED_QUEUE.append({
             'sid': sid,
@@ -131,7 +154,7 @@ def handle_ranked_queue(data):
             'username': username,
             'elo': elo
         })
-        emit('ranked_searching', {'message': 'Searching for opponent in your division...'})
+        emit('ranked_searching', {'message': 'Waiting for opponent to enter queue...'})
 
 @socketio.on('leave_ranked_queue')
 def handle_leave_queue():
@@ -142,7 +165,7 @@ def handle_leave_queue():
     emit('ranked_queue_cancelled', {'message': 'Queue search cancelled.'})
 
 # ==========================================
-# 3. Progress Tracking & Elo Recalculation
+# Real-Time Keystroke Progress & Elo Update
 # ==========================================
 @socketio.on('progress_update')
 def handle_progress(data):
@@ -160,7 +183,7 @@ def handle_progress(data):
             finished_count = sum(1 for p in ROOMS[room]['players'].values() if p['finished'])
             ROOMS[room]['players'][sid]['place'] = finished_count
 
-            # If Ranked 1v1 match concludes, calculate Elo adjustments
+            # Recalculate Elo for ranked 1v1
             if ROOMS[room].get('is_ranked'):
                 players_list = list(ROOMS[room]['players'].values())
                 if len(players_list) == 2 and finished_count == 1:
@@ -169,7 +192,6 @@ def handle_progress(data):
 
                     elo_delta = calculate_elo_change(winner['elo'], loser['elo'], a_won=True)
 
-                    # Update Database Records for registered pilots
                     if winner.get('user_id'):
                         u_win = User.query.get(winner['user_id'])
                         if u_win:

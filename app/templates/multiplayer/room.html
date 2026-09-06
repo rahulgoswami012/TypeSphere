@@ -2,7 +2,7 @@
 
 {% block content %}
 <div class="card">
-  <!-- Top Division Status & Mode Toggle -->
+  <!-- Top Header & Division Badge -->
   <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 1.25rem; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
     <div>
       <div style="display: flex; align-items: center; gap: 0.6rem;">
@@ -12,42 +12,79 @@
         </span>
       </div>
       <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.35rem;">
-        Competitive Record: <strong style="color: var(--success);">{{ wins }}W</strong> - <strong style="color: var(--danger);">{{ losses }}L</strong> &bull; Duel real players or custom lobbies.
+        Competitive Record: <strong style="color: var(--success);">{{ wins }}W</strong> - <strong style="color: var(--danger);">{{ losses }}L</strong> &bull; Race live players across PC & Mobile.
       </p>
     </div>
 
     <!-- Arena Mode Tabs -->
     <div style="display: flex; gap: 0.5rem;">
-      <button onclick="switchArenaTab('ranked')" id="tab-btn-ranked" class="btn btn-primary" style="font-weight: 700;">
-        ⚡ Ranked 1v1 Matchmaking
+      <button onclick="switchArenaTab('casual')" id="tab-btn-casual" class="btn btn-primary" style="font-weight: 700;">
+        👥 Custom & Public Rooms
       </button>
-      <button onclick="switchArenaTab('casual')" id="tab-btn-casual" class="btn">
-        👥 Casual Rooms
+      <button onclick="switchArenaTab('ranked')" id="tab-btn-ranked" class="btn">
+        ⚡ Ranked 1v1 Queue
       </button>
     </div>
   </div>
 
   <!-- ============================================== -->
-  <!-- 1. RANKED 1v1 MATCHMAKING PANEL               -->
+  <!-- 1. CUSTOM / MULTI-DEVICE ROOM PANEL (DEFAULT) -->
   <!-- ============================================== -->
-  <div id="panel-ranked">
-    <!-- Queue Finder Card -->
-    <div id="queue-search-card" style="background: var(--bg-card); border: 1px solid var(--accent); border-radius: var(--radius); padding: 2rem; text-align: center; margin-bottom: 2rem;">
-      <h3 style="font-size: 1.3rem; margin-bottom: 0.5rem;">Find a Ranked 1v1 Duel</h3>
+  <div id="panel-casual" style="margin-bottom: 2rem;">
+    <div style="background: var(--bg-card); padding: 1.25rem; border-radius: var(--radius); border: 1px solid var(--border-color); margin-bottom: 1.5rem;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.75rem;">
+        <div>
+          <span style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted);">Active Room Code</span>
+          <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.2rem;">
+            <input type="text" id="room-input" value="public-arena" style="padding: 0.55rem 0.75rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius); color: var(--text-primary); font-family: var(--font-mono); font-weight: 700; font-size: 0.95rem; width: 180px;">
+            <button onclick="joinCasualRoom()" class="btn">Switch Room</button>
+            <button onclick="generatePrivateCode()" class="btn">New Code</button>
+            <button onclick="copyRoomInviteLink()" id="copy-room-btn" class="btn" style="border-color: var(--accent); color: var(--accent);">
+              📋 Copy Phone Link
+            </button>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 0.5rem; align-items: center; margin-top: 0.5rem;">
+          <button onclick="requestCountdown()" id="btn-start-race" class="btn btn-primary" style="background: var(--success); border-color: var(--success); font-weight: 800; padding: 0.65rem 1.5rem; font-size: 1rem;">
+            🏁 Start Race (3..2..1)
+          </button>
+          <button onclick="addAiBotCompetitor()" class="btn" style="border-color: var(--warning); color: var(--warning); font-size: 0.85rem;">
+            + Add AI Rival
+          </button>
+        </div>
+      </div>
+
+      <!-- Connected Players in this Room -->
+      <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: var(--text-muted);">
+        <span>Racers in room:</span>
+        <div id="room-racers-tags" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+          <span style="background: var(--bg-secondary); padding: 0.2rem 0.6rem; border-radius: 12px;">Waiting...</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================== -->
+  <!-- 2. RANKED 1v1 MATCHMAKING PANEL               -->
+  <!-- ============================================== -->
+  <div id="panel-ranked" style="display: none; margin-bottom: 2rem;">
+    <div id="queue-search-card" style="background: var(--bg-card); border: 1px solid var(--accent); border-radius: var(--radius); padding: 2rem; text-align: center;">
+      <h3 style="font-size: 1.3rem; margin-bottom: 0.5rem;">Automated Ranked Matchmaking</h3>
       <p style="color: var(--text-muted); font-size: 0.9rem; max-width: 500px; margin: 0 auto 1.5rem;">
-        Climb the global Elo ladder. Earn rating points (+24 to +32 MMR) for victories and advance through competitive divisions.
+        Pairs you with another online pilot for an MMR duel. Ratings update immediately upon race completion.
       </p>
 
       <div id="queue-active-radar" style="display: none; margin-bottom: 1.5rem;">
-        <div style="font-size: 2rem; animation: pulse 1.2s infinite;">📡</div>
+        <div style="font-size: 2.2rem; animation: pulse 1.2s infinite;">📡</div>
         <div id="queue-status-text" style="color: var(--accent); font-weight: 600; font-size: 0.95rem; margin-top: 0.5rem;">
-          Searching for opponent in {{ user_division }} division...
+          Searching queue for an opponent...
         </div>
       </div>
 
       <div style="display: flex; justify-content: center; gap: 0.75rem;">
         <button onclick="startRankedQueue()" id="btn-find-match" class="btn btn-primary" style="padding: 0.85rem 2rem; font-size: 1.05rem; font-weight: 800; background: linear-gradient(90deg, var(--accent), #a371f7); border: none;">
-          ⚡ Find Ranked Match
+          ⚡ Find Match
         </button>
         <button onclick="cancelRankedQueue()" id="btn-cancel-match" class="btn" style="display: none; border-color: var(--danger); color: var(--danger);">
           Cancel Search
@@ -56,48 +93,45 @@
     </div>
   </div>
 
-  <!-- ============================================== -->
-  <!-- 2. CASUAL CUSTOM ROOM PANEL                   -->
-  <!-- ============================================== -->
-  <div id="panel-casual" style="display: none; margin-bottom: 2rem;">
-    <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; background: var(--bg-card); padding: 1rem 1.25rem; border-radius: var(--radius); border: 1px solid var(--border-color);">
-      <input type="text" id="room-input" value="public-arena" style="padding: 0.55rem 0.75rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius); color: var(--text-primary); font-family: inherit; font-size: 0.85rem;">
-      <button onclick="joinCasualRoom()" class="btn">Join Room</button>
-      <button onclick="generatePrivateCode()" class="btn">Generate Code</button>
-      <button onclick="requestCountdown()" class="btn btn-primary" style="background: var(--success); border-color: var(--success); font-weight: 700;">
-        🏁 Start Race (3..2..1)
-      </button>
-      <button onclick="startAiBotRace()" class="btn" style="border-color: var(--warning); color: var(--warning);">
-        + Add AI Bot
-      </button>
-    </div>
-  </div>
-
   <!-- Synchronized 3..2..1 Countdown Overlay -->
-  <div id="countdown-banner" style="display: none; text-align: center; margin-bottom: 1.5rem; background: var(--bg-card); border: 2px solid var(--accent); border-radius: var(--radius); padding: 1rem;">
-    <div style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted);">Racers On Your Marks</div>
-    <div id="countdown-number" style="font-size: 3rem; font-family: var(--font-mono); font-weight: 800; color: var(--accent); margin: 0.25rem 0;">3</div>
+  <div id="countdown-banner" style="display: none; text-align: center; margin-bottom: 1.5rem; background: var(--bg-card); border: 2px solid var(--accent); border-radius: var(--radius); padding: 1.25rem;">
+    <div style="font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted);">Racers On Your Marks</div>
+    <div id="countdown-number" style="font-size: 3.5rem; font-family: var(--font-mono); font-weight: 900; color: var(--accent); margin: 0.25rem 0;">3</div>
   </div>
 
-  <!-- Live Head-to-Head Tracks -->
+  <!-- Real-Time Race Track Grid -->
   <div style="margin-bottom: 2rem;">
-    <h3 style="font-size: 1.15rem; margin-bottom: 1rem;">Live Head-to-Head Grid</h3>
+    <h3 style="font-size: 1.15rem; margin-bottom: 1rem;">Live Race Tracks</h3>
     <div id="race-tracks" style="display: flex; flex-direction: column; gap: 0.85rem;">
       <div style="padding: 1.5rem; text-align: center; color: var(--text-muted); background: var(--bg-card); border-radius: var(--radius);">
-        Click "Find Ranked Match" or select Casual Rooms to enter the starting grid.
+        Connecting to the race server...
       </div>
     </div>
   </div>
 
-  <!-- Active Cockpit Typing Display -->
+  <!-- Active Cockpit Typing Display (With Mobile Soft Keyboard Focus Proxy) -->
   <div>
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.5rem;">
       <h3 style="font-size: 1.15rem; margin: 0;">Cockpit Controls</h3>
-      <span id="mp-status-lbl" style="font-size: 0.85rem; color: var(--text-muted);">Standby for match...</span>
+      <span id="mp-status-lbl" style="font-size: 0.85rem; color: var(--text-muted);">Waiting for race start...</span>
     </div>
-    <div id="mp-typing-box" class="typing-container focus-ring" tabindex="0" style="min-height: 160px; padding: 1.5rem;">
-      <div id="mp-caret" class="caret"></div>
+
+    <!-- Mobile Screen Keyboard Summoner Button -->
+    <div id="mobile-tap-prompt" onclick="focusMobileInput()" style="display: none; background: rgba(88, 166, 255, 0.15); border: 1px dashed var(--accent); color: var(--accent); padding: 0.6rem; text-align: center; border-radius: 6px; margin-bottom: 0.75rem; font-weight: 600; cursor: pointer; font-size: 0.9rem;">
+      📱 Tap here to open your phone keyboard
+    </div>
+
+    <!-- Fixed-Viewport Typing Box to Prevent PC Screen Jumps -->
+    <div id="mp-typing-box" class="typing-container focus-ring" tabindex="0" onclick="focusMobileInput()" style="min-height: 160px; max-height: 220px; overflow-y: hidden; padding: 1.5rem; position: relative;">
+      <!-- Hidden Mobile Proxy Input to Summon Native Soft Keyboard -->
+      <input type="text" id="mp-mobile-proxy" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="position: absolute; opacity: 0; left: 0; top: 0; width: 100%; height: 100%; cursor: default; z-index: 10;">
+      
+      <div id="mp-caret" class="caret" style="z-index: 5;"></div>
       <div id="mp-text" class="typing-text-display">Speed is nothing without precision. Keep your hands balanced, breathe calmly, and glide across the keys with absolute rhythm.</div>
+    </div>
+
+    <div style="text-align: center; margin-top: 0.75rem; font-size: 0.8rem; color: var(--text-muted);">
+      Screen will not jump &bull; Keystrokes are captured automatically once race starts
     </div>
   </div>
 </div>
@@ -107,24 +141,59 @@
 <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 <script>
 let socket = io();
-const currentUserName = "{{ current_user.username if current_user.is_authenticated else 'GuestPilot' }}";
+
+// Auto-generate a device-specific name if not logged in (e.g. Rahul_PC or Rahul_Phone)
+const isMobileDevice = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+const deviceTag = isMobileDevice ? "Phone" : "PC";
+const baseUserName = "{{ current_user.username if current_user.is_authenticated else 'Pilot' }}";
+const currentUserName = "{{ current_user.username if current_user.is_authenticated else '' }}" 
+  ? baseUserName 
+  : `${baseUserName}_${deviceTag}_${Math.floor(100 + Math.random() * 900)}`;
+
 const currentUserElo = parseInt("{{ user_elo }}") || 1000;
 
-let currentArenaMode = 'ranked';
+let currentArenaMode = 'casual';
 let activeRoom = 'public-arena';
 let targetSentence = "Speed is nothing without precision. Keep your hands balanced, breathe calmly, and glide across the keys with absolute rhythm.";
 let currentIndex = 0;
 let mpStartTime = null;
 let raceActive = false;
-let aiFallbackTimeout = null;
+let isCountingDown = false;
+let botProgress = 0;
 let botInterval = null;
+
+// Check if URL has ?room=... parameter (e.g. from invite link)
+document.addEventListener('DOMContentLoaded', () => {
+  const urlParams = new URLSearchParams(window.location.search);
+  const roomParam = urlParams.get('room');
+  if (roomParam) {
+    activeRoom = roomParam;
+    document.getElementById('room-input').value = roomParam;
+  }
+
+  // Show mobile prompt on phones
+  if (isMobileDevice) {
+    const prompt = document.getElementById('mobile-tap-prompt');
+    if (prompt) prompt.style.display = 'block';
+  }
+
+  initMpText();
+  joinCasualRoom();
+});
+
+function focusMobileInput() {
+  const proxy = document.getElementById('mp-mobile-proxy');
+  if (proxy) {
+    proxy.focus();
+  }
+}
 
 function switchArenaTab(mode) {
   currentArenaMode = mode;
-  document.getElementById('panel-ranked').style.display = (mode === 'ranked') ? 'block' : 'none';
   document.getElementById('panel-casual').style.display = (mode === 'casual') ? 'block' : 'none';
-  document.getElementById('tab-btn-ranked').className = (mode === 'ranked') ? 'btn btn-primary' : 'btn';
+  document.getElementById('panel-ranked').style.display = (mode === 'ranked') ? 'block' : 'none';
   document.getElementById('tab-btn-casual').className = (mode === 'casual') ? 'btn btn-primary' : 'btn';
+  document.getElementById('tab-btn-ranked').className = (mode === 'ranked') ? 'btn btn-primary' : 'btn';
 }
 
 function initMpText() {
@@ -148,9 +217,40 @@ function updateMpCaret() {
   }
 }
 
-// ==========================================
-// Ranked Matchmaking Actions
-// ==========================================
+// Room Management
+function generatePrivateCode() {
+  const code = 'SPHERE-' + Math.floor(1000 + Math.random() * 9000);
+  document.getElementById('room-input').value = code;
+  activeRoom = code;
+  joinCasualRoom();
+}
+
+function joinCasualRoom() {
+  activeRoom = document.getElementById('room-input').value.trim() || 'public-arena';
+  socket.emit('join_race', { room: activeRoom, name: currentUserName });
+}
+
+function copyRoomInviteLink() {
+  const inviteUrl = `${window.location.origin}/multiplayer/?room=${encodeURIComponent(activeRoom)}`;
+  navigator.clipboard.writeText(inviteUrl).then(() => {
+    const btn = document.getElementById('copy-room-btn');
+    btn.textContent = "Link Copied! ✓";
+    btn.style.color = "var(--success)";
+    btn.style.borderColor = "var(--success)";
+    setTimeout(() => {
+      btn.textContent = "📋 Copy Phone Link";
+      btn.style.color = "var(--accent)";
+      btn.style.borderColor = "var(--accent)";
+    }, 2000);
+  });
+}
+
+function requestCountdown() {
+  if (raceActive || isCountingDown) return;
+  socket.emit('start_countdown', { room: activeRoom });
+}
+
+// Ranked Queue
 function startRankedQueue() {
   document.getElementById('queue-active-radar').style.display = 'block';
   document.getElementById('btn-find-match').style.display = 'none';
@@ -160,54 +260,23 @@ function startRankedQueue() {
     username: currentUserName,
     elo: currentUserElo
   });
-
-  // If no live player pairs in 6 seconds, summon calibrated AI challenger
-  clearTimeout(aiFallbackTimeout);
-  aiFallbackTimeout = setTimeout(() => {
-    document.getElementById('queue-status-text').textContent = "Calibrated Challenger Found: CyberPilot (AI)";
-    setTimeout(() => {
-      cancelRankedQueue();
-      startAiBotRace();
-      runCountdownSequence();
-    }, 1200);
-  }, 6000);
 }
 
 function cancelRankedQueue() {
-  clearTimeout(aiFallbackTimeout);
   document.getElementById('queue-active-radar').style.display = 'none';
   document.getElementById('btn-find-match').style.display = 'inline-flex';
   document.getElementById('btn-cancel-match').style.display = 'none';
   socket.emit('leave_ranked_queue');
 }
 
-// Casual Room Actions
-function generatePrivateCode() {
-  const code = 'SPHERE-' + Math.floor(1000 + Math.random() * 9000);
-  document.getElementById('room-input').value = code;
-  joinCasualRoom();
-}
+// WebSockets Event Handlers
+socket.on('room_update', (d) => {
+  renderTracks(d.players);
+  updateRacersTags(d.players);
+});
 
-function joinCasualRoom() {
-  activeRoom = document.getElementById('room-input').value.trim() || 'public-arena';
-  socket.emit('join_race', { room: activeRoom, name: currentUserName });
-}
-
-function requestCountdown() {
-  socket.emit('start_countdown', { room: activeRoom });
-}
-
-// ==========================================
-// WebSockets Event Listeners
-// ==========================================
-socket.on('ranked_match_found', (data) => {
-  clearTimeout(aiFallbackTimeout);
-  cancelRankedQueue();
-  activeRoom = data.room;
-  targetSentence = data.text;
-  initMpText();
-  document.getElementById('mp-status-lbl').textContent = `Ranked Duel: ${data.player_a.name} (${data.player_a.elo}) vs ${data.player_b.name} (${data.player_b.elo})`;
-  runCountdownSequence();
+socket.on('race_progress', (d) => {
+  renderTracks(d.players);
 });
 
 socket.on('race_countdown_started', (data) => {
@@ -218,33 +287,51 @@ socket.on('race_countdown_started', (data) => {
   runCountdownSequence();
 });
 
-socket.on('room_update', (d) => renderTracks(d.players));
-socket.on('race_progress', (d) => renderTracks(d.players));
-
-socket.on('ranked_game_over', (data) => {
-  const isMeWinner = data.winner_name === currentUserName;
-  const msg = isMeWinner
-    ? `VICTORY! 🏆 You defeated your rival!\n+${data.elo_delta} MMR Rating Gained! (New Elo: ${data.winner_new_elo})`
-    : `DEFEAT ❌ ${data.winner_name} crossed the finish line first.\n-${data.elo_delta} MMR Rating. (New Elo: ${data.loser_new_elo})`;
-  alert(msg);
-  setTimeout(() => window.location.reload(), 1500);
+socket.on('ranked_match_found', (data) => {
+  cancelRankedQueue();
+  activeRoom = data.room;
+  targetSentence = data.text;
+  initMpText();
+  document.getElementById('mp-status-lbl').textContent = `Ranked Duel: ${data.player_a.name} vs ${data.player_b.name}`;
+  runCountdownSequence();
 });
 
 socket.on('player_finished', (data) => {
-  if (currentArenaMode === 'casual') {
-    const badge = data.place === 1 ? '🥇 1st' : (data.place === 2 ? '🥈 2nd' : '🥉 3rd');
-    alert(`${badge} Place: ${data.name} finished at ${data.wpm} WPM!`);
-  }
+  const badge = data.place === 1 ? '🥇 1st Place' : (data.place === 2 ? '🥈 2nd Place' : '🥉 3rd Place');
+  document.getElementById('mp-status-lbl').textContent = `${badge}: ${data.name} finished at ${data.wpm} WPM!`;
 });
 
+function updateRacersTags(players) {
+  const container = document.getElementById('room-racers-tags');
+  container.innerHTML = '';
+  const playerList = Object.values(players);
+  playerList.forEach(p => {
+    const tag = document.createElement('span');
+    tag.style.background = 'rgba(63, 185, 80, 0.2)';
+    tag.style.color = 'var(--success)';
+    tag.style.padding = '0.2rem 0.6rem';
+    tag.style.borderRadius = '12px';
+    tag.style.fontWeight = '600';
+    tag.textContent = `🟢 ${p.name}`;
+    container.appendChild(tag);
+  });
+
+  if (playerList.length >= 2) {
+    document.getElementById('mp-status-lbl').textContent = "Both racers in room! Click 'Start Race' when ready.";
+  }
+}
+
 function runCountdownSequence() {
+  if (isCountingDown) return;
+  isCountingDown = true;
+  raceActive = false;
+  currentIndex = 0;
+  mpStartTime = null;
+
   const banner = document.getElementById('countdown-banner');
   const num = document.getElementById('countdown-number');
   const status = document.getElementById('mp-status-lbl');
   banner.style.display = 'block';
-  raceActive = false;
-  currentIndex = 0;
-  mpStartTime = null;
 
   const spans = document.querySelectorAll('#mp-text .char');
   spans.forEach(s => s.className = 'char');
@@ -261,9 +348,12 @@ function runCountdownSequence() {
     } else if (count === 0) {
       num.textContent = 'GO!';
       num.style.color = 'var(--success)';
-      status.textContent = 'DUEL IN PROGRESS!';
+      status.textContent = 'RACE IN PROGRESS!';
       raceActive = true;
+      isCountingDown = false;
       mpStartTime = performance.now();
+      socket.emit('race_active_status', { room: activeRoom });
+      focusMobileInput();
     } else {
       clearInterval(cdTimer);
       banner.style.display = 'none';
@@ -272,19 +362,63 @@ function runCountdownSequence() {
   }, 1000);
 }
 
-// Keystroke Capture
+// Prevent PC Screen Jumping & Capture Keystrokes
 window.addEventListener('keydown', (e) => {
-  if (!raceActive) return;
-  if (['Shift', 'Control', 'Alt', 'Meta', 'CapsLock'].includes(e.key)) return;
+  // Prevent page scroll when typing Space or Backspace in race
+  if ([' ', 'Backspace'].includes(e.key) && (raceActive || document.activeElement.id === 'mp-mobile-proxy')) {
+    e.preventDefault();
+  }
 
+  if (!raceActive) return;
+  if (['Shift', 'Control', 'Alt', 'Meta', 'CapsLock', 'Tab'].includes(e.key)) return;
+
+  if (e.key.length === 1 || e.key === 'Backspace') {
+    e.preventDefault();
+    processKeyInput(e.key);
+  }
+});
+
+// Mobile Proxy Input Handler
+const mobileInput = document.getElementById('mp-mobile-proxy');
+if (mobileInput) {
+  mobileInput.addEventListener('input', (e) => {
+    if (!raceActive) return;
+    const val = mobileInput.value;
+    if (val.length > 0) {
+      const char = val[val.length - 1];
+      processKeyInput(char);
+      mobileInput.value = '';
+    }
+  });
+
+  mobileInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Backspace') {
+      e.preventDefault();
+      processKeyInput('Backspace');
+    }
+  });
+}
+
+function processKeyInput(key) {
+  if (!raceActive) return;
   const spans = document.querySelectorAll('#mp-text .char');
   if (currentIndex >= spans.length) return;
 
-  if (e.key === spans[currentIndex].textContent) {
+  if (key === 'Backspace') {
+    if (currentIndex > 0) {
+      currentIndex--;
+      spans[currentIndex].className = 'char';
+      updateMpCaret();
+    }
+    return;
+  }
+
+  const expectedChar = spans[currentIndex].textContent;
+  if (key === expectedChar) {
     spans[currentIndex].className = 'char correct';
     currentIndex++;
     window.soundEngine.playKey(false);
-  } else if (e.key.length === 1) {
+  } else {
     spans[currentIndex].className = 'char incorrect';
     window.soundEngine.playKey(true);
   }
@@ -303,16 +437,16 @@ window.addEventListener('keydown', (e) => {
 
   if (progress >= 100) {
     raceActive = false;
-    document.getElementById('mp-status-lbl').textContent = `Crossed the finish line at ${wpm} WPM!`;
+    document.getElementById('mp-status-lbl').textContent = `Crossed finish line at ${wpm} WPM!`;
   }
-});
+}
 
-function startAiBotRace() {
+function addAiBotCompetitor() {
   clearInterval(botInterval);
-  let botProgress = 0;
+  botProgress = 0;
   botInterval = setInterval(() => {
     if (!raceActive && botProgress === 0) return;
-    botProgress += 1.65;
+    botProgress += 1.6;
     const tracks = document.getElementById('race-tracks');
     let botTrack = document.getElementById('bot-track');
     if (!botTrack) {
@@ -325,8 +459,8 @@ function startAiBotRace() {
     }
     botTrack.innerHTML = `
       <div style="display:flex; justify-content:space-between; font-size:0.85rem; margin-bottom:0.35rem;">
-        <span>🤖 <strong>CyberPilot (AI Challenger)</strong></span>
-        <span>74 WPM (${Math.min(100, Math.round(botProgress))}%)</span>
+        <span>🤖 <strong>CyberRival (AI Bot)</strong></span>
+        <span>70 WPM (${Math.min(100, Math.round(botProgress))}%)</span>
       </div>
       <div style="background:var(--bg-secondary); height:10px; border-radius:5px; overflow:hidden;">
         <div style="width:${Math.min(100, botProgress)}%; height:100%; background:var(--warning); transition:width 0.2s;"></div>
@@ -347,7 +481,7 @@ function renderTracks(players) {
     div.style.borderRadius = 'var(--radius)';
     div.innerHTML = `
       <div style="display:flex; justify-content:space-between; font-size:0.85rem; margin-bottom:0.35rem;">
-        <span>🏎️ <strong>${p.name}</strong> ${p.elo ? `<span style="color:var(--accent); font-weight:700;">(${p.elo} MMR)</span>` : ''}</span>
+        <span>🏎️ <strong>${p.name}</strong> ${p.place ? `<span style="color:#f59e0b; font-weight:800;">(#${p.place})</span>` : ''}</span>
         <span><strong>${p.wpm || 0} WPM</strong> (${Math.round(p.progress || 0)}%)</span>
       </div>
       <div style="background:var(--bg-secondary); height:10px; border-radius:5px; overflow:hidden;">
@@ -357,7 +491,5 @@ function renderTracks(players) {
     container.appendChild(div);
   });
 }
-
-document.addEventListener('DOMContentLoaded', initMpText);
 </script>
 {% endblock %}
