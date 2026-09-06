@@ -2,20 +2,68 @@
 
 {% block content %}
 <div class="card">
-  <!-- Header with Room Controls -->
-  <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 1.25rem; margin-bottom: 1.75rem; flex-wrap: wrap; gap: 1rem;">
+  <!-- Top Division Status & Mode Toggle -->
+  <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 1.25rem; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
     <div>
-      <h1 style="font-size: 1.8rem; font-weight: 700; margin: 0;">Multiplayer Kinetic Arena</h1>
+      <div style="display: flex; align-items: center; gap: 0.6rem;">
+        <h1 style="font-size: 1.8rem; font-weight: 700; margin: 0;">Multiplayer Kinetic Arena</h1>
+        <span style="font-size: 0.8rem; font-weight: 800; padding: 0.2rem 0.6rem; border-radius: 4px; background: {{ user_badge.color }}; color: #000; text-transform: uppercase;">
+          {{ user_badge.icon }} {{ user_division }} &bull; {{ user_elo }} MMR
+        </span>
+      </div>
       <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.35rem;">
-        Synchronized real-time WebSockets race. Share the room code with friends to duel live!
+        Competitive Record: <strong style="color: var(--success);">{{ wins }}W</strong> - <strong style="color: var(--danger);">{{ losses }}L</strong> &bull; Duel real players or custom lobbies.
       </p>
     </div>
 
-    <!-- Room Switcher and Start Controls -->
-    <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
-      <input type="text" id="room-input" value="public-arena" style="padding: 0.5rem 0.75rem; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius); color: var(--text-primary); font-family: inherit; font-size: 0.85rem;">
-      <button onclick="joinRoom()" class="btn">Join Room</button>
-      <button onclick="generatePrivateCode()" class="btn">Create Code</button>
+    <!-- Arena Mode Tabs -->
+    <div style="display: flex; gap: 0.5rem;">
+      <button onclick="switchArenaTab('ranked')" id="tab-btn-ranked" class="btn btn-primary" style="font-weight: 700;">
+        ⚡ Ranked 1v1 Matchmaking
+      </button>
+      <button onclick="switchArenaTab('casual')" id="tab-btn-casual" class="btn">
+        👥 Casual Rooms
+      </button>
+    </div>
+  </div>
+
+  <!-- ============================================== -->
+  <!-- 1. RANKED 1v1 MATCHMAKING PANEL               -->
+  <!-- ============================================== -->
+  <div id="panel-ranked">
+    <!-- Queue Finder Card -->
+    <div id="queue-search-card" style="background: var(--bg-card); border: 1px solid var(--accent); border-radius: var(--radius); padding: 2rem; text-align: center; margin-bottom: 2rem;">
+      <h3 style="font-size: 1.3rem; margin-bottom: 0.5rem;">Find a Ranked 1v1 Duel</h3>
+      <p style="color: var(--text-muted); font-size: 0.9rem; max-width: 500px; margin: 0 auto 1.5rem;">
+        Climb the global Elo ladder. Earn rating points (+24 to +32 MMR) for victories and advance through competitive divisions.
+      </p>
+
+      <div id="queue-active-radar" style="display: none; margin-bottom: 1.5rem;">
+        <div style="font-size: 2rem; animation: pulse 1.2s infinite;">📡</div>
+        <div id="queue-status-text" style="color: var(--accent); font-weight: 600; font-size: 0.95rem; margin-top: 0.5rem;">
+          Searching for opponent in {{ user_division }} division...
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: center; gap: 0.75rem;">
+        <button onclick="startRankedQueue()" id="btn-find-match" class="btn btn-primary" style="padding: 0.85rem 2rem; font-size: 1.05rem; font-weight: 800; background: linear-gradient(90deg, var(--accent), #a371f7); border: none;">
+          ⚡ Find Ranked Match
+        </button>
+        <button onclick="cancelRankedQueue()" id="btn-cancel-match" class="btn" style="display: none; border-color: var(--danger); color: var(--danger);">
+          Cancel Search
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================== -->
+  <!-- 2. CASUAL CUSTOM ROOM PANEL                   -->
+  <!-- ============================================== -->
+  <div id="panel-casual" style="display: none; margin-bottom: 2rem;">
+    <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; background: var(--bg-card); padding: 1rem 1.25rem; border-radius: var(--radius); border: 1px solid var(--border-color);">
+      <input type="text" id="room-input" value="public-arena" style="padding: 0.55rem 0.75rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius); color: var(--text-primary); font-family: inherit; font-size: 0.85rem;">
+      <button onclick="joinCasualRoom()" class="btn">Join Room</button>
+      <button onclick="generatePrivateCode()" class="btn">Generate Code</button>
       <button onclick="requestCountdown()" class="btn btn-primary" style="background: var(--success); border-color: var(--success); font-weight: 700;">
         🏁 Start Race (3..2..1)
       </button>
@@ -25,27 +73,27 @@
     </div>
   </div>
 
-  <!-- Synchronized Countdown Overlay -->
+  <!-- Synchronized 3..2..1 Countdown Overlay -->
   <div id="countdown-banner" style="display: none; text-align: center; margin-bottom: 1.5rem; background: var(--bg-card); border: 2px solid var(--accent); border-radius: var(--radius); padding: 1rem;">
     <div style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted);">Racers On Your Marks</div>
     <div id="countdown-number" style="font-size: 3rem; font-family: var(--font-mono); font-weight: 800; color: var(--accent); margin: 0.25rem 0;">3</div>
   </div>
 
-  <!-- Race Track Visualization -->
+  <!-- Live Head-to-Head Tracks -->
   <div style="margin-bottom: 2rem;">
-    <h3 style="font-size: 1.15rem; margin-bottom: 1rem;">Live Race Tracks</h3>
+    <h3 style="font-size: 1.15rem; margin-bottom: 1rem;">Live Head-to-Head Grid</h3>
     <div id="race-tracks" style="display: flex; flex-direction: column; gap: 0.85rem;">
       <div style="padding: 1.5rem; text-align: center; color: var(--text-muted); background: var(--bg-card); border-radius: var(--radius);">
-        Connecting to the grid...
+        Click "Find Ranked Match" or select Casual Rooms to enter the starting grid.
       </div>
     </div>
   </div>
 
-  <!-- Active Typing Track Box -->
+  <!-- Active Cockpit Typing Display -->
   <div>
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-      <h3 style="font-size: 1.15rem; margin: 0;">Your Cockpit</h3>
-      <span id="mp-status-lbl" style="font-size: 0.85rem; color: var(--text-muted);">Waiting for countdown...</span>
+      <h3 style="font-size: 1.15rem; margin: 0;">Cockpit Controls</h3>
+      <span id="mp-status-lbl" style="font-size: 0.85rem; color: var(--text-muted);">Standby for match...</span>
     </div>
     <div id="mp-typing-box" class="typing-container focus-ring" tabindex="0" style="min-height: 160px; padding: 1.5rem;">
       <div id="mp-caret" class="caret"></div>
@@ -58,20 +106,26 @@
 {% block scripts %}
 <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 <script>
-let socket;
-try {
-  socket = io();
-} catch(e) {
-  console.warn("Socket.io initialization warning:", e);
-}
+let socket = io();
+const currentUserName = "{{ current_user.username if current_user.is_authenticated else 'GuestPilot' }}";
+const currentUserElo = parseInt("{{ user_elo }}") || 1000;
 
-const currentUserName = "{{ current_user.username if current_user.is_authenticated else 'Pilot_' }}" + Math.floor(Math.random() * 900 + 100);
+let currentArenaMode = 'ranked';
+let activeRoom = 'public-arena';
 let targetSentence = "Speed is nothing without precision. Keep your hands balanced, breathe calmly, and glide across the keys with absolute rhythm.";
 let currentIndex = 0;
 let mpStartTime = null;
 let raceActive = false;
-let botProgress = 0;
+let aiFallbackTimeout = null;
 let botInterval = null;
+
+function switchArenaTab(mode) {
+  currentArenaMode = mode;
+  document.getElementById('panel-ranked').style.display = (mode === 'ranked') ? 'block' : 'none';
+  document.getElementById('panel-casual').style.display = (mode === 'casual') ? 'block' : 'none';
+  document.getElementById('tab-btn-ranked').className = (mode === 'ranked') ? 'btn btn-primary' : 'btn';
+  document.getElementById('tab-btn-casual').className = (mode === 'casual') ? 'btn btn-primary' : 'btn';
+}
 
 function initMpText() {
   const display = document.getElementById('mp-text');
@@ -94,44 +148,94 @@ function updateMpCaret() {
   }
 }
 
+// ==========================================
+// Ranked Matchmaking Actions
+// ==========================================
+function startRankedQueue() {
+  document.getElementById('queue-active-radar').style.display = 'block';
+  document.getElementById('btn-find-match').style.display = 'none';
+  document.getElementById('btn-cancel-match').style.display = 'inline-flex';
+
+  socket.emit('join_ranked_queue', {
+    username: currentUserName,
+    elo: currentUserElo
+  });
+
+  // If no live player pairs in 6 seconds, summon calibrated AI challenger
+  clearTimeout(aiFallbackTimeout);
+  aiFallbackTimeout = setTimeout(() => {
+    document.getElementById('queue-status-text').textContent = "Calibrated Challenger Found: CyberPilot (AI)";
+    setTimeout(() => {
+      cancelRankedQueue();
+      startAiBotRace();
+      runCountdownSequence();
+    }, 1200);
+  }, 6000);
+}
+
+function cancelRankedQueue() {
+  clearTimeout(aiFallbackTimeout);
+  document.getElementById('queue-active-radar').style.display = 'none';
+  document.getElementById('btn-find-match').style.display = 'inline-flex';
+  document.getElementById('btn-cancel-match').style.display = 'none';
+  socket.emit('leave_ranked_queue');
+}
+
+// Casual Room Actions
 function generatePrivateCode() {
   const code = 'SPHERE-' + Math.floor(1000 + Math.random() * 9000);
   document.getElementById('room-input').value = code;
-  joinRoom();
+  joinCasualRoom();
 }
 
-function joinRoom() {
-  const r = document.getElementById('room-input').value.trim() || 'public-arena';
-  if (socket) {
-    socket.emit('join_race', { room: r, name: currentUserName });
-  }
+function joinCasualRoom() {
+  activeRoom = document.getElementById('room-input').value.trim() || 'public-arena';
+  socket.emit('join_race', { room: activeRoom, name: currentUserName });
 }
 
 function requestCountdown() {
-  const r = document.getElementById('room-input').value.trim() || 'public-arena';
-  if (socket) {
-    socket.emit('start_countdown', { room: r });
+  socket.emit('start_countdown', { room: activeRoom });
+}
+
+// ==========================================
+// WebSockets Event Listeners
+// ==========================================
+socket.on('ranked_match_found', (data) => {
+  clearTimeout(aiFallbackTimeout);
+  cancelRankedQueue();
+  activeRoom = data.room;
+  targetSentence = data.text;
+  initMpText();
+  document.getElementById('mp-status-lbl').textContent = `Ranked Duel: ${data.player_a.name} (${data.player_a.elo}) vs ${data.player_b.name} (${data.player_b.elo})`;
+  runCountdownSequence();
+});
+
+socket.on('race_countdown_started', (data) => {
+  if (data.text) {
+    targetSentence = data.text;
+    initMpText();
   }
-}
+  runCountdownSequence();
+});
 
-if (socket) {
-  socket.on('connect', () => joinRoom());
-  socket.on('room_update', (d) => renderMpTracks(d.players));
-  socket.on('race_progress', (d) => renderMpTracks(d.players));
+socket.on('room_update', (d) => renderTracks(d.players));
+socket.on('race_progress', (d) => renderTracks(d.players));
 
-  socket.on('race_countdown_started', (data) => {
-    if (data.text) {
-      targetSentence = data.text;
-      initMpText();
-    }
-    runCountdownSequence();
-  });
+socket.on('ranked_game_over', (data) => {
+  const isMeWinner = data.winner_name === currentUserName;
+  const msg = isMeWinner
+    ? `VICTORY! 🏆 You defeated your rival!\n+${data.elo_delta} MMR Rating Gained! (New Elo: ${data.winner_new_elo})`
+    : `DEFEAT ❌ ${data.winner_name} crossed the finish line first.\n-${data.elo_delta} MMR Rating. (New Elo: ${data.loser_new_elo})`;
+  alert(msg);
+  setTimeout(() => window.location.reload(), 1500);
+});
 
-  socket.on('player_finished', (data) => {
-    const badge = data.place === 1 ? '🥇 1st Place' : (data.place === 2 ? '🥈 2nd Place' : '🥉 3rd Place');
-    alert(`${badge}: ${data.name} finished at ${data.wpm} WPM!`);
-  });
-}
+socket.on('player_finished', (data) => {
+  if (currentArenaMode === 'casual') {
+    const badge = data.place === 1 ? '🥇 1st' : (data.place === 2 ? '🥈 2nd' : '🥉 3rd');
+    alert(`${badge} Place: ${data.name} finished at ${data.wpm} WPM!`);
+  }
+});
 
 function runCountdownSequence() {
   const banner = document.getElementById('countdown-banner');
@@ -148,7 +252,7 @@ function runCountdownSequence() {
 
   let count = 3;
   num.textContent = count;
-  status.textContent = 'Get Ready...';
+  status.textContent = 'Racers ready...';
 
   const cdTimer = setInterval(() => {
     count--;
@@ -157,7 +261,7 @@ function runCountdownSequence() {
     } else if (count === 0) {
       num.textContent = 'GO!';
       num.style.color = 'var(--success)';
-      status.textContent = 'RACE IN PROGRESS!';
+      status.textContent = 'DUEL IN PROGRESS!';
       raceActive = true;
       mpStartTime = performance.now();
     } else {
@@ -168,6 +272,7 @@ function runCountdownSequence() {
   }, 1000);
 }
 
+// Keystroke Capture
 window.addEventListener('keydown', (e) => {
   if (!raceActive) return;
   if (['Shift', 'Control', 'Alt', 'Meta', 'CapsLock'].includes(e.key)) return;
@@ -190,40 +295,38 @@ window.addEventListener('keydown', (e) => {
   const elapsedMinutes = (performance.now() - mpStartTime) / 60000;
   const wpm = elapsedMinutes > 0 ? Math.round((currentIndex / 5) / elapsedMinutes) : 0;
 
-  if (socket && socket.connected) {
-    socket.emit('progress_update', {
-      room: document.getElementById('room-input').value,
-      progress: progress,
-      wpm: wpm
-    });
-  }
+  socket.emit('progress_update', {
+    room: activeRoom,
+    progress: progress,
+    wpm: wpm
+  });
 
   if (progress >= 100) {
     raceActive = false;
-    document.getElementById('mp-status-lbl').textContent = `Finished! Clocked in at ${wpm} WPM.`;
+    document.getElementById('mp-status-lbl').textContent = `Crossed the finish line at ${wpm} WPM!`;
   }
 });
 
 function startAiBotRace() {
   clearInterval(botInterval);
-  botProgress = 0;
+  let botProgress = 0;
   botInterval = setInterval(() => {
     if (!raceActive && botProgress === 0) return;
-    botProgress += 1.6;
+    botProgress += 1.65;
     const tracks = document.getElementById('race-tracks');
     let botTrack = document.getElementById('bot-track');
     if (!botTrack) {
       botTrack = document.createElement('div');
       botTrack.id = 'bot-track';
       botTrack.style.background = 'var(--bg-card)';
-      botTrack.style.padding = '0.75rem';
+      botTrack.style.padding = '0.75rem 1rem';
       botTrack.style.borderRadius = 'var(--radius)';
       tracks.appendChild(botTrack);
     }
     botTrack.innerHTML = `
-      <div style="display:flex; justify-content:space-between; font-size:0.85rem; margin-bottom:0.3rem;">
-        <span>🤖 <strong>CyberRacer (AI Challenger)</strong></span>
-        <span>72 WPM (${Math.min(100, Math.round(botProgress))}%)</span>
+      <div style="display:flex; justify-content:space-between; font-size:0.85rem; margin-bottom:0.35rem;">
+        <span>🤖 <strong>CyberPilot (AI Challenger)</strong></span>
+        <span>74 WPM (${Math.min(100, Math.round(botProgress))}%)</span>
       </div>
       <div style="background:var(--bg-secondary); height:10px; border-radius:5px; overflow:hidden;">
         <div style="width:${Math.min(100, botProgress)}%; height:100%; background:var(--warning); transition:width 0.2s;"></div>
@@ -233,7 +336,7 @@ function startAiBotRace() {
   }, 200);
 }
 
-function renderMpTracks(players) {
+function renderTracks(players) {
   const container = document.getElementById('race-tracks');
   container.innerHTML = '';
   Object.keys(players).forEach(id => {
@@ -244,7 +347,7 @@ function renderMpTracks(players) {
     div.style.borderRadius = 'var(--radius)';
     div.innerHTML = `
       <div style="display:flex; justify-content:space-between; font-size:0.85rem; margin-bottom:0.35rem;">
-        <span>🏎️ <strong>${p.name}</strong> ${p.place ? `<span style="color:#f59e0b; font-weight:800;">(#${p.place})</span>` : ''}</span>
+        <span>🏎️ <strong>${p.name}</strong> ${p.elo ? `<span style="color:var(--accent); font-weight:700;">(${p.elo} MMR)</span>` : ''}</span>
         <span><strong>${p.wpm || 0} WPM</strong> (${Math.round(p.progress || 0)}%)</span>
       </div>
       <div style="background:var(--bg-secondary); height:10px; border-radius:5px; overflow:hidden;">

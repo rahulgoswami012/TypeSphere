@@ -11,10 +11,13 @@ class User(UserMixin, db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.String(256), nullable=False)
     role = db.Column(db.String(20), default='user') # 'user' or 'admin'
-    
-    # Keeps database constraint satisfied; defaults to True for instant activation
     is_verified = db.Column(db.Boolean, default=True, nullable=True)
     
+    # Version 2.0 Ranked Competitive System
+    elo_rating = db.Column(db.Integer, default=1000, nullable=False, index=True)
+    ranked_wins = db.Column(db.Integer, default=0, nullable=False)
+    ranked_losses = db.Column(db.Integer, default=0, nullable=False)
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     # Relationships
@@ -32,3 +35,31 @@ class User(UserMixin, db.Model):
     @property
     def is_admin(self):
         return self.role == 'admin'
+
+    @property
+    def rank_division(self):
+        elo = self.elo_rating or 1000
+        if elo >= 1900:
+            return "Grandmaster"
+        elif elo >= 1700:
+            return "Diamond"
+        elif elo >= 1500:
+            return "Platinum"
+        elif elo >= 1300:
+            return "Gold"
+        elif elo >= 1100:
+            return "Silver"
+        return "Bronze"
+
+    @property
+    def rank_badge(self):
+        division = self.rank_division
+        badges = {
+            "Grandmaster": {"icon": "👑", "color": "#ff007f"},
+            "Diamond": {"icon": "💎", "color": "#58a6ff"},
+            "Platinum": {"icon": "⚡", "color": "#3fb950"},
+            "Gold": {"icon": "🏆", "color": "#f59e0b"},
+            "Silver": {"icon": "🥈", "color": "#94a3b8"},
+            "Bronze": {"icon": "🥉", "color": "#b45309"}
+        }
+        return badges.get(division, {"icon": "🥉", "color": "#b45309"})

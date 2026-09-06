@@ -1,4 +1,5 @@
 from flask import Blueprint, render_template, request
+from app.models.user import User
 from app.models.typing import TypingTest
 
 leaderboard_bp = Blueprint('leaderboard', __name__)
@@ -8,9 +9,20 @@ def index():
     sort_by = request.args.get('sort', 'wpm')
     mode_filter = request.args.get('mode', 'all')
 
+    # Ranked Elo Standings Mode
+    if mode_filter == 'ranked_elo':
+        top_ranked_users = User.query.filter(User.ranked_wins + User.ranked_losses > 0).order_by(User.elo_rating.desc()).limit(50).all()
+        return render_template(
+            'leaderboard/index.html',
+            tests=[],
+            podium=[],
+            ranked_users=top_ranked_users,
+            current_sort=sort_by,
+            current_mode=mode_filter
+        )
+
     query = TypingTest.query.filter_by(suspicious=False).filter(TypingTest.user_id.isnot(None))
 
-    # Mode Filter
     if mode_filter == 'timed_60':
         query = query.filter(TypingTest.mode == 'timed', TypingTest.duration >= 55, TypingTest.duration <= 65)
     elif mode_filter == 'timed_30':
@@ -20,7 +32,6 @@ def index():
     elif mode_filter == 'daily':
         query = query.filter(TypingTest.mode == 'daily')
 
-    # Metric Sorting
     if sort_by == 'accuracy':
         query = query.order_by(TypingTest.accuracy.desc(), TypingTest.wpm.desc())
     elif sort_by == 'consistency':
@@ -35,6 +46,7 @@ def index():
         'leaderboard/index.html',
         tests=top_tests,
         podium=podium,
+        ranked_users=[],
         current_sort=sort_by,
         current_mode=mode_filter
     )
