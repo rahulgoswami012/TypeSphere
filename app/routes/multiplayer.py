@@ -1,194 +1,443 @@
-from flask import Blueprint, render_template, request
+from flask import Blueprint, render_template, request, jsonify
 from flask_login import current_user
 from flask_socketio import emit, join_room, leave_room
 import uuid
+import time
 import random
 from app import db, socketio
 from app.models.user import User
+from app.models.typing import TypingTest
 
 multiplayer_bp = Blueprint('multiplayer', __name__)
 
-ROOMS = {}
+# In-memory storage for active rooms and matchmaking queue
+ROOMS = {}         # room_code -> room_dict
+QUICK_QUEUE = []   # list of {'sid': sid, 'user_id': uid, 'name': str, 'queued_at': float}
+SID_TO_ROOM = {}   # sid -> room_code
 
-PASSAGES = {
-    'standard': [
-        "Yes, the story is real, but the Taj Mahal did not physically disappear. The magician was P. C. Sorcar Jr., one of India's most famous illusionists. On 8 November 2000, he performed an illusion in Agra in which the Taj Mahal appeared to vanish for about two minutes.",
+CURATED_PASSAGES = {
+    30: [
         "Speed is nothing without precision. Keep your hands balanced, breathe calmly, and glide across the keys with absolute rhythm.",
-        "Consistency is the hallmark of the master typist. Every accurate strike compounds into pure flow and unmatched velocity."
+        "Consistency is the hallmark of the master typist. Every accurate strike compounds into pure flow and unmatched velocity.",
+        "Real velocity is born from economy of motion. Eliminate tension from your fingers and allow muscle memory to guide every stroke."
     ],
-    'code': [
-        "def quicksort(arr):\n    if len(arr) <= 1:\n        return arr\n    pivot = arr[len(arr) // 2]\n    left = [x for x in arr if x < pivot]\n    return quicksort(left) + [pivot]",
-        "const calculateCadence = (events) => {\n  return events.reduce((acc, curr, idx, arr) => {\n    if (idx === 0) return acc;\n    return acc + (curr.timestamp - arr[idx - 1].timestamp);\n  }, 0);\n};"
+    60: [
+        "Yes, the story is real, but the Taj Mahal did not physically disappear. The magician was P. C. Sorcar Jr., one of India's most famous illusionists. On 8 November 2000, he performed an illusion in Agra in which the Taj Mahal appeared to vanish for about two minutes to the spectators.",
+        "It is a truth universally acknowledged, that a single man in possession of a good fortune, must be in want of a wife. However little known the feelings or views of such a man may be on his first entering a neighbourhood, this truth is fixed in the minds of the surrounding families.",
+        "Distributed event streaming architectures enable modern services to communicate asynchronously with high throughput and resilience against failures by decoupling producers from consumers through immutable append-only logs."
     ],
-    'quotes': [
-        "It is a truth universally acknowledged that a single man in possession of a good fortune must be in want of a wife.",
-        "It was the best of times it was the worst of times it was the age of wisdom it was the age of foolishness."
+    120: [
+        "It was the best of times, it was the worst of times, it was the age of wisdom, it was the age of foolishness, it was the epoch of belief, it was the epoch of incredulity, it was the season of light, it was the season of darkness, it was the spring of hope, it was the winter of despair. We had everything before us, we had nothing before us, we were all going direct to Heaven, we were all going direct the other way. In short, the period was so far like the present period, that some of its noisiest authorities insisted on its being received, for good or for evil, in the superlative degree of comparison only."
     ]
 }
 
-def calculate_elo_change(player_a_elo, player_b_elo, a_won):
-    expected_a = 1.0 / (1.0 + 10.0 ** ((player_b_elo - player_a_elo) / 400.0))
-    actual_a = 1.0 if a_won else 0.0
-    return round(32 * (actual_a - expected_a))
+def get_passage(duration, custom_text=None):
+    if custom_text and len(custom_text.strip()) >= 10:
+        return custom_text.strip()
+    if duration <= 30:
+        return random.choice(CURATED_PASSAGES[30])
+    elif duration <= 60:
+        return random.choice(CURATED_PASSAGES[60])
+    return random.choice(CURATED_PASSAGES[120])
+
+def serialize_public_rooms():
+    public_list = []
+    for code, r in ROOMS.items():
+        if r['type'] == 'public' and r['status'] == 'waiting':
+            public_list.append({
+                'code': code,
+                'name': r['name'],
+                'host_name': r['host_name'],
+                'current_players': len(r['players']),
+                'max_players': r['max_players'],
+                'duration': r['duration'],
+                'status': r['status']
+            })
+    return public_list
 
 @multiplayer_bp.route('/')
 def index():
-    user_elo = current_user.elo_rating if current_user.is_authenticated else 1000
-    user_division = current_user.rank_division if current_user.is_authenticated else "Bronze"
-    user_badge = current_user.rank_badge if current_user.is_authenticated else {"icon": "🥉", "color": "#b45309"}
-    wins = current_user.ranked_wins if current_user.is_authenticated else 0
-    losses = current_user.ranked_losses if current_user.is_authenticated else 0
+    return render_template('multiplayer/room.html')
 
-    return render_template(
-        'multiplayer/room.html',
-        user_elo=user_elo,
-        user_division=user_division,
-        user_badge=user_badge,
-        wins=wins,
-        losses=losses
-    )
+@multiplayer_bp.route('/api/public-rooms')
+def get_public_rooms():
+    return jsonify({'rooms': serialize_public_rooms()})
 
-@socketio.on('join_race')
-def handle_join(data):
-    room = (data.get('room') or 'public-arena').strip()
-    name = (data.get('name') or 'Pilot').strip()
+# ==========================================
+# Socket.IO Multiplayer Lifecycle Handlers
+# ==========================================
+
+@socketio.on('request_public_rooms')
+def handle_request_public_rooms():
+    emit('public_rooms_update', {'rooms': serialize_public_rooms()})
+
+@socketio.on('create_room')
+def handle_create_room(data):
     sid = request.sid
+    room_type = data.get('type', 'public') # 'public' or 'private'
+    name = (data.get('name') or f"Room-{random.randint(100,999)}").strip()
+    player_name = (data.get('player_name') or 'Pilot').strip()
+    duration = int(data.get('duration', 60))
+    max_players = 2 if room_type == 'private' else int(data.get('max_players', 4))
+    custom_text = (data.get('custom_text') or '').strip()
 
-    for r_id, r_data in list(ROOMS.items()):
-        if sid in r_data['players']:
-            leave_room(r_id)
-            del r_data['players'][sid]
-            if not r_data['players']:
-                del ROOMS[r_id]
-            else:
-                emit('room_update', r_data, room=r_id)
+    # Clean up prior rooms for this socket
+    cleanup_player(sid)
 
-    join_room(room)
-    if room not in ROOMS:
-        ROOMS[room] = {
-            'text': random.choice(PASSAGES['standard']),
-            'mode': 'standard',
-            'duration': 60,
-            'blind_mode': False,
-            'status': 'lobby',
-            'host_sid': sid,
-            'players': {}
-        }
+    code_prefix = "1V1" if room_type == 'private' else "PUB"
+    room_code = f"{code_prefix}-{uuid.uuid4().hex[:6].upper()}"
 
-    ROOMS[room]['players'][sid] = {
-        'id': sid,
+    ROOMS[room_code] = {
+        'code': room_code,
         'name': name,
+        'type': room_type,
+        'host_sid': sid,
+        'host_name': player_name,
+        'max_players': max_players,
+        'duration': duration,
+        'text': get_passage(duration, custom_text),
+        'status': 'waiting',
+        'created_at': time.time(),
+        'players': {}
+    }
+
+    ROOMS[room_code]['players'][sid] = {
+        'sid': sid,
+        'user_id': current_user.id if current_user.is_authenticated else None,
+        'name': player_name,
+        'ready': True, # Host is ready by default
+        'is_host': True,
         'progress': 0,
         'wpm': 0,
         'accuracy': 100,
+        'errors': 0,
         'finished': False,
-        'place': None,
-        'is_host': (ROOMS[room]['host_sid'] == sid)
+        'place': None
     }
 
-    # Broadcast updated room including active text so all joining devices sync passage
-    emit('room_update', ROOMS[room], room=room)
+    SID_TO_ROOM[sid] = room_code
+    join_room(room_code)
 
-@socketio.on('update_room_settings')
-def handle_update_settings(data):
-    room = (data.get('room') or 'public-arena').strip()
-    if room in ROOMS:
-        custom_p = (data.get('custom_paragraph') or '').strip()
-        mode = data.get('mode', 'standard')
-        duration = int(data.get('duration', 60))
-        blind = bool(data.get('blind_mode', False))
+    emit('room_joined', {'room': ROOMS[room_code], 'your_sid': sid})
+    emit('public_rooms_update', {'rooms': serialize_public_rooms()}, broadcast=True)
 
-        ROOMS[room]['mode'] = mode
-        ROOMS[room]['duration'] = duration
-        ROOMS[room]['blind_mode'] = blind
+@socketio.on('join_room')
+def handle_join_room(data):
+    sid = request.sid
+    room_code = (data.get('code') or '').strip().upper()
+    player_name = (data.get('player_name') or 'Pilot').strip()
 
-        if custom_p and len(custom_p) >= 5:
-            ROOMS[room]['text'] = custom_p
-        else:
-            p_list = PASSAGES.get(mode, PASSAGES['standard'])
-            ROOMS[room]['text'] = random.choice(p_list)
+    if room_code not in ROOMS:
+        emit('join_error', {'message': f"Room '{room_code}' does not exist or has closed."})
+        return
 
-        ROOMS[room]['status'] = 'lobby'
+    room = ROOMS[room_code]
 
-        emit('room_settings_synced', {
-            'text': ROOMS[room]['text'],
-            'mode': mode,
-            'duration': duration,
-            'blind_mode': blind
-        }, room=room)
+    if room['status'] != 'waiting':
+        emit('join_error', {'message': "This match is already in progress or completed."})
+        return
 
-@socketio.on('start_countdown')
-def handle_countdown(data):
-    room = (data.get('room') or 'public-arena').strip()
-    if room in ROOMS:
-        # Allow countdown whenever in lobby or finished
-        ROOMS[room]['status'] = 'countdown'
-        for p_sid in ROOMS[room]['players']:
-            ROOMS[room]['players'][p_sid]['progress'] = 0
-            ROOMS[room]['players'][p_sid]['wpm'] = 0
-            ROOMS[room]['players'][p_sid]['accuracy'] = 100
-            ROOMS[room]['players'][p_sid]['finished'] = False
-            ROOMS[room]['players'][p_sid]['place'] = None
+    if len(room['players']) >= room['max_players']:
+        emit('join_error', {'message': "This room is full."})
+        return
 
-        emit('race_countdown_started', {
-            'text': ROOMS[room]['text'],
-            'room': room,
-            'duration': ROOMS[room].get('duration', 60),
-            'blind_mode': ROOMS[room].get('blind_mode', False)
-        }, room=room)
+    # Check if this player is already inside
+    if sid in room['players']:
+        emit('room_joined', {'room': room, 'your_sid': sid})
+        return
 
-@socketio.on('race_active_status')
-def handle_race_active(data):
-    room = (data.get('room') or 'public-arena').strip()
-    if room in ROOMS:
-        ROOMS[room]['status'] = 'racing'
+    cleanup_player(sid)
+
+    room['players'][sid] = {
+        'sid': sid,
+        'user_id': current_user.id if current_user.is_authenticated else None,
+        'name': player_name,
+        'ready': False,
+        'is_host': False,
+        'progress': 0,
+        'wpm': 0,
+        'accuracy': 100,
+        'errors': 0,
+        'finished': False,
+        'place': None
+    }
+
+    SID_TO_ROOM[sid] = room_code
+    join_room(room_code)
+
+    emit('room_joined', {'room': room, 'your_sid': sid})
+    emit('room_state_updated', {'room': room}, room=room_code)
+    emit('public_rooms_update', {'rooms': serialize_public_rooms()}, broadcast=True)
+
+@socketio.on('toggle_ready')
+def handle_toggle_ready():
+    sid = request.sid
+    room_code = SID_TO_ROOM.get(sid)
+    if not room_code or room_code not in ROOMS:
+        return
+
+    room = ROOMS[room_code]
+    if room['status'] != 'waiting':
+        return
+
+    if sid in room['players']:
+        room['players'][sid]['ready'] = not room['players'][sid]['ready']
+        emit('room_state_updated', {'room': room}, room=room_code)
+
+@socketio.on('start_match')
+def handle_start_match():
+    sid = request.sid
+    room_code = SID_TO_ROOM.get(sid)
+    if not room_code or room_code not in ROOMS:
+        return
+
+    room = ROOMS[room_code]
+    if room['status'] != 'waiting':
+        return
+
+    # Only host can start
+    if room['host_sid'] != sid:
+        emit('action_error', {'message': 'Only the room host can initiate the match.'})
+        return
+
+    players = room['players']
+
+    # For 1v1 or private rooms, both players must be ready
+    if room['type'] in ['private', 'quick'] and len(players) < 2:
+        emit('action_error', {'message': 'Cannot start a 1v1 match without an opponent.'})
+        return
+
+    not_ready = [p['name'] for p in players.values() if not p['ready']]
+    if not_ready:
+        emit('action_error', {'message': f"Waiting for racers to ready up: {', '.join(not_ready)}"})
+        return
+
+    # Lock room state
+    room['status'] = 'countdown'
+    for p in players.values():
+        p['progress'] = 0
+        p['wpm'] = 0
+        p['accuracy'] = 100
+        p['errors'] = 0
+        p['finished'] = False
+        p['place'] = None
+
+    emit('match_countdown_started', {
+        'room_code': room_code,
+        'duration': room['duration'],
+        'text': room['text']
+    }, room=room_code)
+
+    emit('public_rooms_update', {'rooms': serialize_public_rooms()}, broadcast=True)
+
+@socketio.on('client_race_active')
+def handle_client_race_active():
+    sid = request.sid
+    room_code = SID_TO_ROOM.get(sid)
+    if room_code and room_code in ROOMS:
+        ROOMS[room_code]['status'] = 'in_progress'
 
 @socketio.on('progress_update')
-def handle_progress(data):
-    room = data.get('room')
-    progress = data.get('progress', 0)
-    wpm = data.get('wpm', 0)
-    accuracy = data.get('accuracy', 100)
+def handle_progress_update(data):
     sid = request.sid
+    room_code = SID_TO_ROOM.get(sid)
+    if not room_code or room_code not in ROOMS:
+        return
 
-    if room in ROOMS and sid in ROOMS[room]['players']:
-        ROOMS[room]['players'][sid]['progress'] = progress
-        ROOMS[room]['players'][sid]['wpm'] = wpm
-        ROOMS[room]['players'][sid]['accuracy'] = accuracy
+    room = ROOMS[room_code]
+    if room['status'] not in ['countdown', 'in_progress']:
+        return
 
-        if progress >= 100 and not ROOMS[room]['players'][sid]['finished']:
-            ROOMS[room]['players'][sid]['finished'] = True
-            finished_count = sum(1 for p in ROOMS[room]['players'].values() if p['finished'])
-            ROOMS[room]['players'][sid]['place'] = finished_count
+    if sid not in room['players']:
+        return
 
-            if finished_count >= len(ROOMS[room]['players']):
-                ROOMS[room]['status'] = 'finished'
+    player = room['players'][sid]
+    progress = max(0, min(100, float(data.get('progress', 0))))
+    wpm = max(0, float(data.get('wpm', 0)))
+    accuracy = max(0, min(100, float(data.get('accuracy', 100))))
+    errors = int(data.get('errors', 0))
 
-            results_roster = []
-            for p in sorted(ROOMS[room]['players'].values(), key=lambda x: (not x['finished'], x.get('place') or 99)):
-                results_roster.append({
-                    'id': p['id'],
-                    'name': p['name'],
-                    'place': p.get('place') or 'DNF',
-                    'wpm': p['wpm'],
-                    'accuracy': p['accuracy']
-                })
+    player['progress'] = progress
+    player['wpm'] = wpm
+    player['accuracy'] = accuracy
+    player['errors'] = errors
 
-            emit('match_results_summary', {
-                'winner_name': ROOMS[room]['players'][sid]['name'],
-                'results': results_roster,
-                'is_ranked': ROOMS[room].get('is_ranked', False)
-            }, room=room)
+    if progress >= 100 and not player['finished']:
+        player['finished'] = True
+        finished_count = sum(1 for p in room['players'].values() if p['finished'])
+        player['place'] = finished_count
 
-        emit('race_progress', {'players': ROOMS[room]['players']}, room=room)
+        # Save result to database for authenticated users
+        if player.get('user_id'):
+            try:
+                test_rec = TypingTest(
+                    user_id=player['user_id'],
+                    mode='multiplayer',
+                    duration=float(room['duration']),
+                    wpm=round(wpm, 1),
+                    raw_wpm=round(wpm, 1),
+                    accuracy=round(accuracy, 1),
+                    consistency=100.0,
+                    errors=errors,
+                    suspicious=False
+                )
+                db.session.add(test_rec)
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+
+        # Check if entire room is finished
+        if finished_count >= len(room['players']):
+            room['status'] = 'finished'
+
+        emit('player_crossed_finish', {
+            'player': player,
+            'all_finished': (room['status'] == 'finished'),
+            'standings': get_standings(room)
+        }, room=room_code)
+
+    emit('room_progress_update', {'players': list(room['players'].values())}, room=room_code)
+
+def get_standings(room):
+    plist = list(room['players'].values())
+    plist.sort(key=lambda x: (not x['finished'], x.get('place') or 999, -x['wpm']))
+    return plist
+
+# ==========================================
+# Quick Match Matchmaking Queue
+# ==========================================
+
+@socketio.on('join_quick_queue')
+def handle_join_quick_queue(data):
+    sid = request.sid
+    player_name = (data.get('name') or 'Pilot').strip()
+    user_id = current_user.id if current_user.is_authenticated else None
+
+    # Clean up prior room or queue membership
+    cleanup_player(sid)
+
+    # Ensure not already in queue
+    for q in list(QUICK_QUEUE):
+        if q['sid'] == sid:
+            QUICK_QUEUE.remove(q)
+
+    if len(QUICK_QUEUE) > 0:
+        opponent = QUICK_QUEUE.pop(0)
+
+        # Check that opponent socket is still active
+        if opponent['sid'] == sid:
+            QUICK_QUEUE.append({'sid': sid, 'user_id': user_id, 'name': player_name, 'queued_at': time.time()})
+            emit('quick_queue_waiting')
+            return
+
+        match_code = f"QM-{uuid.uuid4().hex[:6].upper()}"
+        duration = 60
+        text = get_passage(duration)
+
+        ROOMS[match_code] = {
+            'code': match_code,
+            'name': 'Quick 1v1 Duel',
+            'type': 'quick',
+            'host_sid': sid,
+            'host_name': player_name,
+            'max_players': 2,
+            'duration': duration,
+            'text': text,
+            'status': 'waiting',
+            'created_at': time.time(),
+            'players': {
+                sid: {
+                    'sid': sid,
+                    'user_id': user_id,
+                    'name': player_name,
+                    'ready': True,
+                    'is_host': True,
+                    'progress': 0,
+                    'wpm': 0,
+                    'accuracy': 100,
+                    'errors': 0,
+                    'finished': False,
+                    'place': None
+                },
+                opponent['sid']: {
+                    'sid': opponent['sid'],
+                    'user_id': opponent['user_id'],
+                    'name': opponent['name'],
+                    'ready': True,
+                    'is_host': False,
+                    'progress': 0,
+                    'wpm': 0,
+                    'accuracy': 100,
+                    'errors': 0,
+                    'finished': False,
+                    'place': None
+                }
+            }
+        }
+
+        SID_TO_ROOM[sid] = match_code
+        SID_TO_ROOM[opponent['sid']] = match_code
+
+        join_room(match_code, sid=sid)
+        join_room(match_code, sid=opponent['sid'])
+
+        emit('quick_match_paired', {'room': ROOMS[match_code], 'your_sid': sid}, room=sid)
+        emit('quick_match_paired', {'room': ROOMS[match_code], 'your_sid': opponent['sid']}, room=opponent['sid'])
+    else:
+        QUICK_QUEUE.append({'sid': sid, 'user_id': user_id, 'name': player_name, 'queued_at': time.time()})
+        emit('quick_queue_waiting')
+
+@socketio.on('cancel_quick_queue')
+def handle_cancel_quick_queue():
+    sid = request.sid
+    for q in list(QUICK_QUEUE):
+        if q['sid'] == sid:
+            QUICK_QUEUE.remove(q)
+    emit('quick_queue_cancelled')
+
+# ==========================================
+# Disconnect & Voluntary Exit Cleanup
+# ==========================================
+
+@socketio.on('leave_room_voluntary')
+def handle_leave_room_voluntary():
+    cleanup_player(request.sid)
+    emit('left_room_confirmed')
+    emit('public_rooms_update', {'rooms': serialize_public_rooms()}, broadcast=True)
 
 @socketio.on('disconnect')
 def handle_disconnect():
-    sid = request.sid
-    for room, rdata in list(ROOMS.items()):
-        if sid in rdata['players']:
-            del rdata['players'][sid]
-            if not rdata['players']:
-                del ROOMS[room]
-            else:
-                emit('room_update', rdata, room=room)
+    cleanup_player(request.sid)
+    emit('public_rooms_update', {'rooms': serialize_public_rooms()}, broadcast=True)
+
+def cleanup_player(sid):
+    # 1. Remove from quick match queue
+    for q in list(QUICK_QUEUE):
+        if q['sid'] == sid:
+            QUICK_QUEUE.remove(q)
+
+    # 2. Remove from active room
+    room_code = SID_TO_ROOM.pop(sid, None)
+    if not room_code or room_code not in ROOMS:
+        return
+
+    room = ROOMS[room_code]
+    leave_room(room_code, sid=sid)
+
+    if sid in room['players']:
+        del room['players'][sid]
+
+    # Delete empty rooms
+    if not room['players']:
+        del ROOMS[room_code]
+        return
+
+    # If host departed, assign next player as host
+    if room['host_sid'] == sid:
+        next_sid = next(iter(room['players']))
+        room['host_sid'] = next_sid
+        room['host_name'] = room['players'][next_sid]['name']
+        room['players'][next_sid]['is_host'] = True
+        room['players'][next_sid]['ready'] = True
+
+    emit('room_state_updated', {'room': room}, room=room_code)
