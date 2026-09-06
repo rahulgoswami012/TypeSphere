@@ -4,7 +4,7 @@
 <div class="card" style="max-width: 1060px; margin: 0 auto; box-shadow: 0 15px 35px rgba(0,0,0,0.5);">
   
   <!-- =========================================================
-       PERSISTENT TOP BAR WITH INSTANT IN-PAGE MODE SWITCHING
+       1. PERSISTENT THREE-MODE TOP BAR (ALWAYS ACCESSIBLE)
        ========================================================= -->
   <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 1.25rem; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
     <div>
@@ -12,23 +12,23 @@
         Multiplayer Arena
       </h1>
       <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.2rem;">
-        Race live pilots worldwide in real-time across Public Rooms, Quick Match, or Private 1v1.
+        Synchronized competitive typing across Public Rooms, Quick Match, or Private 1v1.
       </p>
     </div>
 
-    <!-- Mode Switcher Nav Pills (Available Across All Views) -->
+    <!-- Mode Switcher Navigation Pills (Never reloads page) -->
     <div style="display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap;">
-      <button onclick="navSwitchMode('hub_public')" id="pill-mode-public" class="btn" style="padding: 0.4rem 0.85rem; font-size: 0.82rem; font-weight: 700;">
+      <button onclick="switchModeTab('public')" id="tab-pill-public" class="btn btn-primary" style="padding: 0.45rem 0.9rem; font-size: 0.85rem; font-weight: 700;">
         🌐 Public Rooms
       </button>
-      <button onclick="navSwitchMode('quick_match')" id="pill-mode-quick" class="btn" style="padding: 0.4rem 0.85rem; font-size: 0.82rem; font-weight: 700;">
+      <button onclick="switchModeTab('quick')" id="tab-pill-quick" class="btn" style="padding: 0.45rem 0.9rem; font-size: 0.85rem; font-weight: 700;">
         ⚡ Quick Match (1v1)
       </button>
-      <button onclick="navSwitchMode('hub_private')" id="pill-mode-private" class="btn" style="padding: 0.4rem 0.85rem; font-size: 0.82rem; font-weight: 700;">
+      <button onclick="switchModeTab('private')" id="tab-pill-private" class="btn" style="padding: 0.45rem 0.9rem; font-size: 0.85rem; font-weight: 700;">
         🔒 Private 1v1
       </button>
 
-      <!-- Connection Status -->
+      <!-- Connection Status Badge -->
       <div id="socket-conn-badge" style="display: inline-flex; align-items: center; gap: 0.45rem; background: var(--bg-card); border: 1px solid var(--border-color); padding: 0.35rem 0.75rem; border-radius: 20px; font-size: 0.78rem; margin-left: 0.5rem;">
         <span id="socket-conn-dot" style="width: 8px; height: 8px; border-radius: 50%; background: var(--warning);"></span>
         <span id="socket-conn-text" style="color: var(--text-muted);">Connecting...</span>
@@ -37,33 +37,50 @@
   </div>
 
   <!-- =========================================================
-       VIEW 1: MULTIPLAYER HUB (Mode Selection Cards & Directory)
+       VIEW 1: MULTIPLAYER HUB (Three Accessible Modes)
        ========================================================= -->
   <div id="view-hub">
+    <!-- Mode Description Cards Grid -->
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.25rem; margin-bottom: 2rem;">
       
-      <!-- 1. Quick Match 1v1 Card -->
-      <div class="card" style="background: var(--bg-card); border: 1.5px solid var(--accent); margin-bottom: 0; display: flex; flex-direction: column; justify-content: space-between;">
+      <!-- 1. Public Rooms Card -->
+      <div class="card" id="card-mode-public" style="background: var(--bg-card); border: 1.5px solid var(--accent); margin-bottom: 0; display: flex; flex-direction: column; justify-content: space-between;">
         <div>
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-            <h3 style="margin: 0; color: var(--accent); font-size: 1.2rem;">⚡ Quick Match</h3>
-            <span style="font-size: 0.7rem; font-weight: 800; background: var(--accent); color: #fff; padding: 0.15rem 0.5rem; border-radius: 4px;">INSTANT</span>
+            <h3 style="margin: 0; color: var(--accent); font-size: 1.2rem;">🌐 Public Rooms</h3>
+            <span style="font-size: 0.7rem; font-weight: 800; background: var(--accent); color: #fff; padding: 0.15rem 0.5rem; border-radius: 4px;">OPEN</span>
           </div>
           <p style="color: var(--text-muted); font-size: 0.85rem; line-height: 1.5; margin-bottom: 1.25rem;">
-            Automatic matchmaking queue. Click below to pair instantly with another available pilot without sharing codes.
+            Browse open rooms or create your own with custom limits (up to 8 players), duration, and passages.
           </p>
         </div>
-        <button onclick="startQuickMatchQueue()" class="btn btn-primary" style="width: 100%; justify-content: center; font-weight: 800; padding: 0.75rem;">
+        <button onclick="openCreateModal('public')" class="btn btn-primary" style="width: 100%; justify-content: center; font-weight: 700;">
+          + Create Public Room
+        </button>
+      </div>
+
+      <!-- 2. Quick Match 1v1 Card -->
+      <div class="card" id="card-mode-quick" style="background: var(--bg-card); border: 1px solid var(--border-color); margin-bottom: 0; display: flex; flex-direction: column; justify-content: space-between;">
+        <div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+            <h3 style="margin: 0; font-size: 1.2rem;">⚡ Quick Match</h3>
+            <span style="font-size: 0.7rem; font-weight: 800; background: var(--success); color: #fff; padding: 0.15rem 0.5rem; border-radius: 4px;">AUTOMATIC</span>
+          </div>
+          <p style="color: var(--text-muted); font-size: 0.85rem; line-height: 1.5; margin-bottom: 1.25rem;">
+            Instant pairing. Enter the waiting queue and automatically duel another available player without sharing links.
+          </p>
+        </div>
+        <button onclick="startQuickMatchQueue()" class="btn" style="width: 100%; justify-content: center; font-weight: 700; border-color: var(--success); color: var(--success);">
           Enter 1v1 Queue
         </button>
       </div>
 
-      <!-- 2. Private 1v1 Match Card -->
-      <div class="card" style="background: var(--bg-card); border: 1px solid var(--border-color); margin-bottom: 0; display: flex; flex-direction: column; justify-content: space-between;">
+      <!-- 3. Private 1v1 Card -->
+      <div class="card" id="card-mode-private" style="background: var(--bg-card); border: 1px solid var(--border-color); margin-bottom: 0; display: flex; flex-direction: column; justify-content: space-between;">
         <div>
           <h3 style="margin: 0 0 0.5rem 0; font-size: 1.2rem;">🔒 Private 1v1</h3>
           <p style="color: var(--text-muted); font-size: 0.85rem; line-height: 1.5; margin-bottom: 1.25rem;">
-            Generate an invite link or 6-digit code. Share with a friend. Both players must ready up before the match begins.
+            Generate an exclusive room code or link. Exactly 2 players. Both must be marked Ready before starting.
           </p>
         </div>
         <div style="display: flex; flex-direction: column; gap: 0.5rem;">
@@ -71,27 +88,14 @@
             Create Private 1v1
           </button>
           <div style="display: flex; gap: 0.4rem;">
-            <input type="text" id="join-code-input" placeholder="Room Code (1V1-XXXX)" style="flex: 1; padding: 0.55rem 0.75rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius); color: var(--text-primary); font-family: var(--font-mono); font-size: 0.85rem; text-transform: uppercase;">
+            <input type="text" id="join-code-input" placeholder="Enter Code (1V1-XXXX)" style="flex: 1; padding: 0.55rem 0.75rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius); color: var(--text-primary); font-family: var(--font-mono); font-size: 0.85rem; text-transform: uppercase;">
             <button onclick="joinRoomByCodeInput()" class="btn btn-primary" style="padding: 0.55rem 1rem;">Join</button>
           </div>
         </div>
       </div>
-
-      <!-- 3. Public Room Card -->
-      <div class="card" style="background: var(--bg-card); border: 1px solid var(--border-color); margin-bottom: 0; display: flex; flex-direction: column; justify-content: space-between;">
-        <div>
-          <h3 style="margin: 0 0 0.5rem 0; font-size: 1.2rem;">🌐 Public Rooms</h3>
-          <p style="color: var(--text-muted); font-size: 0.85rem; line-height: 1.5; margin-bottom: 1.25rem;">
-            Host a room open to all pilots. Customize duration (30s–600s), player limits (up to 8), or custom paragraphs.
-          </p>
-        </div>
-        <button onclick="openCreateModal('public')" class="btn" style="width: 100%; justify-content: center; font-weight: 700; border-color: var(--success); color: var(--success);">
-          + Create Public Room
-        </button>
-      </div>
     </div>
 
-    <!-- Live Public Rooms Directory Table -->
+    <!-- Public Rooms Directory Table -->
     <div id="public-directory-section" style="border-top: 1px solid var(--border-color); padding-top: 1.5rem;">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
         <h3 style="font-size: 1.15rem; margin: 0;">Open Public Rooms</h3>
@@ -126,14 +130,14 @@
   </div>
 
   <!-- =========================================================
-       VIEW 2: QUICK MATCH QUEUE WAITING MODAL
+       VIEW 2: QUICK MATCH SEARCHING MODAL
        ========================================================= -->
   <div id="modal-quick-searching" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 2500; align-items: center; justify-content: center; backdrop-filter: blur(8px); padding: 1rem;">
     <div class="card" style="width: 100%; max-width: 440px; text-align: center; border-color: var(--accent); padding: 2.5rem 2rem; box-shadow: 0 20px 45px rgba(0,0,0,0.8);">
       <div style="font-size: 3rem; margin-bottom: 1rem; animation: pulse 1.2s infinite;">⚡</div>
       <h2 style="font-size: 1.5rem; font-weight: 800; color: var(--accent); margin-bottom: 0.5rem;">Quick Match Queue</h2>
       <p style="color: var(--text-muted); font-size: 0.9rem; line-height: 1.5; margin-bottom: 2rem;">
-        Searching for another available pilot... You will be automatically moved into the arena when paired.
+        Searching for another available pilot... You will be automatically moved to the match when paired.
       </p>
       <button onclick="cancelQuickMatchQueue()" class="btn" style="border-color: var(--danger); color: var(--danger); padding: 0.65rem 1.5rem; font-weight: 700;">
         Cancel Queue
@@ -178,7 +182,7 @@
       </div>
 
       <div style="margin-bottom: 1.5rem;">
-        <label style="display: block; font-size: 0.8rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-bottom: 0.35rem;">Custom Text (Optional &bull; Unlimited Length)</label>
+        <label style="display: block; font-size: 0.8rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-bottom: 0.35rem;">Custom Passage (Optional &bull; Unlimited Length)</label>
         <textarea id="create-custom-text" rows="3" placeholder="Leave blank to use curated passages, or paste custom text..." style="width: 100%; padding: 0.65rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius); color: var(--text-primary); font-family: var(--font-mono); font-size: 0.85rem; line-height: 1.5;"></textarea>
       </div>
 
@@ -192,7 +196,7 @@
   </div>
 
   <!-- =========================================================
-       VIEW 4: WAITING ROOM / LOBBY (Player Cards & Ready Toggle)
+       VIEW 4: WAITING LOBBY (Player Cards & Ready Status)
        ========================================================= -->
   <div id="view-waiting" style="display: none;">
     <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1.5rem;">
@@ -218,7 +222,7 @@
       </div>
 
       <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; border-top: 1px solid var(--border-color); padding-top: 1.25rem;">
-        <button onclick="leaveCurrentRoom()" class="btn" style="border-color: var(--danger); color: var(--danger);">
+        <button onclick="safeLeaveRoom()" class="btn" style="border-color: var(--danger); color: var(--danger);">
           &larr; Leave Room
         </button>
 
@@ -235,7 +239,7 @@
   </div>
 
   <!-- =========================================================
-       VIEW 5: ACTIVE RACE ARENA
+       VIEW 5: ACTIVE RACE ARENA (Individual Finish & Spectate)
        ========================================================= -->
   <div id="view-arena" style="display: none;">
     <!-- Synchronized 3-Second Countdown Overlay -->
@@ -244,7 +248,24 @@
       <div id="arena-countdown-num" style="font-size: 4.5rem; font-family: var(--font-mono); font-weight: 900; color: var(--accent); margin: 0.2rem 0;">3</div>
     </div>
 
-    <!-- Live Race Progress Tracks -->
+    <!-- Finished Early Banner: Spectate or Leave -->
+    <div id="finished-spectate-banner" style="display: none; background: rgba(16, 185, 129, 0.15); border: 1.5px solid var(--success); border-radius: var(--radius); padding: 1rem 1.5rem; margin-bottom: 1.25rem; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+      <div>
+        <div style="font-size: 1.15rem; font-weight: 800; color: var(--success);" id="spectate-title">
+          🏁 You finished! Position: #1
+        </div>
+        <div style="font-size: 0.85rem; color: var(--text-muted);" id="spectate-subtext">
+          Other racers are still typing. You are now spectating live.
+        </div>
+      </div>
+      <div style="display: flex; gap: 0.6rem;">
+        <button onclick="leaveEarlyAfterFinish()" class="btn" style="border-color: var(--border-color); font-size: 0.85rem;">
+          🚪 Leave Race
+        </button>
+      </div>
+    </div>
+
+    <!-- Live Progress Tracks -->
     <div style="margin-bottom: 1.5rem;">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
         <h3 style="font-size: 1.15rem; margin: 0;">Live Race Tracks</h3>
@@ -253,41 +274,39 @@
       <div id="arena-tracks-container" style="display: flex; flex-direction: column; gap: 0.75rem;"></div>
     </div>
 
-    <!-- Target Passage Box (Monospace with Amber Block Caret) -->
+    <!-- Smooth Auto-Centering Passage Box -->
     <div style="margin-bottom: 1rem;">
-      <div id="arena-passage-box" class="typing-container focus-ring" style="min-height: 140px; max-height: 240px; overflow-y: hidden; position: relative; user-select: none;">
+      <div id="arena-passage-box" class="typing-container focus-ring" style="min-height: 140px; max-height: 240px; overflow-y: auto; scroll-behavior: smooth; position: relative; user-select: none;">
         <div id="arena-caret" class="caret caret-block"></div>
         <div id="arena-passage-text" class="typing-text-display"></div>
       </div>
     </div>
 
-    <!-- Unified Input Field for Desktop & Mobile Phones -->
+    <!-- Robust Input Field -->
     <div>
       <input type="text" id="arena-cockpit-input" placeholder="Type here when race begins (Space advances)..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="width: 100%; padding: 0.95rem 1.15rem; background: var(--bg-card); border: 2px solid var(--border-color); border-radius: var(--radius); color: var(--text-primary); font-family: var(--font-mono); font-size: 1.1rem; outline: none; transition: border-color 0.2s ease;">
       <div style="text-align: center; margin-top: 0.5rem; font-size: 0.8rem; color: var(--text-muted);">
-        Type cleanly into the box above &bull; Screen remains completely stable on all devices
+        Passage auto-centers automatically as you type &bull; Works with PC, phone soft keyboard, and Bluetooth keyboards.
       </div>
     </div>
   </div>
 
   <!-- =========================================================
-       VIEW 6: DEDICATED RESULTS SCREEN (Celebration & Motivation)
+       VIEW 6: FINAL RESULTS SCREEN (Celebration & Motivation)
        ========================================================= -->
   <div id="view-results" style="display: none; text-align: center;">
     <div class="card" id="results-card-container" style="background: var(--bg-card); border-color: var(--accent); padding: 2.5rem 2rem; position: relative; overflow: hidden;">
       
-      <!-- Top Celebration Icon / Animation -->
-      <div id="results-trophy-icon" style="font-size: 3.8rem; margin-bottom: 0.5rem;">🏆</div>
-      <h2 id="results-headline-title" style="font-size: 2rem; font-weight: 800; color: var(--accent); margin-bottom: 0.4rem;">
+      <div id="results-trophy-icon" style="font-size: 4rem; margin-bottom: 0.4rem;">🏆</div>
+      <h2 id="results-headline-title" style="font-size: 2.1rem; font-weight: 800; color: var(--accent); margin-bottom: 0.4rem;">
         Race Concluded
       </h2>
 
-      <!-- Motivational / Congratulatory Banner -->
-      <div id="results-motivational-banner" style="background: rgba(88, 166, 255, 0.12); border: 1px solid var(--accent); border-radius: 6px; padding: 0.85rem 1.25rem; max-width: 650px; margin: 0 auto 1.75rem; font-size: 0.95rem; font-weight: 600; line-height: 1.5;">
+      <div id="results-motivational-banner" style="background: rgba(88, 166, 255, 0.12); border: 1px solid var(--accent); border-radius: 6px; padding: 0.85rem 1.25rem; max-width: 680px; margin: 0 auto 1.75rem; font-size: 0.95rem; font-weight: 600; line-height: 1.5;">
         Great race everyone!
       </div>
 
-      <!-- Complete Standings Telemetry Table -->
+      <!-- Standings Table -->
       <div class="table-responsive-container" style="margin-bottom: 2rem;">
         <table style="width: 100%; text-align: left;">
           <thead>
@@ -304,18 +323,18 @@
         </table>
       </div>
 
-      <!-- Action Buttons -->
+      <!-- Actions -->
       <div style="display: flex; justify-content: center; gap: 0.85rem; flex-wrap: wrap;">
-        <button onclick="requestRematch()" class="btn btn-primary" style="background: var(--success); border-color: var(--success); font-weight: 800; padding: 0.75rem 1.75rem; font-size: 1rem;">
+        <button onclick="requestRematch()" id="btn-results-rematch" class="btn btn-primary" style="background: var(--success); border-color: var(--success); font-weight: 800; padding: 0.75rem 1.75rem; font-size: 1rem;">
           🔄 Rematch (Same Racers)
         </button>
-        <button onclick="startQuickMatchQueue()" class="btn btn-primary" style="font-weight: 800; padding: 0.75rem 1.5rem; font-size: 0.95rem;">
-          ⚡ Quick Match Another Opponent
+        <button onclick="switchModeTab('quick')" class="btn btn-primary" style="font-weight: 800; padding: 0.75rem 1.5rem; font-size: 0.95rem;">
+          ⚡ Quick Match Another
         </button>
-        <button onclick="navSwitchMode('hub_public')" class="btn" style="padding: 0.75rem 1.25rem;">
-          🌐 Switch to Public Rooms
+        <button onclick="switchModeTab('public')" class="btn" style="padding: 0.75rem 1.25rem;">
+          🌐 Public Rooms
         </button>
-        <button onclick="leaveCurrentRoom()" class="btn" style="padding: 0.75rem 1.25rem; border-color: var(--border-color);">
+        <button onclick="safeLeaveRoom()" class="btn" style="padding: 0.75rem 1.25rem; border-color: var(--border-color);">
           🏠 Return to Hub
         </button>
       </div>
@@ -345,14 +364,17 @@ let currentInputIndex = 0;
 let raceActive = false;
 let isCountingDown = false;
 let raceStartTime = null;
+let clientRaceTimer = null;
+let hasLocallyFinished = false;
+
 let creationSelectedDur = 60;
 let creationType = 'public';
-
 const trackElements = {};
 
 document.addEventListener('DOMContentLoaded', () => {
   initSocket();
 
+  // Check URL join code
   const params = new URLSearchParams(window.location.search);
   const joinParam = params.get('join') || params.get('room');
   if (joinParam) {
@@ -362,7 +384,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   bindArenaInput();
-  updateNavPills('hub_public');
+  highlightActiveNavPill('public');
 });
 
 function initSocket() {
@@ -388,6 +410,7 @@ function initSocket() {
     mySid = data.your_sid;
     activeRoomData = data.room;
     currentPassage = data.room.text;
+    hasLocallyFinished = false;
     showView('waiting');
     renderWaitingLobby();
   });
@@ -408,6 +431,7 @@ function initSocket() {
     alert(data.message || 'Action failed.');
   });
 
+  // Quick match queue
   socket.on('quick_queue_waiting', () => {
     document.getElementById('modal-quick-searching').style.display = 'flex';
   });
@@ -421,75 +445,116 @@ function initSocket() {
     mySid = data.your_sid;
     activeRoomData = data.room;
     currentPassage = data.room.text;
+    hasLocallyFinished = false;
     showView('waiting');
     renderWaitingLobby();
   });
 
+  // Match countdown
   socket.on('match_countdown_started', (data) => {
     currentPassage = data.text;
+    hasLocallyFinished = false;
     showView('arena');
-    executeCountdown();
+    executeCountdown(data.duration || 60);
   });
 
   socket.on('room_progress_update', (data) => {
     renderArenaTracks(data.players || []);
   });
 
-  socket.on('player_crossed_finish', (data) => {
+  // Independent player finishes (DOES NOT END RACE FOR REMAINING PLAYERS)
+  socket.on('individual_player_finished', (data) => {
+    const finishedPlayer = data.player;
+    const isMe = (finishedPlayer.sid === mySid);
+
+    if (isMe) {
+      hasLocallyFinished = true;
+      document.getElementById('finished-spectate-banner').style.display = 'flex';
+      const medal = (finishedPlayer.place === 1) ? '🥇 1st' : ((finishedPlayer.place === 2) ? '🥈 2nd' : '🥉 3rd');
+      document.getElementById('spectate-title').textContent = `🏁 You finished! Position: ${medal} (${Math.round(finishedPlayer.wpm)} WPM)`;
+      document.getElementById('spectate-subtext').textContent = data.remaining_count > 0 
+        ? `${data.remaining_count} racer(s) still on track. You are now spectating live.`
+        : 'All racers finished!';
+    }
+
     if (data.all_finished) {
       setTimeout(() => {
         showResultsView(data.standings);
-      }, 750);
+      }, 900);
     }
+  });
+
+  socket.on('race_concluded', (data) => {
+    clearInterval(clientRaceTimer);
+    setTimeout(() => {
+      showResultsView(data.standings);
+    }, 900);
   });
 
   socket.on('rematch_accepted', (data) => {
     activeRoomData = data.room;
     currentPassage = data.room.text;
+    hasLocallyFinished = false;
     showView('waiting');
     renderWaitingLobby();
   });
 
   socket.on('left_room_confirmed', () => {
     activeRoomData = null;
+    hasLocallyFinished = false;
+    clearInterval(clientRaceTimer);
     showView('hub');
     requestPublicRooms();
   });
 }
 
 // ==========================================
-// In-Page Mode Switching (Smooth & Clean)
+// Mode Switching & Safety Guards
 // ==========================================
-function navSwitchMode(targetMode) {
-  // If in an active match or waiting room, leave room cleanly on the server
+function switchModeTab(targetMode) {
+  // If user is currently in an active race, prompt before abandoning
+  if (activeRoomData && (activeRoomData.status === 'in_progress' || activeRoomData.status === 'countdown') && !hasLocallyFinished) {
+    const confirmLeave = confirm("You are currently inside an active race! Switching modes will leave this race and record you as DNF. Continue?");
+    if (!confirmLeave) return;
+  }
+
+  // Cleanup prior room or queue safely
   if (activeRoomData) {
     socket.emit('leave_room_voluntary');
   }
   cancelQuickMatchQueue();
 
+  highlightActiveNavPill(targetMode);
   showView('hub');
-  updateNavPills(targetMode);
 
-  if (targetMode === 'quick_match') {
+  if (targetMode === 'quick') {
     startQuickMatchQueue();
-  } else if (targetMode === 'hub_private') {
+  } else if (targetMode === 'private') {
     openCreateModal('private');
   } else {
-    // Focus public directory
+    // Public directory
     const dir = document.getElementById('public-directory-section');
     if (dir) dir.scrollIntoView({ behavior: 'smooth' });
     requestPublicRooms();
   }
 }
 
-function updateNavPills(activeMode) {
-  const pPub = document.getElementById('pill-mode-public');
-  const pQck = document.getElementById('pill-mode-quick');
-  const pPrv = document.getElementById('pill-mode-private');
+function highlightActiveNavPill(activeMode) {
+  const pPub = document.getElementById('tab-pill-public');
+  const pQck = document.getElementById('tab-pill-quick');
+  const pPrv = document.getElementById('tab-pill-private');
 
-  pPub.className = (activeMode === 'hub_public') ? 'btn btn-primary' : 'btn';
-  pQck.className = (activeMode === 'quick_match') ? 'btn btn-primary' : 'btn';
-  pPrv.className = (activeMode === 'hub_private') ? 'btn btn-primary' : 'btn';
+  pPub.className = (activeMode === 'public') ? 'btn btn-primary' : 'btn';
+  pQck.className = (activeMode === 'quick') ? 'btn btn-primary' : 'btn';
+  pPrv.className = (activeMode === 'private') ? 'btn btn-primary' : 'btn';
+
+  // Highlight corresponding card in hub
+  const cPub = document.getElementById('card-mode-public');
+  const cQck = document.getElementById('card-mode-quick');
+  const cPrv = document.getElementById('card-mode-private');
+  if (cPub) cPub.style.borderColor = (activeMode === 'public') ? 'var(--accent)' : 'var(--border-color)';
+  if (cQck) cQck.style.borderColor = (activeMode === 'quick') ? 'var(--accent)' : 'var(--border-color)';
+  if (cPrv) cPrv.style.borderColor = (activeMode === 'private') ? 'var(--accent)' : 'var(--border-color)';
 }
 
 function showView(viewName) {
@@ -499,8 +564,19 @@ function showView(viewName) {
   document.getElementById('view-results').style.display = (viewName === 'results') ? 'block' : 'none';
 }
 
+function safeLeaveRoom() {
+  if (activeRoomData && (activeRoomData.status === 'in_progress' || activeRoomData.status === 'countdown') && !hasLocallyFinished) {
+    if (!confirm("Are you sure you want to abandon this race?")) return;
+  }
+  socket.emit('leave_room_voluntary');
+}
+
+function leaveEarlyAfterFinish() {
+  socket.emit('leave_race_after_finish');
+}
+
 // ==========================================
-// Hub & Public Rooms
+// Hub Directory
 // ==========================================
 function requestPublicRooms() {
   if (socket && socket.connected) {
@@ -517,7 +593,7 @@ function renderPublicRooms(rooms) {
     tbody.innerHTML = `
       <tr>
         <td colspan="7" style="padding: 2.5rem; text-align: center; color: var(--text-muted);">
-          No public rooms waiting right now. Click <strong>"+ Create Public Room"</strong> to start one!
+          No public rooms waiting. Click <strong>"+ Create Public Room"</strong> to host!
         </td>
       </tr>
     `;
@@ -562,17 +638,14 @@ function joinRoomByCodeInput() {
   joinRoomByCode(code);
 }
 
-// Quick Match
 function startQuickMatchQueue() {
   socket.emit('join_quick_queue', { name: myPlayerName });
 }
 
 function cancelQuickMatchQueue() {
   socket.emit('cancel_quick_queue');
-  updateNavPills('hub_public');
 }
 
-// Create Room Modal
 function openCreateModal(type) {
   creationType = type;
   document.getElementById('create-modal-title').textContent = (type === 'private') ? "Create Private 1v1 Room" : "Create Public Room";
@@ -620,7 +693,7 @@ function renderWaitingLobby() {
   const container = document.getElementById('waiting-racers-list');
   container.innerHTML = '';
 
-  const players = Object.values(activeRoomData.players || {});
+  const players = Object.values(activeRoomData.players || {}).filter(p => !p.left_early);
   let allReady = true;
 
   players.forEach(p => {
@@ -695,23 +768,21 @@ function hostStartMatch() {
   socket.emit('start_match');
 }
 
-function leaveCurrentRoom() {
-  socket.emit('leave_room_voluntary');
-}
-
 function requestRematch() {
   socket.emit('rematch_request');
 }
 
 // ==========================================
-// Race Arena Execution
+// Race Arena Execution & Smooth Auto-Centering
 // ==========================================
-function executeCountdown() {
+function executeCountdown(durationSec) {
   isCountingDown = true;
   raceActive = false;
   currentInputIndex = 0;
   raceStartTime = null;
+  hasLocallyFinished = false;
 
+  document.getElementById('finished-spectate-banner').style.display = 'none';
   const banner = document.getElementById('arena-countdown-banner');
   const num = document.getElementById('arena-countdown-num');
   const statusBadge = document.getElementById('arena-status-badge');
@@ -741,10 +812,29 @@ function executeCountdown() {
       socket.emit('client_race_active');
       input.disabled = false;
       input.focus();
+
+      // Start duration countdown watcher
+      startClientRaceTimer(durationSec);
     } else {
       clearInterval(cdTimer);
       banner.style.display = 'none';
       num.style.color = 'var(--accent)';
+    }
+  }, 1000);
+}
+
+function startClientRaceTimer(durationSec) {
+  clearInterval(clientRaceTimer);
+  let elapsed = 0;
+  clientRaceTimer = setInterval(() => {
+    if (!raceActive && hasLocallyFinished) return;
+    elapsed++;
+    const remaining = Math.max(0, durationSec - elapsed);
+    if (remaining > 0) {
+      document.getElementById('arena-status-badge').textContent = `Time Remaining: ${remaining}s`;
+    } else {
+      clearInterval(clientRaceTimer);
+      socket.emit('time_expired_finish');
     }
   }, 1000);
 }
@@ -761,13 +851,34 @@ function renderArenaPassage() {
   updateArenaCaret();
 }
 
+/**
+ * Smooth Line Auto-Centering
+ * Keeps active line centered in viewing window without jumping page
+ */
 function updateArenaCaret() {
   const spans = document.querySelectorAll('#arena-passage-text .char');
   const caret = document.getElementById('arena-caret');
+  const box = document.getElementById('arena-passage-box');
+  if (!caret || !box) return;
+
   if (currentInputIndex < spans.length) {
     const target = spans[currentInputIndex];
+    caret.style.display = 'block';
     caret.style.left = target.offsetLeft + 'px';
     caret.style.top = (target.offsetTop + 4) + 'px';
+
+    // Auto-center current line vertically in viewing box
+    const targetMid = target.offsetTop - (box.clientHeight / 2) + 25;
+    if (Math.abs(box.scrollTop - targetMid) > 20) {
+      box.scrollTo({
+        top: Math.max(0, targetMid),
+        behavior: 'smooth'
+      });
+    }
+  } else if (spans.length > 0) {
+    const last = spans[spans.length - 1];
+    caret.style.left = (last.offsetLeft + last.offsetWidth) + 'px';
+    caret.style.top = (last.offsetTop + 4) + 'px';
   }
 }
 
@@ -799,7 +910,8 @@ function renderArenaTracks(players) {
       trackElements[p.sid] = track;
     }
 
-    track.querySelector('.trk-speed-text').textContent = `${Math.round(p.wpm || 0)} WPM (${Math.round(p.progress || 0)}%)`;
+    const rankSuffix = p.place ? ` [Finished #${p.place}]` : '';
+    track.querySelector('.trk-speed-text').textContent = `${Math.round(p.wpm || 0)} WPM (${Math.round(p.progress || 0)}%)${rankSuffix}`;
     const bar = track.querySelector('.trk-speed-bar');
     bar.style.width = `${p.progress || 0}%`;
     if (p.progress >= 100) {
@@ -816,14 +928,14 @@ function renderArenaTracks(players) {
   });
 }
 
-// --------------------------------------------------
+// ----------------------------------------------------
 // Unified Input: Full Desktop & Mobile Keyboard Support
-// --------------------------------------------------
+// ----------------------------------------------------
 function bindArenaInput() {
   const input = document.getElementById('arena-cockpit-input');
 
   input.addEventListener('input', () => {
-    if (!raceActive) {
+    if (!raceActive || hasLocallyFinished) {
       input.value = '';
       return;
     }
@@ -856,6 +968,7 @@ function bindArenaInput() {
       }
     }
 
+    // Telemetry
     const progress = Math.min(100, Math.round((currentInputIndex / currentPassage.length) * 100));
     const elapsedMin = (performance.now() - raceStartTime) / 60000;
     const netWords = Math.max(0, (currentInputIndex - mistakes) / 5.0);
@@ -869,9 +982,10 @@ function bindArenaInput() {
       errors: mistakes
     });
 
+    // Local Completion Check
     if (val === currentPassage) {
+      hasLocallyFinished = true;
       raceActive = false;
-      document.getElementById('arena-status-badge').textContent = `Crossed finish line at ${wpm} WPM!`;
       input.blur();
     }
   });
@@ -884,7 +998,7 @@ function bindArenaInput() {
 }
 
 // ==========================================
-// Results Screen & Contextual Feedback
+// Results Screen & Contextual Motivational Messages
 // ==========================================
 function showResultsView(standings) {
   showView('results');
@@ -894,7 +1008,7 @@ function showResultsView(standings) {
   const winner = standings[0];
   const isWinnerMe = (winner && winner.sid === mySid);
 
-  // 1. Celebration Banner
+  // Visual celebration effects
   const trophyIcon = document.getElementById('results-trophy-icon');
   const titleEl = document.getElementById('results-headline-title');
   const bannerEl = document.getElementById('results-motivational-banner');
@@ -905,27 +1019,29 @@ function showResultsView(standings) {
     titleEl.style.color = "#f59e0b";
     bannerEl.style.borderColor = "#f59e0b";
     bannerEl.style.background = "rgba(245, 158, 11, 0.15)";
-    bannerEl.innerHTML = `🥇 <strong>First Place Champion!</strong> You dominated the grid with unmatched precision and lightning velocity!`;
+    bannerEl.innerHTML = `🥇 <strong>First Place Champion!</strong> You dominated the race track with unmatched precision and lightning velocity!`;
   } else {
     trophyIcon.textContent = "🏁";
-    titleEl.textContent = "Match Finished";
+    titleEl.textContent = "Race Concluded";
     titleEl.style.color = "var(--accent)";
     bannerEl.style.borderColor = "var(--accent)";
     bannerEl.style.background = "rgba(88, 166, 255, 0.12)";
 
-    // Find my placement
-    const myRank = standings.findIndex(p => p.sid === mySid) + 1;
-    const motivationalMessages = [
-      "Great effort! Every race sharpens your tactile muscle memory.",
-      "Better luck next time — persistence is the hallmark of the master typist!",
-      "Don't give up! Challenge them to a rematch and take back the lead.",
-      "Solid run! Focus on rhythm and steady cadence to close the gap."
-    ];
-    const pickedMsg = motivationalMessages[Math.floor(Math.random() * motivationalMessages.length)];
-    bannerEl.innerHTML = `You placed <strong>#${myRank > 0 ? myRank : 'DNF'}</strong> &bull; ${pickedMsg}`;
+    const myIndex = standings.findIndex(p => p.sid === mySid);
+    const myRank = myIndex + 1;
+
+    let motivation = "Great effort! Every race sharpens your tactile muscle memory.";
+    if (myRank === 2) {
+      motivation = "🥈 Silver finish! You were so close to 1st place — keep this momentum!";
+    } else if (myRank === 3) {
+      motivation = "🥉 Podium finish! Solid precision, keep pushing to close the gap!";
+    } else {
+      motivation = "Don't give up! Challenge the winner to a rematch and take back the lead.";
+    }
+    bannerEl.innerHTML = `You placed <strong>#${myRank > 0 ? myRank : 'DNF'}</strong> &bull; ${motivation}`;
   }
 
-  // 2. Standings Table
+  // Standings table
   standings.forEach((p, idx) => {
     const isMe = (p.sid === mySid);
     const tr = document.createElement('tr');
@@ -936,18 +1052,17 @@ function showResultsView(standings) {
     }
 
     const medal = (idx === 0) ? '🥇 1st' : ((idx === 1) ? '🥈 2nd' : ((idx === 2) ? '🥉 3rd' : `${idx + 1}th`));
+    const statusTag = p.left_early 
+      ? '<span style="color:var(--danger); font-weight:700;">DNF / Left</span>' 
+      : (p.finished ? '<span style="color:var(--success); font-weight:700;">Finished</span>' : '<span style="color:var(--warning); font-weight:700;">Racing</span>');
 
     tr.innerHTML = `
       <td style="padding: 0.75rem 1rem; font-weight: 800; color: ${idx === 0 ? '#f59e0b' : 'var(--text-primary)'};">${medal}</td>
       <td style="padding: 0.75rem 1rem; font-weight: 700;">${isMe ? 'You (' + p.name + ')' : p.name}</td>
-      <td style="padding: 0.75rem 1rem; font-family: var(--font-mono); font-weight: 800; color: var(--accent);">${Math.round(p.wpm)} WPM</td>
-      <td style="padding: 0.75rem 1rem;">${Math.round(p.accuracy)}%</td>
+      <td style="padding: 0.75rem 1rem; font-family: var(--font-mono); font-weight: 800; color: var(--accent);">${Math.round(p.wpm || 0)} WPM</td>
+      <td style="padding: 0.75rem 1rem;">${Math.round(p.accuracy || 100)}%</td>
       <td style="padding: 0.75rem 1rem; color: var(--danger); font-weight: 700;">${p.errors || 0}</td>
-      <td style="padding: 0.75rem 1rem;">
-        <span style="font-size: 0.75rem; font-weight: 700; padding: 0.2rem 0.5rem; border-radius: 4px; background: ${p.finished ? 'rgba(63, 185, 80, 0.2)' : 'rgba(248, 81, 73, 0.2)'}; color: ${p.finished ? 'var(--success)' : 'var(--danger)'};">
-          ${p.finished ? 'Finished' : 'DNF'}
-        </span>
-      </td>
+      <td style="padding: 0.75rem 1rem;">${statusTag}</td>
     `;
     tbody.appendChild(tr);
   });

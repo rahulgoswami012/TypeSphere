@@ -10,6 +10,7 @@ from app.models.typing import TypingTest
 
 multiplayer_bp = Blueprint('multiplayer', __name__)
 
+# Core state containers
 ROOMS = {}         # room_code -> room_dict
 QUICK_QUEUE = []   # list of {'sid': sid, 'user_id': uid, 'name': str, 'queued_at': float}
 SID_TO_ROOM = {}   # sid -> room_code
@@ -47,7 +48,7 @@ def serialize_public_rooms():
                 'code': code,
                 'name': r['name'],
                 'host_name': r['host_name'],
-                'current_players': len(r['players']),
+                'current_players': len([p for p in r['players'].values() if not p.get('left_early')]),
                 'max_players': r['max_players'],
                 'duration': r['duration'],
                 'status': r['status']
@@ -55,8 +56,14 @@ def serialize_public_rooms():
     return public_list
 
 def get_sorted_standings(room):
-    plist = list(room['players'].values())
-    plist.sort(key=lambda x: (not x['finished'], x.get('place') or 999, -x['wpm'], -x['accuracy']))
+    plist = [p for p in room['players'].values()]
+    plist.sort(key=lambda x: (
+        x.get('left_early', False),
+        not x.get('finished', False),
+        x.get('place') if x.get('place') is not None else 999,
+        -(x.get('wpm') or 0),
+        -(x.get('accuracy') or 0)
+    ))
     return plist
 
 @multiplayer_bp.route('/')
@@ -68,7 +75,7 @@ def get_public_rooms():
     return jsonify({'rooms': serialize_public_rooms()})
 
 # ==========================================
-# Socket.IO Handlers
+# Socket.IO Event Handlers
 # ==========================================
 
 @socketio.on('request_public_rooms')
@@ -101,6 +108,7 @@ def handle_create_room(data):
         'custom_text': custom_text,
         'text': get_passage(duration, custom_text),
         'status': 'waiting',
+        'race_start_time': None,
         'created_at': time.time(),
         'players': {}
     }
@@ -109,14 +117,16 @@ def handle_create_room(data):
         'sid': sid,
         'user_id': current_user.id if current_user.is_authenticated else None,
         'name': player_name,
-        'ready': True,
+        'ready': True, # Host is ready by default
         'is_host': True,
         'progress': 0,
         'wpm': 0,
         'accuracy': 100,
         'errors': 0,
         'finished': False,
-        'place': None
+        'finish_time': None,
+        'place': None,
+        'left_early': False
     }
 
     SID_TO_ROOM[sid] = room_code
@@ -132,17 +142,18 @@ def handle_join_room(data):
     player_name = (data.get('player_name') or 'Pilot').strip()
 
     if room_code not in ROOMS:
-        emit('join_error', {'message': f"Room '{room_code}' was not found or has concluded."})
+        emit('join_error', {'message': f"Room '{room_code}' was not found or has closed."})
         return
 
     room = ROOMS[room_code]
 
     if room['status'] != 'waiting':
-        emit('join_error', {'message': "This room is currently racing or finished."})
+        emit('join_error', {'message': "This room is currently in progress or finished."})
         return
 
-    if len(room['players']) >= room['max_players']:
-        emit('join_error', {'message': f"Room '{room_code}' has reached maximum player capacity."})
+    active_count = len([p for p in room['players'].values() if not p.get('left_early')])
+    if active_count >= room['max_players']:
+        emit('join_error', {'message': f"Room '{room_code}' is full (maximum {room['max_players']} players)."})
         return
 
     if sid in room['players']:
@@ -162,7 +173,9 @@ def handle_join_room(data):
         'accuracy': 100,
         'errors': 0,
         'finished': False,
-        'place': None
+        'finish_time': None,
+        'place': None,
+        'left_early': False
     }
 
     SID_TO_ROOM[sid] = room_code
@@ -199,16 +212,17 @@ def handle_start_match():
         return
 
     if room['host_sid'] != sid:
-        emit('action_error', {'message': 'Only the room host can start the match.'})
+        emit('action_error', {'message': 'Only the room host can initiate the match.'})
         return
 
     players = room['players']
+    active_players = [p for p in players.values() if not p.get('left_early')]
 
-    if room['type'] in ['private', 'quick'] and len(players) < 2:
-        emit('action_error', {'message': 'Both players must be in the room before starting a 1v1.'})
+    if room['type'] in ['private', 'quick'] and len(active_players) < 2:
+        emit('action_error', {'message': 'Cannot start a 1v1 match without an opponent.'})
         return
 
-    not_ready = [p['name'] for p in players.values() if not p['ready']]
+    not_ready = [p['name'] for p in active_players if not p['ready']]
     if not_ready:
         emit('action_error', {'message': f"Waiting for racers to ready up: {', '.join(not_ready)}"})
         return
@@ -220,7 +234,9 @@ def handle_start_match():
         p['accuracy'] = 100
         p['errors'] = 0
         p['finished'] = False
+        p['finish_time'] = None
         p['place'] = None
+        p['left_early'] = False
 
     emit('match_countdown_started', {
         'room_code': room_code,
@@ -235,7 +251,14 @@ def handle_client_race_active():
     sid = request.sid
     room_code = SID_TO_ROOM.get(sid)
     if room_code and room_code in ROOMS:
-        ROOMS[room_code]['status'] = 'in_progress'
+        room = ROOMS[room_code]
+        if room['status'] == 'countdown':
+            room['status'] = 'in_progress'
+            room['race_start_time'] = time.time()
+
+# ==========================================
+# Real-Time Progress & Independent Finishes
+# ==========================================
 
 @socketio.on('progress_update')
 def handle_progress_update(data):
@@ -252,6 +275,9 @@ def handle_progress_update(data):
         return
 
     player = room['players'][sid]
+    if player.get('finished') or player.get('left_early'):
+        return
+
     progress = max(0, min(100, float(data.get('progress', 0))))
     wpm = max(0, float(data.get('wpm', 0)))
     accuracy = max(0, min(100, float(data.get('accuracy', 100))))
@@ -262,17 +288,24 @@ def handle_progress_update(data):
     player['accuracy'] = accuracy
     player['errors'] = errors
 
+    # Individual Player Finish Execution
     if progress >= 100 and not player['finished']:
         player['finished'] = True
-        finished_count = sum(1 for p in room['players'].values() if p['finished'])
-        player['place'] = finished_count
+        
+        # Calculate rank based on non-left finished players
+        finished_racers = [p for p in room['players'].values() if p['finished'] and not p.get('left_early')]
+        player['place'] = len(finished_racers)
+        
+        elapsed = time.time() - room['race_start_time'] if room.get('race_start_time') else room['duration']
+        player['finish_time'] = round(elapsed, 2)
 
+        # Save to database for authenticated users
         if player.get('user_id'):
             try:
                 test_rec = TypingTest(
                     user_id=player['user_id'],
                     mode='multiplayer',
-                    duration=float(room['duration']),
+                    duration=float(player['finish_time']),
                     wpm=round(wpm, 1),
                     raw_wpm=round(wpm, 1),
                     accuracy=round(accuracy, 1),
@@ -285,28 +318,78 @@ def handle_progress_update(data):
             except Exception:
                 db.session.rollback()
 
-        if finished_count >= len(room['players']):
+        # Check if ALL active participants have now finished
+        active_remaining = [p for p in room['players'].values() if not p['finished'] and not p.get('left_early')]
+        all_done = (len(active_remaining) == 0)
+
+        if all_done:
             room['status'] = 'finished'
 
-        standings = get_sorted_standings(room)
-        emit('player_crossed_finish', {
+        emit('individual_player_finished', {
             'player': player,
-            'all_finished': (room['status'] == 'finished'),
-            'standings': standings
+            'remaining_count': len(active_remaining),
+            'all_finished': all_done,
+            'standings': get_sorted_standings(room) if all_done else []
         }, room=room_code)
 
     emit('room_progress_update', {'players': list(room['players'].values())}, room=room_code)
 
-@socketio.on('rematch_request')
-def handle_rematch_request():
+@socketio.on('time_expired_finish')
+def handle_time_expired():
     sid = request.sid
     room_code = SID_TO_ROOM.get(sid)
     if not room_code or room_code not in ROOMS:
         return
 
     room = ROOMS[room_code]
-    # Reset room status back to lobby with fresh text
+    if room['status'] != 'in_progress':
+        return
+
+    room['status'] = 'finished'
+    for p in room['players'].values():
+        if not p['finished'] and not p.get('left_early'):
+            p['finished'] = True
+            p['place'] = 'DNF' if p['progress'] < 100 else p.get('place', 99)
+
+    emit('race_concluded', {
+        'room': room,
+        'standings': get_sorted_standings(room)
+    }, room=room_code)
+
+@socketio.on('leave_race_after_finish')
+def handle_leave_after_finish():
+    """Player finished and chooses to leave instead of spectating."""
+    sid = request.sid
+    room_code = SID_TO_ROOM.get(sid)
+    if not room_code or room_code not in ROOMS:
+        emit('left_room_confirmed')
+        return
+
+    room = ROOMS[room_code]
+    leave_room(room_code, sid=sid)
+    SID_TO_ROOM.pop(sid, None)
+
+    emit('left_room_confirmed')
+
+    # Check if remaining active players are all finished
+    active_remaining = [p for p in room['players'].values() if not p['finished'] and not p.get('left_early')]
+    if len(active_remaining) == 0 and room['status'] == 'in_progress':
+        room['status'] = 'finished'
+        emit('race_concluded', {
+            'room': room,
+            'standings': get_sorted_standings(room)
+        }, room=room_code)
+
+@socketio.on('rematch_request')
+def handle_rematch():
+    sid = request.sid
+    room_code = SID_TO_ROOM.get(sid)
+    if not room_code or room_code not in ROOMS:
+        return
+
+    room = ROOMS[room_code]
     room['status'] = 'waiting'
+    room['race_start_time'] = None
     room['text'] = get_passage(room['duration'], room.get('custom_text'))
 
     for p in room['players'].values():
@@ -315,14 +398,16 @@ def handle_rematch_request():
         p['accuracy'] = 100
         p['errors'] = 0
         p['finished'] = False
+        p['finish_time'] = None
         p['place'] = None
+        p['left_early'] = False
         p['ready'] = (p['sid'] == room['host_sid'])
 
     emit('rematch_accepted', {'room': room}, room=room_code)
     emit('public_rooms_update', {'rooms': serialize_public_rooms()}, broadcast=True)
 
 # ==========================================
-# Quick Match Queue
+# Quick Match Matchmaking Queue
 # ==========================================
 
 @socketio.on('join_quick_queue')
@@ -351,7 +436,7 @@ def handle_join_quick_queue(data):
 
         ROOMS[match_code] = {
             'code': match_code,
-            'name': 'Quick 1v1 Duel',
+            'name': 'Quick 1v1 Match',
             'type': 'quick',
             'host_sid': sid,
             'host_name': player_name,
@@ -360,6 +445,7 @@ def handle_join_quick_queue(data):
             'custom_text': '',
             'text': text,
             'status': 'waiting',
+            'race_start_time': None,
             'created_at': time.time(),
             'players': {
                 sid: {
@@ -373,7 +459,9 @@ def handle_join_quick_queue(data):
                     'accuracy': 100,
                     'errors': 0,
                     'finished': False,
-                    'place': None
+                    'finish_time': None,
+                    'place': None,
+                    'left_early': False
                 },
                 opponent['sid']: {
                     'sid': opponent['sid'],
@@ -386,7 +474,9 @@ def handle_join_quick_queue(data):
                     'accuracy': 100,
                     'errors': 0,
                     'finished': False,
-                    'place': None
+                    'finish_time': None,
+                    'place': None,
+                    'left_early': False
                 }
             }
         }
@@ -439,17 +529,36 @@ def cleanup_player(sid):
     leave_room(room_code, sid=sid)
 
     if sid in room['players']:
-        del room['players'][sid]
+        player = room['players'][sid]
+        # If left during active race, mark as DNF
+        if room['status'] in ['countdown', 'in_progress'] and not player.get('finished'):
+            player['left_early'] = True
+            player['place'] = 'DNF'
+        elif room['status'] == 'waiting':
+            del room['players'][sid]
 
-    if not room['players']:
+    # Delete if entirely empty
+    active_any = [p for p in room['players'].values() if not p.get('left_early')]
+    if not active_any:
         del ROOMS[room_code]
         return
 
-    if room['host_sid'] == sid:
+    # If host departed in lobby, assign next player
+    if room['status'] == 'waiting' and room['host_sid'] == sid:
         next_sid = next(iter(room['players']))
         room['host_sid'] = next_sid
         room['host_name'] = room['players'][next_sid]['name']
         room['players'][next_sid]['is_host'] = True
         room['players'][next_sid]['ready'] = True
+
+    # If all remaining players in active match are finished, conclude
+    if room['status'] == 'in_progress':
+        active_remaining = [p for p in room['players'].values() if not p['finished'] and not p.get('left_early')]
+        if len(active_remaining) == 0:
+            room['status'] = 'finished'
+            emit('race_concluded', {
+                'room': room,
+                'standings': get_sorted_standings(room)
+            }, room=room_code)
 
     emit('room_state_updated', {'room': room}, room=room_code)
