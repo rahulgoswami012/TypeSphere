@@ -172,19 +172,53 @@ body {
   margin-bottom: 1.5rem;
 }
 
-.fatigue-banner {
-  background: rgba(210, 153, 34, 0.15);
-  border: 1px solid var(--warning);
-  color: var(--warning);
-  padding: 0.75rem 1.25rem;
-  border-radius: var(--radius);
-  margin-bottom: 1.5rem;
-  display: none;
+/* Auto-Dismissing Animated Alerts */
+.alert-box {
+  display: flex;
+  justify-content: space-between;
   align-items: center;
-  gap: 0.75rem;
+  padding: 0.85rem 1.25rem;
+  border-radius: 6px;
+  margin-bottom: 1.25rem;
+  background: var(--bg-card);
+  border-left: 4px solid var(--accent);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+  transition: opacity 0.35s ease, transform 0.35s ease, max-height 0.35s ease;
+  max-height: 100px;
+  overflow: hidden;
 }
 
-/* Enhanced Page & Track Preview Bar */
+.alert-box.alert-success { border-left-color: var(--success); }
+.alert-box.alert-danger { border-left-color: var(--danger); }
+.alert-box.alert-warning { border-left-color: var(--warning); }
+.alert-box.alert-info { border-left-color: var(--accent); }
+
+.alert-box.fade-out {
+  opacity: 0;
+  transform: translateY(-8px);
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  margin-bottom: 0;
+}
+
+.alert-close-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.25rem;
+  cursor: pointer;
+  padding: 0 0 0 1rem;
+  line-height: 1;
+}
+
+.alert-close-btn:hover {
+  color: var(--text-primary);
+}
+
+/* Enhanced Preview Bar */
 .enhanced-preview-bar {
   display: flex;
   justify-content: space-between;
@@ -224,6 +258,19 @@ body {
 
 .preview-meta strong {
   color: var(--text-primary);
+}
+
+/* Unrestricted Responsive Table Visibility (No cutoffs) */
+.table-responsive-container {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table-responsive-container table {
+  width: 100%;
+  border-collapse: collapse;
+  white-space: nowrap;
 }
 
 /* Aesthetic Registered Copyright Footer */
@@ -331,9 +378,7 @@ body {
   gap: 0.75rem;
 }
 
-/* =========================================================
-   Mobile Phone Optimizations (< 768px)
-   ========================================================= */
+/* Mobile Adjustments */
 @media (max-width: 768px) {
   .mobile-nav-toggle {
     display: block;
@@ -381,69 +426,5 @@ body {
   .footer-bottom-bar {
     flex-direction: column;
     align-items: flex-start;
-  }
-
-  .stats-hud {
-    grid-template-columns: repeat(2, 1fr) !important;
-    gap: 0.5rem !important;
-  }
-
-  .stat-box {
-    padding: 0.5rem !important;
-  }
-
-  .stat-value {
-    font-size: 1.35rem !important;
-  }
-
-  .mode-selectors {
-    width: 100% !important;
-    padding: 0.4rem !important;
-    gap: 0.4rem !important;
-  }
-
-  .mode-group {
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 0.3rem;
-  }
-
-  .mode-btn {
-    padding: 0.25rem 0.45rem;
-    font-size: 0.78rem;
-  }
-
-  .typing-container {
-    padding: 1rem 0.75rem !important;
-    min-height: 160px !important;
-  }
-
-  .typing-text-display {
-    font-size: 1.1rem !important;
-    line-height: 1.7 !important;
-  }
-
-  .keyboard-wrapper {
-    padding: 0.5rem 0.2rem !important;
-  }
-
-  .keyboard-row {
-    gap: 0.15rem !important;
-  }
-
-  .k-key {
-    height: 30px !important;
-    min-width: 20px !important;
-    font-size: 0.65rem !important;
-    padding: 0 0.15rem !important;
-  }
-
-  .k-key.space {
-    min-width: 120px !important;
-  }
-
-  .k-key.shift, .k-key.backspace, .k-key.enter, .k-key.caps, .k-key.tab {
-    min-width: 28px !important;
-    font-size: 0.55rem !important;
   }
 }

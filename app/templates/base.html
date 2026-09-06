@@ -10,7 +10,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}">
 </head>
 <body>
-  <!-- Top Navigation (Quick Search Removed) -->
+  <!-- Top Navigation -->
   <nav class="navbar">
     <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; max-width: 1200px; margin: 0 auto;">
       <a href="{{ url_for('typing.test_page') }}" class="brand" data-tooltip="Navigate to primary typing test track" data-tooltip-title="TYPESPHERE HOME">
@@ -49,15 +49,18 @@
     </ul>
   </nav>
 
-  <!-- Main Content Container -->
+  <!-- Main Content Container with Auto-Dismissing Alerts -->
   <div class="container">
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
-        {% for category, msg in messages %}
-          <div class="alert alert-{{ category }}" style="padding: 0.75rem 1rem; border-radius: 6px; margin-bottom: 1.5rem; background: var(--bg-card); border-left: 4px solid var(--accent);">
-            {{ msg }}
-          </div>
-        {% endfor %}
+        <div id="flash-alerts-wrapper">
+          {% for category, msg in messages %}
+            <div class="alert-box alert-{{ category }}">
+              <span>{{ msg }}</span>
+              <button onclick="dismissAlert(this)" class="alert-close-btn" aria-label="Close notification">&times;</button>
+            </div>
+          {% endfor %}
+        </div>
       {% endif %}
     {% endwith %}
 
@@ -68,7 +71,6 @@
   <footer class="app-footer">
     <div class="footer-container">
       <div class="footer-grid">
-        <!-- Brand & Tagline -->
         <div class="footer-brand-col">
           <div class="footer-brand-title">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -86,7 +88,6 @@
           </div>
         </div>
 
-        <!-- Quick Links -->
         <div class="footer-links-col">
           <h4>Platform</h4>
           <ul>
@@ -97,7 +98,6 @@
           </ul>
         </div>
 
-        <!-- Telemetry Links -->
         <div class="footer-links-col">
           <h4>Intelligence</h4>
           <ul>
@@ -109,7 +109,6 @@
         </div>
       </div>
 
-      <!-- Legal & Copyright Bar -->
       <div class="footer-bottom-bar">
         <div class="copyright-text">
           &copy; 2026 TypeSphere. All rights reserved. Registered Trademark &reg;.
@@ -128,15 +127,31 @@
     const nav = document.getElementById('main-nav-links');
     nav.classList.toggle('mobile-open');
   }
+
+  function dismissAlert(btn) {
+    const alertBox = btn.closest('.alert-box');
+    if (alertBox) {
+      alertBox.classList.add('fade-out');
+      setTimeout(() => alertBox.remove(), 350);
+    }
+  }
+
+  // Automatically dismiss notifications after 3 seconds
+  document.addEventListener('DOMContentLoaded', () => {
+    const alerts = document.querySelectorAll('.alert-box');
+    alerts.forEach(alertBox => {
+      setTimeout(() => {
+        alertBox.classList.add('fade-out');
+        setTimeout(() => alertBox.remove(), 350);
+      }, 3000);
+    });
+  });
   </script>
 
-  <!-- Global Sound Engine -->
+  <!-- Global Scripts -->
   <script src="{{ url_for('static', filename='js/audio.js') }}"></script>
-  <!-- Global Settings & Theme Engine -->
   <script src="{{ url_for('static', filename='js/settings.js') }}"></script>
-  <!-- Pure SVG Charting Engine -->
   <script src="{{ url_for('static', filename='js/charts.js') }}"></script>
-  <!-- Predictive Tooltip Engine -->
   <script src="{{ url_for('static', filename='js/tooltips.js') }}"></script>
   {% block scripts %}{% endblock %}
 </body>

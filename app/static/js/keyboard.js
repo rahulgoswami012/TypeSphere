@@ -1,11 +1,10 @@
 /**
  * TypeSphere Biometric Heatmap & Real-Time Finger Placement Guide
- * (Inspired by TypingOwl.com's interactive hand biomechanics)
+ * Features: Home-Row resting hand guide and instant direct finger placement on click.
  */
 class VirtualKeyboard {
   constructor() {
     this.container = document.getElementById('on-screen-keyboard');
-    this.modal = document.getElementById('key-inspect-modal');
     this.fingerGuide = document.getElementById('active-finger-guide');
     this.keyData = {};
     
@@ -17,6 +16,12 @@ class VirtualKeyboard {
       ["Space"]
     ];
 
+    // Home-Row Resting Hand Finger Assignments
+    this.homeRowKeys = {
+      'a': 'L.Pinky', 's': 'L.Ring', 'd': 'L.Middle', 'f': 'L.Index',
+      'j': 'R.Index', 'k': 'R.Middle', 'l': 'R.Ring', ';': 'R.Pinky'
+    };
+
     this.fingerMapping = {
       'q': 'Left Pinky', 'a': 'Left Pinky', 'z': 'Left Pinky', '1': 'Left Pinky', '`': 'Left Pinky',
       'w': 'Left Ring', 's': 'Left Ring', 'x': 'Left Ring', '2': 'Left Ring',
@@ -26,7 +31,7 @@ class VirtualKeyboard {
       'i': 'Right Middle', 'k': 'Right Middle', ',': 'Right Middle', '8': 'Right Middle',
       'o': 'Right Ring', 'l': 'Right Ring', '.': 'Right Ring', '9': 'Right Ring',
       'p': 'Right Pinky', ';': 'Right Pinky', '/': 'Right Pinky', '0': 'Right Pinky', '[': 'Right Pinky', ']': 'Right Pinky', '\'': 'Right Pinky', '-': 'Right Pinky', '=': 'Right Pinky',
-      ' ': 'Left / Right Thumb', 'Space': 'Left / Right Thumb'
+      ' ': 'Thumb', 'Space': 'Thumb'
     };
 
     this.keyElements = {};
@@ -38,6 +43,29 @@ class VirtualKeyboard {
 
   render() {
     this.container.innerHTML = '';
+
+    // 1. Home-Row Resting Hand Guide Header
+    const legend = document.createElement('div');
+    legend.className = 'hand-placement-legend';
+    legend.innerHTML = `
+      <div class="hand-label">
+        <span>Left Hand Resting:</span>
+        <span class="hand-badge">A (Pinky)</span>
+        <span class="hand-badge">S (Ring)</span>
+        <span class="hand-badge">D (Middle)</span>
+        <span class="hand-badge">F (Index)</span>
+      </div>
+      <div class="hand-label">
+        <span>Right Hand Resting:</span>
+        <span class="hand-badge">J (Index)</span>
+        <span class="hand-badge">K (Middle)</span>
+        <span class="hand-badge">L (Ring)</span>
+        <span class="hand-badge">; (Pinky)</span>
+      </div>
+    `;
+    this.container.appendChild(legend);
+
+    // 2. Keyboard Rows
     this.layout.forEach(row => {
       const rowDiv = document.createElement('div');
       rowDiv.className = 'keyboard-row';
@@ -53,6 +81,14 @@ class VirtualKeyboard {
         else if (key === 'Enter') specialClass = 'enter';
         else if (key === 'Shift') specialClass = 'shift';
 
+        // Tag Home-Row keys
+        let homeTag = '';
+        if (this.homeRowKeys[lower]) {
+          specialClass += ' home-key';
+          homeTag = this.homeRowKeys[lower];
+          keyDiv.dataset.fingerTag = homeTag;
+        }
+
         keyDiv.className = `k-key ${specialClass}`;
         keyDiv.innerHTML = `<span class="key-label">${key}</span>`;
         keyDiv.dataset.key = lower;
@@ -60,10 +96,32 @@ class VirtualKeyboard {
         rowDiv.appendChild(keyDiv);
         this.keyElements[lower] = keyDiv;
 
-        keyDiv.addEventListener('click', () => this.inspectKey(key));
+        // Directly update finger guide on click without opening a popup box
+        keyDiv.addEventListener('click', () => this.placeFingerOnKey(key));
       });
       this.container.appendChild(rowDiv);
     });
+  }
+
+  placeFingerOnKey(key) {
+    const lower = (key === ' ' || key === 'Space') ? 'space' : key.toLowerCase();
+    const finger = this.fingerMapping[lower] || this.fingerMapping[key] || 'Touch Key';
+
+    // Highlight key visually with a pulse
+    const el = this.keyElements[lower];
+    if (el) {
+      el.classList.add('clicked-active');
+      setTimeout(() => el.classList.remove('clicked-active'), 250);
+    }
+
+    // Direct Finger Placement: updates guide immediately
+    if (this.fingerGuide) {
+      this.fingerGuide.innerHTML = `Placed Finger: <strong style="color: var(--success);">${finger}</strong> &rarr; Key: <span style="font-family: var(--font-mono); color: var(--accent); background: var(--bg-card); padding: 0.1rem 0.5rem; border-radius: 4px; font-weight: 700;">${key.toUpperCase()}</span>`;
+    }
+
+    if (window.soundEngine) {
+      window.soundEngine.playKey(false);
+    }
   }
 
   updateCurrentExpectedKey(expectedChar) {
@@ -72,7 +130,7 @@ class VirtualKeyboard {
     const finger = this.fingerMapping[expectedChar.toLowerCase()] || this.fingerMapping[expectedChar] || 'Touch Key';
     
     if (this.fingerGuide) {
-      this.fingerGuide.innerHTML = `Use: <strong>${finger}</strong> &bull; Target: <span style="font-family: var(--font-mono); color: var(--accent); background: var(--bg-card); padding: 0.1rem 0.4rem; border-radius: 4px;">${expectedChar === ' ' ? 'Space' : expectedChar}</span>`;
+      this.fingerGuide.innerHTML = `Use Finger: <strong>${finger}</strong> &bull; Target: <span style="font-family: var(--font-mono); color: var(--accent); background: var(--bg-card); padding: 0.1rem 0.4rem; border-radius: 4px;">${expectedChar === ' ' ? 'Space' : expectedChar}</span>`;
     }
   }
 
@@ -92,9 +150,7 @@ class VirtualKeyboard {
         this.keyData = JSON.parse(stored);
         this.paintHeatmap();
       }
-    } catch(e) {
-      console.warn("Heatmap query note:", e);
-    }
+    } catch(e) {}
   }
 
   recordKeyMetric(expected, typed, isCorrect, latencyMs) {
@@ -135,36 +191,6 @@ class VirtualKeyboard {
         }
       }
     });
-  }
-
-  inspectKey(key) {
-    const modal = document.getElementById('key-inspect-modal');
-    if (!modal) return;
-
-    const lower = key.toLowerCase();
-    const data = this.keyData[lower] || { total: 0, errors: 0, delays: [], confusions: {} };
-    const finger = this.fingerMapping[key] || this.fingerMapping[lower] || 'Adaptive Hand';
-    
-    const errRate = data.total > 0 ? Math.round((data.errors / data.total) * 100) : 0;
-    const avgDelay = data.delays.length > 0 ? Math.round(data.delays.reduce((a,b)=>a+b,0) / data.delays.length) : 'N/A';
-
-    let topConfusion = 'None detected';
-    let maxConf = 0;
-    Object.keys(data.confusions).forEach(c => {
-      if (data.confusions[c] > maxConf) {
-        maxConf = data.confusions[c];
-        topConfusion = `'${c.toUpperCase()}' (${maxConf} mistakes)`;
-      }
-    });
-
-    document.getElementById('km-key-title').textContent = `Key Diagnostics: [ ${key.toUpperCase()} ]`;
-    document.getElementById('km-finger').textContent = finger;
-    document.getElementById('km-total').textContent = data.total;
-    document.getElementById('km-error-rate').textContent = `${errRate}%`;
-    document.getElementById('km-delay').textContent = avgDelay === 'N/A' ? 'N/A' : `${avgDelay} ms`;
-    document.getElementById('km-confusion').textContent = topConfusion;
-
-    modal.style.display = 'flex';
   }
 }
 
