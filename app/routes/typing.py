@@ -12,65 +12,11 @@ from app.models.feedback import Announcement
 from app.services.typing_analyzer import TypingAnalyzer
 from app.services.anti_cheat import AntiCheatSystem
 from app.services.profile_analyzer import ProfileAnalyzer
-from app.services.adaptive_training import AdaptiveTrainingService
+from app.services.weakness_coach import WeaknessCoach
 from app.services.achievement_service import AchievementService
+from app.services.content_engine import ContentEngine
 
 typing_bp = Blueprint('typing', __name__)
-
-LEVEL_WORD_BANKS = {
-    'easy': [
-        "the", "and", "a", "to", "in", "is", "you", "that", "it", "he", "was", "for", "on", "are", "as", "with",
-        "his", "they", "at", "be", "this", "have", "from", "or", "one", "had", "by", "word", "but", "not",
-        "what", "all", "were", "we", "when", "your", "can", "said", "there", "use", "an", "each", "which",
-        "she", "do", "how", "their", "if", "will", "up", "other", "about", "out", "many", "then", "them", "these",
-        "so", "some", "her", "would", "make", "like", "him", "into", "time", "has", "look", "two", "more", "write",
-        "go", "see", "number", "no", "way", "could", "people", "my", "than", "first", "water", "been", "call", "who"
-    ],
-    'moderate': [
-        "account", "between", "certain", "country", "develop", "example", "general", "however", "interest",
-        "important", "machine", "national", "problem", "program", "question", "service", "system", "through",
-        "business", "children", "company", "consider", "different", "education", "experience", "following",
-        "government", "information", "language", "movement", "national", "organization", "particular", "president",
-        "provide", "relationship", "situation", "sometimes", "technology", "together", "understand", "university"
-    ],
-    'hard': [
-        "accomplishment", "archaeological", "characteristic", "chronological", "circumstantial", "communication",
-        "comprehensive", "consequential", "differentiation", "electromagnetic", "enthusiastic", "extraordinary",
-        "heterogeneous", "implementation", "inconvenience", "infrastructure", "intercontinental", "jurisdiction",
-        "kaleidoscopic", "microbiological", "miscellaneous", "multidisciplinary", "nanotechnology", "neurochemical",
-        "orthogonal", "parliamentary", "pharmaceutical", "photosynthesis", "psychological", "reconciliation"
-    ],
-    'expert': [
-        "anachronistic", "antediluvian", "circumlocution", "counterintuitive", "crystallization", "deleterious",
-        "disproportionate", "epistemological", "existentialism", "grandiloquent", "idiosyncrasy", "incommensurable",
-        "indistinguishable", "juxtaposition", "lexicographical", "magnanimous", "metamorphosis", "multidimensional",
-        "obfuscation", "panegyric", "phenomenological", "quintessential", "sesquipedalian", "synchronicity"
-    ]
-}
-
-LANGUAGE_WORD_BANKS = {
-    'spanish': [
-        "de", "la", "que", "el", "en", "y", "a", "los", "se", "del", "las", "un", "por", "con", "no", "una",
-        "su", "para", "es", "al", "lo", "como", "mas", "pero", "sus", "le", "ya", "o", "fue", "este", "ha",
-        "si", "porque", "esta", "son", "entre", "cuando", "muy", "sin", "sobre", "ser", "tiene", "tambien"
-    ],
-    'french': [
-        "de", "la", "le", "et", "les", "des", "en", "un", "du", "une", "que", "est", "pour", "qui", "dans", "a",
-        "par", "sur", "pas", "plus", "au", "avec", "ce", "ne", "on", "se", "sont", "comme", "mais", "ou",
-        "nous", "sa", "fait", "ses", "tout", "faire", "leur", "aussi", "ces", "deux", "bien", "elle", "si"
-    ],
-    'german': [
-        "der", "die", "und", "in", "den", "von", "zu", "das", "mit", "sich", "des", "auf", "fur", "ist", "im",
-        "dem", "nicht", "ein", "eine", "als", "auch", "es", "an", "werden", "aus", "er", "hat", "dass", "sie",
-        "nach", "wird", "bei", "einer", "um", "am", "sind", "noch", "wie", "einem", "uber", "einen", "so"
-    ]
-}
-
-CODE_SNIPPETS = {
-    'python': "def quicksort(arr):\n    if len(arr) <= 1:\n        return arr\n    pivot = arr[len(arr) // 2]\n    left = [x for x in arr if x < pivot]\n    middle = [x for x in arr if x == pivot]\n    right = [x for x in arr if x > pivot]\n    return quicksort(left) + middle + quicksort(right)",
-    'javascript': "const calculateCadence = (events) => {\n  return events.reduce((acc, curr, idx, arr) => {\n    if (idx === 0) return acc;\n    return acc + (curr.timestamp - arr[idx - 1].timestamp);\n  }, 0) / (events.length - 1);\n};",
-    'sql': "SELECT users.id, users.username, MAX(typing_tests.wpm) as best_wpm\nFROM users\nJOIN typing_tests ON users.id = typing_tests.user_id\nWHERE typing_tests.suspicious = FALSE\nGROUP BY users.id, users.username\nORDER BY best_wpm DESC\nLIMIT 10;"
-}
 
 @typing_bp.route('/')
 def test_page():
@@ -171,84 +117,30 @@ def get_text():
                         'is_code': prev_test.mode == 'code'
                     })
 
-    # 3. Dynamic Configuration Parameters
-    content_type = request.args.get('content_type', 'words').lower()
-    level = request.args.get('level', 'moderate').lower()
-    batch_size = int(request.args.get('batch_size', 80)) # Generous chunk for endless streaming
+    # 3. Dynamic Multi-Tiered Content Generation
+    test_type = request.args.get('test_type', 'speed').lower()
+    difficulty = request.args.get('level', 'moderate').lower()
+    code_lang = request.args.get('code_lang', 'python').lower()
 
-    if level not in LEVEL_WORD_BANKS:
-        level = 'moderate'
-
-    if content_type == 'code':
-        lang = request.args.get('code_lang', 'python').lower()
-        return jsonify({
-            'id': 0,
-            'content': CODE_SNIPPETS.get(lang, CODE_SNIPPETS['python']),
-            'category': f"Code: {lang.upper()}",
-            'is_code': True
-        })
-
-    if content_type == 'quotes':
-        query = TypingText.query.filter_by(category='Literature', is_code=False)
-        texts = query.all()
-        if texts:
-            sel = random.choice(texts)
-            return jsonify({
-                'id': sel.id,
-                'content': sel.content.strip(),
-                'category': 'Quotes & Literature',
-                'is_code': False
-            })
-
-    if content_type == 'numbers':
-        nums = [str(random.randint(10, 9999)) for _ in range(batch_size)]
-        return jsonify({
-            'id': 0,
-            'content': " ".join(nums),
-            'category': 'Numbers Only',
-            'is_code': False
-        })
-
-    # Standard Word Generation with Level Sensitivity
-    bank = LEVEL_WORD_BANKS.get(level, LEVEL_WORD_BANKS['moderate'])
-    words = [random.choice(bank) for _ in range(batch_size)]
-
-    if content_type == 'punctuation':
-        marks = [",", ".", ";", "!", "?"]
-        for i in range(len(words)):
-            if random.random() < 0.35 and not words[i].endswith(tuple(marks)):
-                words[i] = words[i] + random.choice(marks)
-            if random.random() < 0.25:
-                words[i] = words[i].capitalize()
-
-    elif content_type == 'words_numbers':
-        for i in range(len(words)):
-            if random.random() < 0.2:
-                words[i] = str(random.randint(10, 999))
-
-    elif level in ['hard', 'expert']:
-        # Natural punctuation integration for higher difficulty tiers
-        marks = [",", ".", ";"]
-        for i in range(len(words)):
-            if random.random() < 0.25 and not words[i].endswith(tuple(marks)):
-                words[i] = words[i] + random.choice(marks)
-            if random.random() < 0.2:
-                words[i] = words[i].capitalize()
-
-    final_content = " ".join(words)
+    content = ContentEngine.generate_segment(
+        test_type=test_type,
+        difficulty=difficulty,
+        batch_words=60,
+        code_lang=code_lang
+    )
 
     return jsonify({
         'id': 0,
-        'content': final_content,
-        'category': f"{content_type.capitalize()} ({level.capitalize()})",
-        'is_code': False
+        'content': content,
+        'category': f"{test_type.replace('_', ' ').title()} ({difficulty.title()})",
+        'is_code': test_type == 'coding'
     })
 
 @typing_bp.route('/api/adaptive-drill')
 def get_adaptive_drill():
-    uid = current_user.id if current_user.is_authenticated else 0
-    drill, keys = AdaptiveTrainingService.generate_drill(uid)
-    return jsonify({'content': drill, 'focus_keys': keys})
+    uid = current_user.id if current_user.is_authenticated else None
+    drill = WeaknessCoach.generate_targeted_drill(uid)
+    return jsonify(drill)
 
 @typing_bp.route('/api/submit', methods=['POST'])
 def submit_test():

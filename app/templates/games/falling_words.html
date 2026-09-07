@@ -1,0 +1,198 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="card" style="max-width:880px; margin:0 auto; text-align:center;">
+  <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:1rem; margin-bottom:1.25rem;">
+    <h2 style="font-size:1.4rem; font-weight:800; margin:0;">☄️ Falling Words Arcade</h2>
+    <div style="display:flex; gap:1.2rem; align-items:center;">
+      <span>Score: <strong id="game-score" style="color:var(--accent); font-size:1.25rem;">0</strong></span>
+      <span>Lives: <strong id="game-lives" style="color:var(--danger); font-size:1.25rem;">❤️❤️❤️</strong></span>
+      <a href="{{ url_for('games.index') }}" class="btn btn-sm">&times; Exit</a>
+    </div>
+  </div>
+
+  <!-- Falling Arena Canvas (No typing box needed: type directly on your keyboard) -->
+  <div id="game-canvas" tabindex="0" style="position:relative; width:100%; height:400px; background:var(--bg-secondary); border:2px solid var(--border-color); border-radius:var(--radius); overflow:hidden; outline:none; cursor:default;">
+    <div id="danger-line" style="position:absolute; bottom:35px; left:0; right:0; height:2px; background:var(--danger); opacity:0.6;"></div>
+    
+    <div id="active-stroke-indicator" style="position:absolute; bottom:8px; left:50%; transform:translateX(-50%); font-family:var(--font-mono); font-size:0.9rem; color:var(--text-muted);">
+      Target word: <span id="current-target-match" style="color:var(--accent); font-weight:700;">[Type any falling word]</span>
+    </div>
+  </div>
+
+  <div style="margin-top:0.75rem; font-size:0.82rem; color:var(--text-muted);">
+    No input box required: simply strike the keys of any descending word on your keyboard.
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const WORD_POOL = [
+  "velocity", "cadence", "rhythm", "kinetic", "focus", "flow", "precision", 
+  "matrix", "stream", "quantum", "tactile", "circuit", "binary", "system", 
+  "engine", "pilot", "balance", "command", "transit", "standard", "channel"
+];
+
+let score = 0;
+let lives = 3;
+let activeWords = []; // [{ id, text, typed: '', el, x, y, speed }]
+let spawnInterval = null;
+let physicsInterval = null;
+let currentTargetWord = null;
+let wordsCleared = 0;
+
+document.addEventListener('DOMContentLoaded', () => {
+  const arena = document.getElementById('game-canvas');
+  arena.focus();
+
+  spawnInterval = setInterval(spawnWord, 2000);
+  physicsInterval = setInterval(updatePhysics, 40);
+
+  // Global Direct Keystroke Interceptor
+  window.addEventListener('keydown', (e) => {
+    if (lives <= 0) return;
+    if (e.key.length !== 1 || e.ctrlKey || e.metaKey || e.altKey) return;
+    e.preventDefault();
+
+    const char = e.key.toLowerCase();
+
+    // 1. If currently tracking a word, continue typing it
+    if (currentTargetWord) {
+      const nextExpected = currentTargetWord.text[currentTargetWord.typed.length];
+      if (char === nextExpected) {
+        currentTargetWord.typed += char;
+        updateWordVisual(currentTargetWord);
+
+        if (currentTargetWord.typed === currentTargetWord.text) {
+          destroyWord(currentTargetWord);
+          currentTargetWord = null;
+          updateTargetLabel();
+        }
+        if (window.soundEngine) window.soundEngine.playKey(false);
+        return;
+      }
+    }
+
+    // 2. Otherwise search for any active falling word starting with this letter
+    const candidate = activeWords.find(w => w.text.startsWith(char));
+    if (candidate) {
+      currentTargetWord = candidate;
+      currentTargetWord.typed = char;
+      updateWordVisual(currentTargetWord);
+
+      if (currentTargetWord.typed === currentTargetWord.text) {
+        destroyWord(currentTargetWord);
+        currentTargetWord = null;
+      }
+      updateTargetLabel();
+      if (window.soundEngine) window.soundEngine.playKey(false);
+    } else {
+      if (window.soundEngine) window.soundEngine.playKey(true);
+    }
+  });
+});
+
+function spawnWord() {
+  const container = document.getElementById('game-canvas');
+  if (!container || lives <= 0) return;
+
+  const text = WORD_POOL[Math.floor(Math.random() * WORD_POOL.length)];
+  const el = document.createElement('div');
+  el.className = 'falling-word-node';
+  el.textContent = text;
+  el.style.position = 'absolute';
+  el.style.left = `${Math.random() * (container.clientWidth - 130) + 15}px`;
+  el.style.top = '0px';
+  el.style.fontFamily = 'var(--font-mono)';
+  el.style.fontWeight = '700';
+  el.style.fontSize = '1.05rem';
+  el.style.color = 'var(--text-primary)';
+  el.style.background = 'var(--bg-card)';
+  el.style.padding = '0.3rem 0.65rem';
+  el.style.borderRadius = '5px';
+  el.style.border = '1.5px solid var(--border-color)';
+  container.appendChild(el);
+
+  activeWords.push({
+    id: Math.random(),
+    text: text,
+    typed: '',
+    el: el,
+    y: 0,
+    speed: 1.2 + Math.random() * 1.3
+  });
+}
+
+function updatePhysics() {
+  const container = document.getElementById('game-canvas');
+  if (!container || lives <= 0) return;
+
+  for (let i = activeWords.length - 1; i >= 0; i--) {
+    const w = activeWords[i];
+    w.y += w.speed;
+    w.el.style.top = `${w.y}px`;
+
+    // Word crossed boundary without completion
+    if (w.y >= container.clientHeight - 40) {
+      w.el.remove();
+      if (currentTargetWord && currentTargetWord.id === w.id) {
+        currentTargetWord = null;
+        updateTargetLabel();
+      }
+      activeWords.splice(i, 1);
+      lives--;
+      updateLivesDisplay();
+      if (window.soundEngine) window.soundEngine.playKey(true);
+
+      if (lives <= 0) {
+        concludeGame();
+        break;
+      }
+    }
+  }
+}
+
+function updateWordVisual(w) {
+  const typedPart = w.text.substring(0, w.typed.length);
+  const remaining = w.text.substring(w.typed.length);
+  w.el.innerHTML = `<span style="color:var(--success); text-decoration:underline;">${typedPart}</span><span>${remaining}</span>`;
+  w.el.style.borderColor = 'var(--accent)';
+  w.el.style.boxShadow = '0 0 10px var(--accent-glow)';
+}
+
+function destroyWord(w) {
+  w.el.remove();
+  const idx = activeWords.findIndex(item => item.id === w.id);
+  if (idx !== -1) activeWords.splice(idx, 1);
+  score += (w.text.length * 15);
+  wordsCleared++;
+  document.getElementById('game-score').textContent = score;
+}
+
+function updateTargetLabel() {
+  const lbl = document.getElementById('current-target-match');
+  lbl.textContent = currentTargetWord ? `[${currentTargetWord.text}]` : '[Type any falling word]';
+}
+
+function updateLivesDisplay() {
+  let h = '';
+  for (let i = 0; i < lives; i++) h += '❤️';
+  document.getElementById('game-lives').textContent = h || '☠️';
+}
+
+function concludeGame() {
+  clearInterval(spawnInterval);
+  clearInterval(physicsInterval);
+  alert(`Game Over! Final Score: ${score} points (${wordsCleared} words eliminated).`);
+  
+  fetch('/games/api/record-score', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ game_mode: 'falling_words', score: score, words_typed: wordsCleared })
+  }).finally(() => {
+    window.location.href = "{{ url_for('games.index') }}";
+  });
+}
+</script>
+{% endblock %}

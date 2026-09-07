@@ -5,9 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>{% block title %}TypeSphere | Next-Generation Typing Intelligence & Biometrics{% endblock %}</title>
   
-  <meta name="description" content="TypeSphere is an advanced typing benchmark platform featuring real-time biometric Typing DNA, 1v1 multiplayer duels, custom difficulty levels, and official competency certification.">
-  <meta name="keywords" content="typing test, WPM speed test, typing DNA, multiplayer typing, touch typing, blind mode, code typing">
-  <meta name="robots" content="{% block robots %}index, follow{% endblock %}">
+  <meta name="description" content="TypeSphere is a next-generation typing ecosystem featuring real-world content, touch typing curriculum, 1v1 multiplayer duels, and biometric Typing DNA.">
+  <meta name="keywords" content="typing test, WPM speed test, typing DNA, learn typing, typing games, multiplayer typing">
 
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -16,10 +15,10 @@
 
   <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/typing.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/keyboard.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}">
 </head>
 <body>
-  <!-- Auth Meta Carrier -->
   <div id="user-auth-meta" data-authenticated="{{ 'true' if current_user.is_authenticated else 'false' }}" style="display:none;"></div>
 
   <!-- Top Navigation -->
@@ -33,16 +32,17 @@
         TypeSphere
       </a>
 
-      <!-- Mobile Hamburger Toggle -->
       <button class="mobile-nav-toggle" onclick="toggleMobileNav()" aria-label="Toggle navigation">
         ☰
       </button>
     </div>
 
-    <!-- Navigation Links -->
+    <!-- Direct Navigation Links -->
     <ul class="nav-links" id="main-nav-links">
       <li><a href="{{ url_for('typing.test_page') }}" class="nav-link">Test</a></li>
-      <li><a href="{{ url_for('typing.practice_page') }}" class="nav-link">Practice</a></li>
+      <li><a href="{{ url_for('learn.index') }}" class="nav-link" style="color:var(--accent); font-weight:700;">Learn</a></li>
+      <li><a href="{{ url_for('games.index') }}" class="nav-link" style="color:var(--warning); font-weight:700;">Games</a></li>
+      <li><a href="{{ url_for('typing.practice_page') }}" class="nav-link">Train Weakness</a></li>
       <li><a href="{{ url_for('challenges.index') }}" class="nav-link">Challenges</a></li>
       <li><a href="{{ url_for('leaderboard.index') }}" class="nav-link">Leaderboard</a></li>
       <li><a href="{{ url_for('multiplayer.index') }}" class="nav-link">Multiplayer</a></li>
@@ -61,7 +61,7 @@
     </ul>
   </nav>
 
-  <!-- Flash Notifications -->
+  <!-- Notification Flash Area -->
   <div class="container">
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
@@ -79,7 +79,7 @@
     {% block content %}{% endblock %}
   </div>
 
-  <!-- Footer with Registered Trademark -->
+  <!-- Professional Footer -->
   <footer class="app-footer">
     <div class="footer-container">
       <div class="footer-grid">
@@ -92,43 +92,42 @@
             TypeSphere
           </div>
           <p class="footer-tagline">
-            Next-Generation Typing Intelligence & Biometric Telemetry Engine. Engineered for speed enthusiasts, software developers, and competitive typists worldwide.
+            Next-Generation Typing Ecosystem & Biometric Telemetry Engine.
           </p>
           <div class="footer-status-pill">
             <span class="status-dot"></span>
-            <span>All Systems Operational &bull; Version 2.2 Production</span>
+            <span>All Systems Operational &bull; Production v2.3</span>
           </div>
         </div>
 
         <div class="footer-links-col">
-          <h4>Platform</h4>
+          <h4>Ecosystem</h4>
           <ul>
             <li><a href="{{ url_for('typing.test_page') }}">Speed Benchmark</a></li>
-            <li><a href="{{ url_for('typing.practice_page') }}">Academy & Practice</a></li>
-            <li><a href="{{ url_for('challenges.index') }}">Challenge Arenas</a></li>
+            <li><a href="{{ url_for('learn.index') }}">Touch Typing Academy</a></li>
+            <li><a href="{{ url_for('games.index') }}">Typing Arcade Games</a></li>
+            <li><a href="{{ url_for('typing.practice_page') }}">AI Weakness Drills</a></li>
             <li><a href="{{ url_for('multiplayer.index') }}">Multiplayer Grid</a></li>
           </ul>
         </div>
 
         <div class="footer-links-col">
-          <h4>Feedback & Community</h4>
+          <h4>Community & Support</h4>
           <ul>
             <li><a href="{{ url_for('feedback.ratings') }}">Ratings & Reviews</a></li>
             <li><a href="{{ url_for('feedback.submit_feedback') }}">Submit Feedback</a></li>
-            <li><a href="{{ url_for('feedback.contact') }}">Contact Us</a></li>
-            <li><a href="{{ url_for('settings.index') }}">Preferences</a></li>
+            <li><a href="{{ url_for('feedback.contact') }}">Contact Engineers</a></li>
+            <li><a href="{{ url_for('settings.index') }}">Ergonomics & Themes</a></li>
           </ul>
         </div>
       </div>
 
       <div class="footer-bottom-bar">
-        <div>
-          &copy; 2026 TypeSphere. All rights reserved. Registered Trademark &reg;.
-        </div>
+        <div>&copy; 2026 TypeSphere. All rights reserved. Registered Trademark &reg;.</div>
         <div class="footer-meta-links">
-          <span>Non-Medical Biometric Telemetry</span>
+          <span>Non-Medical Biometrics</span>
           <span>&bull;</span>
-          <span>Cryptographic Verification ID Protected</span>
+          <span>Anti-Cheat Certified</span>
         </div>
       </div>
     </div>
@@ -159,7 +158,6 @@
   });
   </script>
 
-  <!-- Global Scripts -->
   <script src="{{ url_for('static', filename='js/audio.js') }}"></script>
   <script src="{{ url_for('static', filename='js/settings.js') }}"></script>
   <script src="{{ url_for('static', filename='js/charts.js') }}"></script>

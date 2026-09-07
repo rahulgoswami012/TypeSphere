@@ -1,4 +1,4 @@
-from flask import Flask, render_template
+from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from flask_migrate import Migrate
@@ -23,12 +23,22 @@ def create_app(config_class=Config):
     login_manager.login_view = 'auth.login'
     login_manager.login_message_category = 'info'
 
+    # 1. Explicitly import all models so SQLAlchemy discovers their tables
     from app.models.user import User
+    from app.models.typing import TypingTest, TypingText, TypingDNA
+    from app.models.challenge import DailyChallenge, Achievement, UserAchievement
+    from app.models.settings import UserSettings
+    from app.models.feedback import ContactMessage, FeedbackItem, RatingReview, SiteSetting, Announcement
+    from app.models.curriculum import LessonStage, UserLessonProgress
+    from app.models.content import ContentItem, ExamTemplate
+    from app.models.game import GameRecord
+    from app.models.plan import UserSubscription
+
     @login_manager.user_loader
     def load_user(user_id):
         return User.query.get(int(user_id))
 
-    # Auto-patch missing tables & columns for development SQLite databases
+    # 2. Guarantee all tables exist on startup
     with app.app_context():
         db.create_all()
         try:
@@ -39,19 +49,11 @@ def create_app(config_class=Config):
                     conn.execute(text("ALTER TABLE user_settings ADD COLUMN blind_mode BOOLEAN DEFAULT 1"))
                 if cols and 'ghost_mode' not in cols:
                     conn.execute(text("ALTER TABLE user_settings ADD COLUMN ghost_mode BOOLEAN DEFAULT 0"))
-                if cols and 'default_duration' not in cols:
-                    conn.execute(text("ALTER TABLE user_settings ADD COLUMN default_duration INTEGER DEFAULT 60"))
-                if cols and 'default_content' not in cols:
-                    conn.execute(text("ALTER TABLE user_settings ADD COLUMN default_content VARCHAR(32) DEFAULT 'words'"))
-                if cols and 'default_level' not in cols:
-                    conn.execute(text("ALTER TABLE user_settings ADD COLUMN default_level VARCHAR(32) DEFAULT 'moderate'"))
-                if cols and 'sound_volume' not in cols:
-                    conn.execute(text("ALTER TABLE user_settings ADD COLUMN sound_volume FLOAT DEFAULT 0.7"))
                 conn.commit()
         except Exception:
             pass
 
-    # Register Blueprints
+    # 3. Register Blueprints
     from app.routes.auth import auth_bp
     from app.routes.typing import typing_bp
     from app.routes.dashboard import dashboard_bp
@@ -61,6 +63,8 @@ def create_app(config_class=Config):
     from app.routes.admin import admin_bp
     from app.routes.settings import settings_bp
     from app.routes.feedback import feedback_bp
+    from app.routes.learn import learn_bp
+    from app.routes.games import games_bp
 
     app.register_blueprint(auth_bp, url_prefix='/auth')
     app.register_blueprint(typing_bp, url_prefix='/typing')
@@ -71,8 +75,9 @@ def create_app(config_class=Config):
     app.register_blueprint(admin_bp, url_prefix='/admin')
     app.register_blueprint(settings_bp, url_prefix='/settings')
     app.register_blueprint(feedback_bp, url_prefix='/feedback')
+    app.register_blueprint(learn_bp, url_prefix='/learn')
+    app.register_blueprint(games_bp, url_prefix='/games')
 
-    # Root route and /typing/ represent the identical homepage cleanly
     @app.route('/')
     def root_home():
         from app.routes.typing import test_page

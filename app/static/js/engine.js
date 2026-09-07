@@ -1,7 +1,10 @@
 /**
- * TypeSphere Core Typing Engine
- * Supports infinite passage streaming for all timed tests (1-20 min),
- * No Time Limit mode, default Blind Mode ON, Ghost Mode OFF, and smooth caret autoscroll.
+ * TypeSphere Core Engine (v2.3 Evolution)
+ * - Infinite text streaming: tests never terminate because text ran out
+ * - No Time Limit mode support
+ * - Blind Mode: ON by default
+ * - Ghost Mode: OFF by default
+ * - Keyboard visible by default
  */
 class TypingEngine {
   constructor() {
@@ -14,8 +17,8 @@ class TypingEngine {
     this.timerInterval = null;
     
     // Default Test Parameters
-    this.durationLimit = 60; // 60s, 120s, 300s, 600s, 1200s, 0 (No Limit)
-    this.contentType = 'words'; // words, quotes, numbers, punctuation, words_numbers, code, custom
+    this.durationLimit = 60; // 15s to 1200s, or 0 (No Time Limit)
+    this.contentType = 'speed'; // speed, practice, full_passage, quote, story, article, numbers, numbers_text, punctuation, data_entry, professional, coding, custom
     this.level = 'moderate'; // easy, moderate, hard, expert
     this.codeLanguage = 'python';
 
@@ -33,7 +36,7 @@ class TypingEngine {
     this.streak = 0;
     this.errors = 0;
 
-    // DOM Elements
+    // DOM Caches
     this.container = document.getElementById('typing-box');
     this.display = document.getElementById('text-display');
     this.caret = document.getElementById('caret');
@@ -45,42 +48,47 @@ class TypingEngine {
     this.speedometerArc = document.getElementById('speedo-arc');
     this.pauseModal = document.getElementById('pause-modal');
     this.mobileProxy = document.getElementById('mobile-text-proxy');
+    this.keyboardContainer = document.getElementById('keyboard-container');
+
+    // Guarantee keyboard visibility on startup
+    if (this.keyboardContainer) {
+      this.keyboardContainer.style.display = 'flex';
+    }
 
     this.bindEvents();
     this.loadUserSessionPreferences();
   }
 
   loadUserSessionPreferences() {
-    // Read session/local preferences if available
     const prefs = window.settingsManager ? window.settingsManager.current : null;
     if (prefs) {
-      this.durationLimit = prefs.default_duration !== undefined ? prefs.default_duration : 60;
-      this.contentType = prefs.default_content || 'words';
-      this.level = prefs.default_level || 'moderate';
-      this.blindModeActive = prefs.blind_mode !== undefined ? prefs.blind_mode : true;
-      this.ghostEnabled = prefs.ghost_mode !== undefined ? prefs.ghost_mode : false;
+      if (prefs.default_duration !== undefined) this.durationLimit = prefs.default_duration;
+      if (prefs.default_content) this.contentType = prefs.default_content;
+      if (prefs.default_level) this.level = prefs.default_level;
+      if (prefs.blind_mode !== undefined) this.blindModeActive = prefs.blind_mode;
+      if (prefs.ghost_mode !== undefined) this.ghostEnabled = prefs.ghost_mode;
     }
     this.updateControlsUI();
   }
 
   updateControlsUI() {
-    const timeSelect = document.getElementById('config-time-select');
-    const contentSelect = document.getElementById('config-content-select');
-    const levelSelect = document.getElementById('config-level-select');
-    const blindBtn = document.getElementById('toggle-blind-btn');
-    const ghostBtn = document.getElementById('toggle-ghost-btn');
+    const typeSelect = document.getElementById('cfg-type-select');
+    const timeSelect = document.getElementById('cfg-time-select');
+    const diffSelect = document.getElementById('cfg-diff-select');
+    const btnBlind = document.getElementById('btn-blind');
+    const btnGhost = document.getElementById('btn-ghost');
 
+    if (typeSelect) typeSelect.value = this.contentType;
     if (timeSelect) timeSelect.value = this.durationLimit.toString();
-    if (contentSelect) contentSelect.value = this.contentType;
-    if (levelSelect) levelSelect.value = this.level;
+    if (diffSelect) diffSelect.value = this.level;
 
-    if (blindBtn) {
-      blindBtn.textContent = `Blind Mode: ${this.blindModeActive ? 'ON' : 'OFF'}`;
-      blindBtn.classList.toggle('active-choice', this.blindModeActive);
+    if (btnBlind) {
+      btnBlind.textContent = `Blind: ${this.blindModeActive ? 'ON' : 'OFF'}`;
+      btnBlind.classList.toggle('active-choice', this.blindModeActive);
     }
-    if (ghostBtn) {
-      ghostBtn.textContent = `Ghost: ${this.ghostEnabled ? 'ON' : 'OFF'}`;
-      ghostBtn.classList.toggle('active-choice', this.ghostEnabled);
+    if (btnGhost) {
+      btnGhost.textContent = `Ghost: ${this.ghostEnabled ? 'ON' : 'OFF'}`;
+      btnGhost.classList.toggle('active-choice', this.ghostEnabled);
     }
   }
 
@@ -100,7 +108,7 @@ class TypingEngine {
     }
 
     try {
-      const url = `/typing/api/text?content_type=${encodeURIComponent(this.contentType)}&level=${encodeURIComponent(this.level)}&code_lang=${encodeURIComponent(this.codeLanguage)}&batch_size=70`;
+      const url = `/typing/api/text?test_type=${encodeURIComponent(this.contentType)}&level=${encodeURIComponent(this.level)}&code_lang=${encodeURIComponent(this.codeLanguage)}`;
       const res = await fetch(url);
       const data = await res.json();
       const newChunk = (data.content || "").trim();
@@ -114,7 +122,7 @@ class TypingEngine {
         this.reset();
       }
     } catch {
-      const fallback = "The quick brown fox jumps over the lazy dog. Programming and precision define the craft of digital mastery.";
+      const fallback = "Speed and precision compound into true keyboard mastery. Consistent cadence and deliberate finger movement build enduring velocity.";
       if (append) {
         this.targetText += " " + fallback;
         this.renderText(true);
@@ -139,7 +147,6 @@ class TypingEngine {
       this.display.appendChild(fragment);
       this.updateCaretPosition();
     } else {
-      // Smoothly append characters without re-rendering existing spans
       const currentSpanCount = this.display.children.length;
       const fragment = document.createDocumentFragment();
       for (let i = currentSpanCount; i < this.targetText.length; i++) {
@@ -175,7 +182,6 @@ class TypingEngine {
     this.hudErrors.textContent = '0';
     this.updateSpeedometer(0);
 
-    // Initial Time HUD display
     if (this.durationLimit > 0) {
       this.hudTime.textContent = this.formatTimeDisplay(this.durationLimit);
     } else {
@@ -185,6 +191,10 @@ class TypingEngine {
     const spans = this.display.querySelectorAll('.char');
     spans.forEach(s => s.className = 'char');
     this.updateCaretPosition();
+
+    if (window.virtualKeyboard && this.targetText.length > 0) {
+      window.virtualKeyboard.updateCurrentExpectedKey(this.targetText[0]);
+    }
   }
 
   formatTimeDisplay(totalSeconds) {
@@ -279,7 +289,6 @@ class TypingEngine {
 
     const now = performance.now() / 1000.0;
 
-    // Start clock on initial strike
     if (!this.startTime) {
       this.startTime = now;
       this.startTick(false);
@@ -291,10 +300,10 @@ class TypingEngine {
 
     const expectedChar = this.targetText[this.currentIndex];
 
-    // Handle Backspace (Disabled if Blind Mode is ON)
+    // Backspace: In Blind Mode (default ON), Backspace is disabled
     if (key === 'Backspace') {
       if (originalEvent) originalEvent.preventDefault();
-      if (this.blindModeActive) return; // Disables Backspace in Blind Mode
+      if (this.blindModeActive) return;
 
       if (this.currentIndex > 0) {
         this.currentIndex--;
@@ -328,13 +337,22 @@ class TypingEngine {
       timestamp: parseFloat(now.toFixed(4))
     });
 
+    if (window.virtualKeyboard) {
+      window.virtualKeyboard.highlightKey(key);
+      window.virtualKeyboard.recordKeyMetric(expectedChar, key, isCorrect, 0);
+    }
+
     this.currentIndex++;
     this.updateCaretPosition();
     this.updateLiveStats(now);
 
-    // Continuous Infinite Text Streaming: Request additional text before reaching end
+    // Continuous Infinite Text Streaming: Load subsequent passages before reaching the boundary
     if (this.currentIndex >= spans.length - 25) {
       this.loadPrompt(true);
+    }
+
+    if (window.virtualKeyboard && this.currentIndex < this.targetText.length) {
+      window.virtualKeyboard.updateCurrentExpectedKey(this.targetText[this.currentIndex]);
     }
   }
 
@@ -353,7 +371,6 @@ class TypingEngine {
           this.finishTest();
         }
       } else {
-        // No Time Limit stopwatch mode
         this.hudTime.textContent = `${this.formatTimeDisplay(this.tickElapsed)} (No Limit)`;
       }
     }, 1000);
@@ -411,8 +428,7 @@ class TypingEngine {
       this.caret.style.left = `${target.offsetLeft}px`;
       this.caret.style.top = `${target.offsetTop + 4}px`;
 
-      // Smooth Line Auto-Centering
-      const targetMid = target.offsetTop - (this.container.clientHeight / 2) + 30;
+      const targetMid = target.offsetTop - (this.container.clientHeight / 2) + 25;
       if (Math.abs(this.container.scrollTop - targetMid) > 20) {
         this.container.scrollTo({
           top: Math.max(0, targetMid),
@@ -454,7 +470,6 @@ class TypingEngine {
         window.location.href = `/typing/result/${data.test_id}`;
       }
     } catch {
-      // Local recovery
       window.location.reload();
     }
   }
