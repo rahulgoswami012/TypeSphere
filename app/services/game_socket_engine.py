@@ -1,117 +1,146 @@
 import time
 import random
 from flask import request
-from flask_login import current_user
 from flask_socketio import emit, join_room, leave_room
 from app import socketio, db
 from app.models.game import GameRecord, ArcadeLeaderboard
 from app.services.arcade_content_engine import ArcadeContentEngine
 from app.services.ai_typist_engine import AITypistSimulator
 
-ARCADE_ROOMS = {} # room_code -> room_state
-ARCADE_QUEUES = {} # game_mode -> [{'sid', 'name', 'user_id', 'wpm'}]
-ARCADE_SID_MAP = {} # sid -> room_code
+ARCADE_ROOMS = {}
+ARCADE_SOCKET_MAP = {}
 
 def register_arcade_socket_events():
-    @socketio.on('arcade_init')
-    def handle_arcade_init(data):
-        game_mode = data.get('game_mode', 'falling_words')
-        play_mode = data.get('play_mode', 'solo_ai') # 'solo_ai', '1v1_private', '1v1_matchmake', 'multiplayer'
-        difficulty = data.get('difficulty', 'intermediate')
-        ai_level = data.get('ai_level', 'intermediate')
-        custom_code = (data.get('room_code') or '').strip().upper()
-        player_name = data.get('player_name', 'Pilot')
+    @socketio.on('arcade_room_create')
+    def on_arcade_create(data):
         sid = request.sid
+        game_slug = data.get('game_slug')
+        mode = data.get('play_mode', 'solo_ai')
+        difficulty = data.get('difficulty', 'moderate')
+        objective_type = data.get('objective_type', 'timed')
+        objective_val = data.get('objective_val', 60)
+        blind_mode = bool(data.get('blind_mode', False))
+        backspace_allowed = bool(data.get('backspace_allowed', True))
+        player_name = data.get('player_name', 'Pilot')
+        custom_code = (data.get('room_code') or '').strip().upper()
 
-        # 1. Clean prior sessions
-        cleanup_arcade_socket(sid)
+        cleanup_socket(sid)
 
-        # 2. Solo with AI Opponent
-        if play_mode == 'solo_ai':
-            room_code = f"AI-{sid[:6].upper()}"
-            content = ArcadeContentEngine.get_content_batch(game_mode, difficulty, count=40)
-            
-            ARCADE_ROOMS[room_code] = {
-                'game_mode': game_mode,
-                'play_mode': 'solo_ai',
-                'difficulty': difficulty,
-                'status': 'active',
-                'start_time': time.time(),
-                'content': content,
-                'players': {
-                    sid: {'name': player_name, 'score': 0, 'progress': 0, 'wpm': 0, 'finished': False, 'is_ai': False},
-                    'ai_bot': {'name': f"CyberTypist ({ai_level.title()})", 'score': 0, 'progress': 0, 'wpm': 0, 'finished': False, 'is_ai': True}
-                },
-                'ai_sim': AITypistSimulator(level=ai_level)
+        room_code = custom_code or f"G-{random.randint(1000, 9999)}"
+        content = ArcadeContentEngine.get_content_batch(game_slug, difficulty, count=40, extra_filters=data)
+
+        ARCADE_ROOMS[room_code] = {
+            'room_code': room_code,
+            'game_slug': game_slug,
+            'play_mode': mode,
+            'difficulty': difficulty,
+            'objective_type': objective_type,
+            'objective_val': objective_val,
+            'blind_mode': blind_mode,
+            'backspace_allowed': backspace_allowed,
+            'content': content,
+            'status': 'lobby' if mode != 'solo_ai' else 'racing',
+            'host_sid': sid,
+            'created_at': time.time(),
+            'start_time': time.time(),
+            'players': {
+                sid: {
+                    'name': player_name,
+                    'progress': 0.0,
+                    'score': 0,
+                    'wpm': 0,
+                    'accuracy': 100,
+                    'errors': 0,
+                    'finished': False,
+                    'ready': True,
+                    'is_ai': False
+                }
             }
-            ARCADE_SID_MAP[sid] = room_code
-            join_room(room_code)
-            emit('arcade_session_started', {'room_code': room_code, 'content': content, 'is_solo': True})
+        }
+
+        if mode == 'solo_ai':
+            ARCADE_ROOMS[room_code]['players']['ai_bot'] = {
+                'name': f"CyberBot ({difficulty.title()})",
+                'progress': 0.0,
+                'score': 0,
+                'wpm': 0,
+                'accuracy': 98,
+                'errors': 0,
+                'finished': False,
+                'ready': True,
+                'is_ai': True
+            }
+            ARCADE_ROOMS[room_code]['ai_sim'] = AITypistSimulator(difficulty=difficulty)
+
+        ARCADE_SOCKET_MAP[sid] = room_code
+        join_room(room_code)
+        emit('arcade_room_ready', ARCADE_ROOMS[room_code])
+
+    @socketio.on('arcade_room_join')
+    def on_arcade_join(data):
+        sid = request.sid
+        room_code = (data.get('room_code') or '').strip().upper()
+        player_name = data.get('player_name', 'Pilot')
+
+        if room_code not in ARCADE_ROOMS:
+            emit('arcade_error', {'message': f"Room {room_code} not found."})
             return
 
-        # 3. Private 1v1 Room Creation or Join
-        if play_mode in ['1v1_private', 'multiplayer']:
-            if custom_code and custom_code in ARCADE_ROOMS:
-                room = ARCADE_ROOMS[custom_code]
-                if room['status'] != 'lobby':
-                    emit('arcade_error', {'message': 'This room has already started.'})
-                    return
-                if len(room['players']) >= room['max_players']:
-                    emit('arcade_error', {'message': 'Room is full.'})
-                    return
-                
-                room['players'][sid] = {'name': player_name, 'score': 0, 'progress': 0, 'wpm': 0, 'ready': False, 'finished': False, 'is_ai': False}
-                ARCADE_SID_MAP[sid] = custom_code
-                join_room(custom_code)
-                emit('arcade_room_joined', {'room_code': custom_code, 'players': room['players'], 'is_host': False})
-                emit('arcade_lobby_update', {'players': room['players']}, room=custom_code)
-            else:
-                new_code = custom_code or f"ARC-{random.randint(1000, 9999)}"
-                content = ArcadeContentEngine.get_content_batch(game_mode, difficulty, count=40)
-                max_p = 2 if play_mode == '1v1_private' else int(data.get('max_players', 4))
-                
-                ARCADE_ROOMS[new_code] = {
-                    'game_mode': game_mode,
-                    'play_mode': play_mode,
-                    'difficulty': difficulty,
-                    'status': 'lobby',
-                    'host_sid': sid,
-                    'max_players': max_p,
-                    'content': content,
-                    'players': {
-                        sid: {'name': player_name, 'score': 0, 'progress': 0, 'wpm': 0, 'ready': True, 'finished': False, 'is_ai': False}
-                    }
-                }
-                ARCADE_SID_MAP[sid] = new_code
-                join_room(new_code)
-                emit('arcade_room_joined', {'room_code': new_code, 'players': ARCADE_ROOMS[new_code]['players'], 'is_host': True})
+        room = ARCADE_ROOMS[room_code]
+        if room['status'] != 'lobby':
+            emit('arcade_error', {'message': 'Game already in progress.'})
+            return
 
-    @socketio.on('arcade_ai_tick')
-    def handle_ai_tick(data):
+        if len(room['players']) >= 4:
+            emit('arcade_error', {'message': 'Room full.'})
+            return
+
+        cleanup_socket(sid)
+
+        room['players'][sid] = {
+            'name': player_name,
+            'progress': 0.0,
+            'score': 0,
+            'wpm': 0,
+            'accuracy': 100,
+            'errors': 0,
+            'finished': False,
+            'ready': False,
+            'is_ai': False
+        }
+
+        ARCADE_SOCKET_MAP[sid] = room_code
+        join_room(room_code)
+        emit('arcade_room_ready', room)
+        emit('arcade_roster_update', {'players': room['players']}, room=room_code)
+
+    @socketio.on('arcade_toggle_ready')
+    def on_arcade_ready():
         sid = request.sid
-        room_code = ARCADE_SID_MAP.get(sid)
+        room_code = ARCADE_SOCKET_MAP.get(sid)
         if not room_code or room_code not in ARCADE_ROOMS:
             return
         room = ARCADE_ROOMS[room_code]
-        if room.get('play_mode') != 'solo_ai' or not room.get('ai_sim'):
-            return
-        
-        delta = float(data.get('delta', 0.2))
-        ai_data = room['players']['ai_bot']
-        new_prog, cur_wpm = room['ai_sim'].get_progress_step(delta, ai_data['progress'], 250)
-        
-        ai_data['progress'] = new_prog
-        ai_data['wpm'] = cur_wpm
-        ai_data['score'] = int(new_prog * 12)
-        if new_prog >= 100:
-            ai_data['finished'] = True
-            
-        emit('arcade_sync_tick', {'players': room['players']}, room=room_code)
+        if sid in room['players']:
+            room['players'][sid]['ready'] = not room['players'][sid]['ready']
+            emit('arcade_roster_update', {'players': room['players']}, room=room_code)
 
-    @socketio.on('arcade_player_progress')
-    def handle_player_progress(data):
+    @socketio.on('arcade_start_countdown')
+    def on_arcade_start():
         sid = request.sid
-        room_code = ARCADE_SID_MAP.get(sid)
+        room_code = ARCADE_SOCKET_MAP.get(sid)
+        if not room_code or room_code not in ARCADE_ROOMS:
+            return
+        room = ARCADE_ROOMS[room_code]
+        if room['host_sid'] != sid:
+            return
+        room['status'] = 'countdown'
+        emit('arcade_countdown_trigger', {'duration': 3}, room=room_code)
+
+    @socketio.on('arcade_progress_sync')
+    def on_progress_sync(data):
+        sid = request.sid
+        room_code = ARCADE_SOCKET_MAP.get(sid)
         if not room_code or room_code not in ARCADE_ROOMS:
             return
         room = ARCADE_ROOMS[room_code]
@@ -119,24 +148,41 @@ def register_arcade_socket_events():
             return
 
         p = room['players'][sid]
-        p['progress'] = float(data.get('progress', 0))
+        p['progress'] = float(data.get('progress', 0.0))
         p['score'] = int(data.get('score', 0))
         p['wpm'] = float(data.get('wpm', 0))
         p['accuracy'] = float(data.get('accuracy', 100))
-        p['combo'] = int(data.get('combo', 0))
-        
-        if p['progress'] >= 100 and not p['finished']:
+        p['errors'] = int(data.get('errors', 0))
+        if data.get('finished'):
             p['finished'] = True
-            p['finish_time'] = round(time.time() - room.get('start_time', time.time()), 2)
-            
-        emit('arcade_sync_tick', {'players': room['players']}, room=room_code)
 
-    @socketio.on('arcade_disconnect')
-    def handle_arcade_disconnect():
-        cleanup_arcade_socket(request.sid)
+        emit('arcade_live_telemetry', {'players': room['players']}, room=room_code)
 
-def cleanup_arcade_socket(sid):
-    room_code = ARCADE_SID_MAP.pop(sid, None)
+    @socketio.on('arcade_ai_tick')
+    def on_ai_tick(data):
+        sid = request.sid
+        room_code = ARCADE_SOCKET_MAP.get(sid)
+        if not room_code or room_code not in ARCADE_ROOMS:
+            return
+        room = ARCADE_ROOMS[room_code]
+        if 'ai_sim' not in room or 'ai_bot' not in room['players']:
+            return
+
+        delta = float(data.get('delta', 0.25))
+        total_len = int(data.get('total_chars', 300))
+        prog, wpm = room['ai_sim'].step(delta, total_len)
+
+        bot = room['players']['ai_bot']
+        bot['progress'] = prog
+        bot['wpm'] = wpm
+        bot['score'] = int(prog * 15)
+        if prog >= 100:
+            bot['finished'] = True
+
+        emit('arcade_live_telemetry', {'players': room['players']}, room=room_code)
+
+def cleanup_socket(sid):
+    room_code = ARCADE_SOCKET_MAP.pop(sid, None)
     if room_code and room_code in ARCADE_ROOMS:
         room = ARCADE_ROOMS[room_code]
         leave_room(room_code, sid=sid)
@@ -145,4 +191,4 @@ def cleanup_arcade_socket(sid):
         if not room['players'] or (len(room['players']) == 1 and 'ai_bot' in room['players']):
             del ARCADE_ROOMS[room_code]
         else:
-            emit('arcade_lobby_update', {'players': room['players']}, room=room_code)
+            emit('arcade_roster_update', {'players': room['players']}, room=room_code)

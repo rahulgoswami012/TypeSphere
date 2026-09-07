@@ -2,125 +2,131 @@ import random
 from app.models.arcade_content import ArcadeContentItem
 from app.models.typing import TypingDNA
 
-DEFAULT_WORDBANK = {
-    'beginner': [
-        "cat", "sun", "dog", "run", "sky", "red", "cup", "box", "key", "pen", 
-        "map", "hat", "top", "ice", "fly", "car", "sea", "air", "day", "art"
+DEFAULT_WORDBANKS = {
+    'easy': [
+        "sun", "cat", "dog", "run", "sky", "red", "cup", "box", "key", "pen",
+        "map", "hat", "top", "ice", "fly", "car", "sea", "air", "day", "art",
+        "glad", "tree", "fast", "blue", "gold", "wind", "lamp", "book", "ship"
     ],
-    'intermediate': [
-        "planet", "kinetic", "stream", "rhythm", "velocity", "circuit", "matrix", 
+    'moderate': [
+        "planet", "kinetic", "stream", "rhythm", "velocity", "circuit", "matrix",
         "focus", "cadence", "tactile", "engine", "quantum", "sphere", "anchor",
-        "balance", "command", "transit", "standard", "channel", "motion", "action"
+        "balance", "command", "transit", "standard", "channel", "motion", "action",
+        "control", "forward", "measure", "pattern", "dynamic", "pressure", "network"
     ],
-    'advanced': [
+    'hard': [
         "algorithm", "asynchronous", "biometric", "cryptographic", "differentiation",
-        "electromagnetic", "heterogeneous", "infrastructure", "jurisdiction", 
-        "nanotechnology", "neurochemical", "orthogonal", "pharmaceutical", "photosynthesis"
+        "electromagnetic", "heterogeneous", "infrastructure", "jurisdiction",
+        "nanotechnology", "neurochemical", "orthogonal", "pharmaceutical", "photosynthesis",
+        "reconciliation", "sophisticated", "synchronization", "unprecedented", "telemetry"
     ],
     'expert': [
-        "anachronistic", "circumlocution", "epistemological", "grandiloquent",
-        "idiosyncrasy", "juxtaposition", "lexicographical", "metamorphosis",
+        "anachronistic", "antediluvian", "circumlocution", "counterintuitive",
+        "crystallization", "deleterious", "disproportionate", "epistemological",
+        "existentialism", "grandiloquent", "idiosyncrasy", "juxtaposition",
+        "lexicographical", "magnanimous", "metamorphosis", "multidimensional",
         "panegyric", "phenomenological", "sesquipedalian", "synchronicity"
     ]
 }
 
-CIPHER_SEQUENCES = {
-    'level_1': ["7A9F", "B42C", "X98K", "M441", "Q309", "12FF", "A01B"],
-    'level_2': ["0x7FA9", "0xDE4B", "0x91C0", "0xAA12", "0xFF00", "0x00A1", "0x33C2"],
-    'level_3': ["PORT:443", "AES-256", "HASH#994", "KEY$881", "SYS!110", "TLS/1.3"],
-    'level_4': ["const x = 0x4F;", "while(true){}", "db.query()", "git commit -m", "chmod 777"]
+SPEED_RACER_TRACKS = {
+    'easy': [
+        "The car sped down the sunny track as the green flag waved to start the race.",
+        "Smooth turns and steady hands keep the engine cool and the momentum high.",
+        "Accelerate past the line with clean shifts and calm focus on every movement."
+    ],
+    'moderate': [
+        "The open highway stretched across the desert floor under a wide expanse of pale morning sky. High velocity demands relaxed control and steady breathing. When the throttle opens every second compounds into pure forward momentum.",
+        "Aerodynamic contours slice through the crosswinds while tire grip holds the apex through turn four. Precision steering and rhythmic engine shifts maintain the optimal racing line.",
+        "Competitive speed is born from calculated motion. Downshifting before the curve preserves brake integrity and guarantees blistering acceleration down the main straight."
+    ],
+    'hard': [
+        "Turbocharged combustion engines synchronize fuel injection micro-pulses across high-octane cylinders. Navigating high-speed chicanes without losing tire adhesion requires instantaneous neuromuscular reactions and unyielding concentration.",
+        "Telemetry monitors indicate optimal differential gear lockup through the banking sequence. Balancing throttle modulation against mechanical slip angles differentiates elite drivers from the rest of the grid."
+    ],
+    'expert': [
+        "Carbon-composite aerodynamic splitters generate tremendous localized downforce, counteracting high-velocity vortex turbulence through asymmetrical chicanes. Maintaining peak mechanical efficiency under extreme thermal dissipation separates champions."
+    ]
 }
 
-KEYBOARD_QUEST_CURRICULUM = [
-    {"level": 1, "title": "Home Row Anchor", "keys": "asdf jkl;", "targets": ["a", "s", "d", "f", "j", "k", "l", ";", "fad", "glad", "flask", "half"]},
-    {"level": 2, "title": "Top Row Reaches", "keys": "qwer tyui op", "targets": ["quit", "wire", "tree", "pure", "power", "tower", "quote", "write"]},
-    {"level": 3, "title": "Bottom Row Tucks", "keys": "zxcv bnm", "targets": ["zinc", "calm", "move", "bomb", "cabin", "vanish", "mimic", "comb"]},
-    {"level": 4, "title": "Top Row Numbers", "keys": "12345 67890", "targets": ["102", "394", "582", "710", "934", "681", "205", "461"]},
-    {"level": 5, "title": "Symbols & Brackets", "keys": "{} [] () <> /", "targets": ["{x}", "[y]", "(z)", "<w>", "a/b", "{[]}", "<()>", "[{}]"]}
-]
+CHARACTER_COLLECTIONS = {
+    'letters': [chr(i) for i in range(97, 123)],
+    'uppercase': [chr(i) for i in range(65, 91)],
+    'numbers': [str(i) for i in range(10)],
+    'symbols': list("!@#$%^&*()-_=+[]{}|;:,.<>?/"),
+    'punctuation': list(".,;:!?'\"-()")
+}
 
 class ArcadeContentEngine:
     @staticmethod
-    def get_content_batch(game_mode, difficulty='intermediate', count=20, user_id=None, extra_filters=None):
-        """
-        Retrieves curated content from DB or fallbacks, injecting user-weak keys if applicable.
-        """
+    def get_content_batch(game_mode, difficulty='moderate', count=25, user_id=None, extra_filters=None):
         extra_filters = extra_filters or {}
-        difficulty = difficulty.lower()
+        diff = difficulty.lower() if difficulty.lower() in DEFAULT_WORDBANKS else 'moderate'
         
-        # 1. Check for weak-key targeting
         weak_keys = []
         if user_id and extra_filters.get('target_weaknesses'):
             dna = TypingDNA.query.filter_by(user_id=user_id).first()
             if dna:
                 stats = dna.get_key_stats()
                 for k, v in stats.items():
-                    if v.get('total', 0) >= 3 and (v.get('errors', 0) / v['total']) > 0.08:
+                    if v.get('total', 0) >= 4 and (v.get('errors', 0) / v['total']) > 0.07:
                         weak_keys.append(k.lower())
 
-        # 2. Query DB content items
-        items = ArcadeContentItem.query.filter_by(
-            game_mode=game_mode, 
-            difficulty=difficulty, 
-            is_active=True
-        ).limit(100).all()
+        # Speed Racer Passages
+        if game_mode == 'speed_racer':
+            passages = SPEED_RACER_TRACKS.get(diff, SPEED_RACER_TRACKS['moderate'])
+            return [random.choice(passages)]
 
-        if items:
-            texts = [i.target_text for i in items]
-            random.shuffle(texts)
-            return texts[:count]
-
-        # 3. Dedicated Game Fallbacks
-        if game_mode in ['falling_words', 'speed_racer', 'word_blitz', 'typing_ninja', 'space_defender']:
-            pool = DEFAULT_WORDBANK.get(difficulty, DEFAULT_WORDBANK['intermediate'])
-            if weak_keys:
-                # Prioritize words with weak keys
-                matched = [w for w in pool if any(k in w for k in weak_keys)]
-                if len(matched) >= count:
-                    return random.sample(matched, count)
+        # Bubble Pop Single Characters
+        if game_mode == 'bubble_pop':
+            char_mode = extra_filters.get('char_mode', 'letters')
+            if char_mode == 'weak_keys' and weak_keys:
+                pool = [k.upper() for k in weak_keys] * 6
+            elif char_mode == 'letters_numbers':
+                pool = CHARACTER_COLLECTIONS['letters'] + CHARACTER_COLLECTIONS['numbers']
+            elif char_mode == 'mixed_all':
+                pool = (CHARACTER_COLLECTIONS['letters'] + CHARACTER_COLLECTIONS['uppercase'] + 
+                        CHARACTER_COLLECTIONS['numbers'] + CHARACTER_COLLECTIONS['symbols'])
+            else:
+                pool = CHARACTER_COLLECTIONS.get(char_mode, CHARACTER_COLLECTIONS['letters'])
             return [random.choice(pool) for _ in range(count)]
 
-        elif game_mode == 'bubble_pop':
-            target_type = extra_filters.get('bubble_target_type', 'lowercase')
-            if target_type == 'uppercase':
-                chars = [chr(i) for i in range(65, 91)]
-            elif target_type == 'numbers':
-                chars = [str(i) for i in range(10)]
-            elif target_type == 'symbols':
-                chars = list("!@#$%^&*()-_=+[]{}|;:,.<>?/")
-            elif target_type == 'weak_keys' and weak_keys:
-                chars = [k.upper() for k in weak_keys] * 5
-            else:
-                chars = [chr(i) for i in range(97, 123)]
-            return [random.choice(chars) for _ in range(count)]
+        # Cipher Hacker Layers
+        if game_mode == 'cipher_hacker':
+            layer_schemes = {
+                'easy': [["0xA1", "0xB2", "0xC3", "0xD4"], ["PORT:80", "SSL:ON", "SYS:OK"], ["HASH_44", "NET_99"]],
+                'moderate': [["0x7FA9", "0xDE4B", "0x91C0"], ["AES_256", "SHA_512", "TLS_13"], ["chmod 755", "int main()"]],
+                'hard': [["0xDEADBEEF", "0xCAFEBABE"], ["RSA_4096_PKCS", "ECDSA_P384"], ["void* ptr = malloc(sz);"]],
+                'expert': [["0xFF00AA55BB66CC77"], ["const auto&& lambda = [](){};"], ["while(asm volatile(\"\")){}"]]
+            }
+            return layer_schemes.get(diff, layer_schemes['moderate'])
 
-        elif game_mode == 'cipher_hacker':
-            layer = extra_filters.get('layer', 1)
-            layer_key = f"level_{min(4, layer)}"
-            return CIPHER_SEQUENCES.get(layer_key, CIPHER_SEQUENCES['level_1'])
+        # Whack-A-Word Targets
+        if game_mode == 'whack_a_word':
+            target_type = extra_filters.get('target_type', 'words')
+            if target_type == 'characters':
+                return [random.choice(CHARACTER_COLLECTIONS['letters']) for _ in range(count)]
+            if target_type == 'numbers':
+                return [str(random.randint(10, 9999)) for _ in range(count)]
+            if target_type == 'symbols':
+                return [random.choice(CHARACTER_COLLECTIONS['symbols']) for _ in range(count)]
+            return random.sample(DEFAULT_WORDBANKS[diff], min(count, len(DEFAULT_WORDBANKS[diff])))
 
-        elif game_mode == 'bomb_defuse':
-            # Returns progressive codes of increasing length
+        # Bomb Defuse Codes
+        if game_mode == 'bomb_defuse':
             codes = []
+            base_len = {'easy': 4, 'moderate': 6, 'hard': 8, 'expert': 10}.get(diff, 6)
+            pool = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+            if diff in ['hard', 'expert']:
+                pool += "#!$%&*"
             for i in range(count):
-                length = min(12, 3 + (i // 2))
-                pool = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#" if difficulty in ['advanced', 'expert'] else "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
-                codes.append("".join(random.choices(pool, k=length)))
+                codes.append("".join(random.choices(pool, k=base_len + (i // 2))))
             return codes
 
-        elif game_mode == 'keyboard_quest':
-            stage = extra_filters.get('stage', 1) - 1
-            stage_data = KEYBOARD_QUEST_CURRICULUM[min(len(KEYBOARD_QUEST_CURRICULUM) - 1, max(0, stage))]
-            return stage_data['targets']
-
-        elif game_mode == 'memory_type':
-            # Flash sequences (words or character strings)
-            sequences = []
-            length_base = 3 if difficulty == 'beginner' else (5 if difficulty == 'intermediate' else 7)
-            for _ in range(count):
-                pool = "abcdefghijklmnopqrstuvwxyz" if difficulty != 'expert' else "abcdefghijklmnopqrstuvwxyz0123456789!@#"
-                sequences.append("".join(random.choices(pool, k=length_base)))
-            return sequences
-
-        # Fallback word generator
-        return random.sample(DEFAULT_WORDBANK['intermediate'], min(count, len(DEFAULT_WORDBANK['intermediate'])))
+        # Generic Word Pool (Falling Words, Zombie Defense, Space Defender, Typing Ninja)
+        pool = DEFAULT_WORDBANKS.get(diff, DEFAULT_WORDBANKS['moderate'])
+        if weak_keys:
+            matched = [w for w in pool if any(k in w for k in weak_keys)]
+            if len(matched) >= count:
+                return random.sample(matched, count)
+        return random.sample(pool, min(count, len(pool)))

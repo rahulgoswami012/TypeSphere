@@ -1,133 +1,176 @@
+/* TypeSphere Unified Arcade Canvas & Animation System */
 #arcade-viewport {
-  box-shadow: inset 0 0 35px rgba(0, 0, 0, 0.6);
+  position: relative;
+  width: 100%;
+  height: 480px;
+  background: var(--bg-secondary);
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius);
+  overflow: hidden;
+  outline: none;
   user-select: none;
+  box-shadow: inset 0 0 35px rgba(0, 0, 0, 0.65);
 }
 
-/* Speed Racer Circuit */
-.racer-lane-stripes {
+/* ============================================================
+   SPEED RACER MULTI-LANE TRACK SYSTEM
+   ============================================================ */
+.racer-track-surface {
   position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 100%;
-  background: repeating-linear-gradient(
+  inset: 0;
+  background: #14171f;
+  background-image: repeating-linear-gradient(
     90deg,
-    transparent,
-    transparent 58px,
-    rgba(255, 255, 255, 0.08) 58px,
-    rgba(255, 255, 255, 0.08) 60px
+    rgba(255, 255, 255, 0.03) 0px,
+    rgba(255, 255, 255, 0.03) 80px,
+    rgba(255, 255, 255, 0.07) 80px,
+    rgba(255, 255, 255, 0.07) 82px
   );
 }
 
-/* Freestanding Car Icons: No enclosing boxes, enlarged, flipped forward to face finish line on right */
-.racer-car-entity {
+.racer-lane-divider {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: repeating-linear-gradient(90deg, rgba(255,255,255,0.15) 0, rgba(255,255,255,0.15) 30px, transparent 30px, transparent 60px);
+}
+
+.racer-finish-gate {
+  position: absolute;
+  right: 40px;
+  top: 0;
+  bottom: 0;
+  width: 14px;
+  background: repeating-linear-gradient(
+    0deg,
+    #ffffff 0,
+    #ffffff 12px,
+    #111111 12px,
+    #111111 24px
+  );
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.4);
+  z-index: 5;
+}
+
+.racer-vehicle-node {
   position: absolute;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  transition: left 0.12s linear;
+  transition: left 0.08s linear;
   z-index: 10;
-  pointer-events: none;
 }
 
-.racer-car-icon {
-  font-size: 2.5rem; /* Larger icon without rectangle box */
+.racer-vehicle-icon {
+  font-size: 2.8rem;
   line-height: 1;
   display: inline-block;
-  transform: scaleX(-1); /* Flips car forward toward finish line on the right */
-  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.6));
+  transform: scaleX(-1);
+  filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.6));
 }
 
-.racer-pilot-label {
+.racer-hud-tag {
   font-family: var(--font-sans);
   font-size: 0.72rem;
   font-weight: 800;
-  padding: 0.15rem 0.45rem;
+  padding: 0.15rem 0.5rem;
   border-radius: 4px;
-  white-space: nowrap;
-  margin-top: 2px;
-  background: rgba(11, 15, 23, 0.85);
+  background: rgba(11, 15, 23, 0.9);
   border: 1px solid var(--border-color);
   color: var(--text-primary);
+  margin-top: 2px;
 }
 
-.nitro-flame {
+.nitro-exhaust-burn {
   position: absolute;
-  left: -14px; /* Placed behind the flipped car exhaust */
-  top: 50%;
+  left: -18px;
+  top: 45%;
   transform: translateY(-50%);
-  width: 18px;
+  width: 22px;
   height: 14px;
   background: radial-gradient(circle, #38bdf8, #0284c7, transparent);
   border-radius: 50%;
-  animation: nitroPulse 0.08s infinite alternate;
+  animation: nitroIgnition 0.08s infinite alternate;
 }
 
-@keyframes nitroPulse {
-  0% { transform: translateY(-50%) scale(0.8); opacity: 0.8; }
+@keyframes nitroIgnition {
+  0% { transform: translateY(-50%) scale(0.85); opacity: 0.8; }
   100% { transform: translateY(-50%) scale(1.4); opacity: 1; }
 }
 
-/* Falling Meteor Word Nodes */
-.falling-meteor-word {
-  position: absolute;
-  font-family: var(--font-mono);
-  font-size: 1.05rem;
-  font-weight: 700;
-  padding: 0.3rem 0.65rem;
-  border-radius: 6px;
+/* ============================================================
+   ZOMBIE DUEL 1V1 COMBAT SYSTEM
+   ============================================================ */
+.duel-combat-arena {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 2rem 2.5rem;
+}
+
+.duel-combatant-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  width: 240px;
+}
+
+.duel-hp-bar-container {
+  width: 100%;
+  height: 18px;
   background: var(--bg-card);
+  border-radius: 9px;
+  overflow: hidden;
   border: 1.5px solid var(--border-color);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-  white-space: nowrap;
 }
 
-.falling-meteor-word.target-locked {
-  border-color: var(--accent);
-  box-shadow: 0 0 14px var(--accent-glow);
+.duel-hp-fill {
+  height: 100%;
+  transition: width 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Floating Character Bubble */
+/* ============================================================
+   BUBBLE POP SINGLE-KEY SYSTEM
+   ============================================================ */
 .arcade-char-bubble {
   position: absolute;
-  width: 48px;
-  height: 48px;
+  width: 52px;
+  height: 52px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   font-family: var(--font-mono);
   font-weight: 800;
-  font-size: 1.3rem;
-  background: rgba(56, 189, 248, 0.18);
+  font-size: 1.45rem;
+  background: rgba(56, 189, 248, 0.16);
   border: 2px solid var(--accent);
   color: var(--text-primary);
-  box-shadow: 0 0 15px var(--accent-glow);
+  box-shadow: 0 0 16px var(--accent-glow);
+  transition: transform 0.1s ease;
 }
 
-/* Ninja Sliced Word Fragment */
-.ninja-sliced-left {
-  animation: sliceFallLeft 0.5s ease-out forwards;
-}
-.ninja-sliced-right {
-  animation: sliceFallRight 0.5s ease-out forwards;
-}
-
-@keyframes sliceFallLeft {
-  0% { transform: translate(0, 0) rotate(0deg); opacity: 1; }
-  100% { transform: translate(-30px, 40px) rotate(-25deg); opacity: 0; }
-}
-@keyframes sliceFallRight {
-  0% { transform: translate(0, 0) rotate(0deg); opacity: 1; }
-  100% { transform: translate(30px, 40px) rotate(25deg); opacity: 0; }
-}
-
-/* Bomb Defusal Digital Matrix */
-.bomb-timer-display {
+/* ============================================================
+   CIPHER HACKER LAYERS
+   ============================================================ */
+.cipher-terminal-window {
+  background: #06090e;
+  border: 1.5px solid #10b981;
+  border-radius: var(--radius);
+  padding: 1.75rem 2rem;
   font-family: var(--font-mono);
-  font-size: 3.2rem;
-  font-weight: 900;
-  color: var(--danger);
-  letter-spacing: 0.1em;
-  text-shadow: 0 0 15px rgba(244, 63, 94, 0.6);
+  box-shadow: 0 0 25px rgba(16, 185, 129, 0.15);
+}
+
+.cipher-layer-badge {
+  display: inline-block;
+  padding: 0.25rem 0.65rem;
+  border-radius: 4px;
+  background: rgba(16, 185, 129, 0.2);
+  color: #10b981;
+  font-weight: 700;
+  font-size: 0.8rem;
+  margin-bottom: 0.8rem;
 }

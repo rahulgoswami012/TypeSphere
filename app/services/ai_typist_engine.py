@@ -1,86 +1,70 @@
 import random
 import time
 
-AI_LEVEL_PROFILES = {
-    'beginner': {
-        'target_wpm': 28,
-        'variance': 6,
-        'error_chance': 0.08,
-        'hesitation_chance': 0.15,
-        'hesitation_ms': (250, 450)
+AI_DIFFICULTY_PROFILES = {
+    'easy': {
+        'target_wpm': 32,
+        'variance': 7,
+        'error_chance': 0.12,
+        'hesitation_chance': 0.18,
+        'hesitation_range_ms': (220, 500)
     },
-    'intermediate': {
-        'target_wpm': 55,
-        'variance': 8,
-        'error_chance': 0.04,
-        'hesitation_chance': 0.08,
-        'hesitation_ms': (150, 280)
+    'moderate': {
+        'target_wpm': 62,
+        'variance': 9,
+        'error_chance': 0.05,
+        'hesitation_chance': 0.09,
+        'hesitation_range_ms': (140, 300)
     },
-    'advanced': {
-        'target_wpm': 85,
-        'variance': 10,
+    'hard': {
+        'target_wpm': 94,
+        'variance': 11,
         'error_chance': 0.02,
         'hesitation_chance': 0.04,
-        'hesitation_ms': (80, 160)
+        'hesitation_range_ms': (60, 160)
     },
     'expert': {
-        'target_wpm': 118,
+        'target_wpm': 128,
         'variance': 12,
-        'error_chance': 0.008,
+        'error_chance': 0.006,
         'hesitation_chance': 0.015,
-        'hesitation_ms': (40, 90)
-    },
-    'adaptive': {
-        'target_wpm': 60,
-        'variance': 8,
-        'error_chance': 0.03,
-        'hesitation_chance': 0.05,
-        'hesitation_ms': (100, 200)
+        'hesitation_range_ms': (30, 80)
     }
 }
 
 class AITypistSimulator:
-    def __init__(self, level='intermediate', player_target_wpm=None):
-        self.level = level if level in AI_LEVEL_PROFILES else 'intermediate'
-        self.profile = AI_LEVEL_PROFILES[self.level].copy()
-        
-        # Adaptive difficulty tunes within 5 WPM of user's typical velocity
-        if self.level == 'adaptive' and player_target_wpm:
-            self.profile['target_wpm'] = max(30, min(140, player_target_wpm + random.randint(-4, 6)))
+    def __init__(self, difficulty='moderate', player_target_wpm=None):
+        diff = difficulty.lower()
+        self.difficulty = diff if diff in AI_DIFFICULTY_PROFILES else 'moderate'
+        self.profile = AI_DIFFICULTY_PROFILES[self.difficulty].copy()
+
+        if player_target_wpm:
+            self.profile['target_wpm'] = max(25, min(145, player_target_wpm + random.randint(-5, 6)))
 
         self.current_wpm = self.profile['target_wpm']
-        self.total_strokes = 0
-        self.errors_made = 0
-        self.last_tick = time.time()
+        self.total_chars_typed = 0
+        self.errors_count = 0
+        self.progress_pct = 0.0
 
-    def get_progress_step(self, time_delta, current_progress, total_target_chars):
-        """
-        Computes the simulated progress increment based on target WPM and human variances.
-        """
-        if total_target_chars <= 0:
-            return 0, self.current_wpm
+    def step(self, delta_seconds, total_chars):
+        if total_chars <= 0:
+            return 0.0, self.current_wpm
 
-        # Introduce velocity jitter (mimics human acceleration and deceleration)
-        fluctuation = random.uniform(-self.profile['variance'], self.profile['variance'])
-        effective_wpm = max(15, self.profile['target_wpm'] + fluctuation)
-        self.current_wpm = round(effective_wpm, 1)
+        jitter = random.uniform(-self.profile['variance'], self.profile['variance'])
+        live_speed = max(18.0, self.profile['target_wpm'] + jitter)
+        self.current_wpm = round(live_speed, 1)
 
-        # Characters per second: 1 WPM = 5 chars / 60 sec
-        chars_per_sec = (effective_wpm * 5.0) / 60.0
-        increment_chars = chars_per_sec * time_delta
+        chars_per_sec = (live_speed * 5.0) / 60.0
+        advance = chars_per_sec * delta_seconds
 
-        # Micro-hesitations simulation (hesitating on complex keys or syllables)
         if random.random() < self.profile['hesitation_chance']:
-            hesitation = random.uniform(*self.profile['hesitation_ms']) / 1000.0
-            increment_chars = max(0, increment_chars - (chars_per_sec * hesitation))
+            delay_sec = random.uniform(*self.profile['hesitation_range_ms']) / 1000.0
+            advance = max(0.0, advance - (chars_per_sec * delay_sec))
 
-        # Error & correction simulation (mistakes temporarily retard progress)
         if random.random() < self.profile['error_chance']:
-            self.errors_made += 1
-            # Cost of backspacing and re-typing 1-2 characters
-            increment_chars = max(0, increment_chars - random.uniform(1.0, 2.5))
+            self.errors_count += 1
+            advance = max(0.0, advance - random.uniform(1.0, 2.5))
 
-        step_pct = (increment_chars / float(total_target_chars)) * 100.0
-        new_progress = min(100.0, current_progress + step_pct)
-
-        return round(new_progress, 2), self.current_wpm
+        self.total_chars_typed += advance
+        self.progress_pct = min(100.0, (self.total_chars_typed / float(total_chars)) * 100.0)
+        return round(self.progress_pct, 2), self.current_wpm

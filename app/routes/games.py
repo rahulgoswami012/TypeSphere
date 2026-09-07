@@ -2,132 +2,211 @@ from flask import Blueprint, render_template, request, jsonify
 from flask_login import current_user
 from app import db
 from app.models.game import GameRecord, ArcadeLeaderboard
-from app.models.arcade_content import ArcadeGameConfig
 from app.services.arcade_content_engine import ArcadeContentEngine
-from app.services.ai_typist_engine import AI_LEVEL_PROFILES
+from app.models.typing import TypingDNA
 
 games_bp = Blueprint('games', __name__)
 
-ARCADE_GAMES_METADATA = [
-    {
-        'slug': 'falling_words',
-        'title': 'Falling Words',
-        'badge': 'ARCADE CLASSIC',
-        'category': 'Peripheral Vision & Speed',
-        'icon': '☄️',
-        'desc': 'Target descending words before they cross the defense laser. Higher waves test peripheral recognition.',
-        'modes': ['Solo vs AI', '1v1 Duel', 'Multiplayer'],
-        'skills': 'Reaction Time, Fast Recovery'
-    },
+ARCADE_MASTER_REGISTRY = [
     {
         'slug': 'speed_racer',
         'title': 'Speed Racer',
-        'badge': 'CANVAS RACING',
-        'category': 'Velocity & Nitro Streaks',
+        'badge': 'REAL CAR PHYSICS',
         'icon': '🏎️',
-        'desc': 'Throttle a live racecar on a 5-lane circuit. Sustained streaks trigger nitro acceleration.',
-        'modes': ['Solo vs AI', '1v1 Duel', 'Multiplayer'],
-        'skills': 'Burst Cadence, Sustained Velocity'
+        'category': 'Momentum & Recoil Sprint',
+        'summary': 'Control a live vehicle on an open race track. Correct strokes accelerate your car forward; typos apply backward recoil without halting momentum.',
+        'win_condition': 'Cross the finish line first or cover the furthest distance before timer expires.',
+        'lose_condition': 'Opponent crosses the finish line ahead of you or covers greater distance.',
+        'supports': ['Solo vs AI', '1v1 Duel', 'Multiplayer'],
+        'default_objective': 'distance',
+        'objective_options': [
+            {'label': '300m Sprint', 'val': '300'},
+            {'label': '500m Grand Prix', 'val': '500'},
+            {'label': '1000m Marathon', 'val': '1000'}
+        ]
+    },
+    {
+        'slug': 'falling_words',
+        'title': 'Falling Words',
+        'badge': 'WAVE SURVIVAL',
+        'icon': '☄️',
+        'category': 'Target Locking & Peripheral Vision',
+        'summary': 'Words descend with accelerating gravitational velocity. Target lock descending phrases before they touch the defense barrier.',
+        'win_condition': 'Clear all waves or achieve higher score than rival when timer expires.',
+        'lose_condition': 'Lose all lives or opponent secures higher wave score.',
+        'supports': ['Solo vs AI', '1v1 Duel'],
+        'default_objective': 'waves',
+        'objective_options': [
+            {'label': '3 Waves (Short)', 'val': '3'},
+            {'label': '5 Waves (Standard)', 'val': '5'},
+            {'label': 'Survival (Unlimited)', 'val': '0'}
+        ]
     },
     {
         'slug': 'bubble_pop',
         'title': 'Bubble Pop',
-        'badge': 'KEYBOARD DRILL',
-        'category': 'Single Key Mastery',
+        'badge': 'ISOLATED TARGETS',
         'icon': '🫧',
-        'desc': 'Float bubbles contain single isolated targets: lowercase, capitals, numbers, and symbols.',
-        'modes': ['Solo vs AI', '1v1 Challenge'],
-        'skills': 'Finger Independence, Reach Precision'
+        'category': 'Single-Key Tactile Precision',
+        'summary': 'Floating bubbles hold isolated target characters. Pop targets before they hit the ceiling barrier.',
+        'win_condition': 'Pop required targets with highest score and unbroken combos.',
+        'lose_condition': 'Allow 3 bubbles to burst against ceiling line.',
+        'supports': ['Solo vs AI', '1v1 Challenge'],
+        'default_objective': 'timed',
+        'objective_options': [
+            {'label': '30 Seconds', 'val': '30'},
+            {'label': '60 Seconds', 'val': '60'},
+            {'label': '120 Seconds', 'val': '120'}
+        ]
     },
     {
         'slug': 'whack_a_word',
         'title': 'Whack-A-Word',
         'badge': 'REACTION GRID',
-        'category': 'Spatial Recognition',
         'icon': '🔨',
-        'desc': '3x3 grid where targets pop up for 1.8 seconds. Type the active position before it retracts.',
-        'modes': ['Solo vs AI', '1v1 Duel'],
-        'skills': 'Spatial Cognition, Fast Reflexes'
+        'category': 'Spatial Reaction Latency',
+        'summary': 'Targets emerge across a 3x3 reaction grid with shrinking exposure times. Type the active target before it retracts into the bunker.',
+        'win_condition': 'Score higher points by striking targets within the shortest millisecond window.',
+        'lose_condition': 'Miss 5 target windows or score lower than opponent.',
+        'supports': ['Solo vs AI', '1v1 Challenge'],
+        'default_objective': 'timed',
+        'objective_options': [
+            {'label': '30 Seconds', 'val': '30'},
+            {'label': '60 Seconds', 'val': '60'},
+            {'label': '90 Seconds', 'val': '90'}
+        ]
+    },
+    {
+        'slug': 'zombie_defense',
+        'title': 'Zombie Defense',
+        'badge': 'BASE SURVIVAL',
+        'icon': '🧟‍♂️',
+        'category': 'Perimeter Wave Defense',
+        'summary': 'Incoming hordes march towards your fortified base. Type overhead words to discharge defensive turrets.',
+        'win_condition': 'Survive all incoming waves with base integrity intact.',
+        'lose_condition': 'Zombies breach the perimeter and reduce base health to 0%.',
+        'supports': ['Solo vs AI', 'Co-op Score Duel'],
+        'default_objective': 'waves',
+        'objective_options': [
+            {'label': 'Wave 1 - 3', 'val': '3'},
+            {'label': 'Wave 1 - 5', 'val': '5'},
+            {'label': 'Wave 1 - 10', 'val': '10'}
+        ]
     },
     {
         'slug': 'zombie_duel',
         'title': 'Zombie Duel',
-        'badge': '1V1 COMBAT',
-        'category': 'Two-Player HP Battle',
-        'icon': '🧟',
-        'desc': 'Head-to-head combat. Accurate words launch offensive strikes; errors damage your defensive barrier.',
-        'modes': ['Solo vs AI', '1v1 Matchmaking'],
-        'skills': 'Stress Resilience, Error Restraint'
-    },
-    {
-        'slug': 'word_blitz',
-        'title': 'Word Blitz',
-        'badge': 'TIME TRIAL',
-        'category': '60s High-Intensity Burst',
-        'icon': '⚡',
-        'desc': 'High-octane sprint. Words flash one by one with combo multipliers for unbroken accuracy.',
-        'modes': ['Solo vs AI', '1v1 Duel', 'Multiplayer'],
-        'skills': 'Sprint Speed, Flow State'
+        'badge': '1V1 HP COMBAT',
+        'icon': '⚔️',
+        'category': 'Two-Player Health Combat',
+        'summary': 'Head-to-head combat duel. Fast keystrokes launch attack projectiles; typos break defensive shields and trigger recoil damage.',
+        'win_condition': 'Reduce opponent combat health to 0 HP.',
+        'lose_condition': 'Your combat health drops to 0 HP first.',
+        'supports': ['Solo vs AI', '1v1 Challenge'],
+        'default_objective': 'knockout',
+        'objective_options': [
+            {'label': 'Standard 100 HP Duel', 'val': '100'},
+            {'label': 'Hardcore 50 HP Sudden Death', 'val': '50'}
+        ]
     },
     {
         'slug': 'cipher_hacker',
         'title': 'Cipher Hacker',
-        'badge': 'CYBER INTRUSION',
-        'category': 'Programming & Hex Code',
+        'badge': 'LAYER BREACH',
         'icon': '💻',
-        'desc': 'Progressive security layers. Decrypt hexadecimal, alphanumeric tokens, and code syntax.',
-        'modes': ['Solo vs AI', '1v1 Race'],
-        'skills': 'Symbol Dexterity, Syntax Typing'
+        'category': 'Progressive Security Architecture',
+        'summary': 'Decrypt layered cybersecurity defenses: from hex dumps to complex syntax tokens. Advance through security clearances.',
+        'win_condition': 'Breach all security layers before the firewall lockdown countdown concludes.',
+        'lose_condition': 'Timer expires before root access decryption.',
+        'supports': ['Solo vs AI', '1v1 Race'],
+        'default_objective': 'layers',
+        'objective_options': [
+            {'label': '3 Security Layers', 'val': '3'},
+            {'label': '4 Security Layers (Root Access)', 'val': '4'}
+        ]
     },
     {
         'slug': 'space_defender',
         'title': 'Space Defender',
-        'badge': 'NEW',
-        'category': 'Directional Asteroid Defense',
+        'badge': 'MULTI-QUADRANT',
         'icon': '🚀',
-        'desc': 'Defend your starship from incoming asteroids in all quadrants. Lock on and eliminate orbital debris.',
-        'modes': ['Solo vs AI', '1v1 Duel'],
-        'skills': 'Peripheral Scanning, Precision'
+        'category': 'Orbital Trajectory Defense',
+        'summary': 'Debris and drones converge on your starship across 360 degrees. Acquire target locks and neutralize orbital threats.',
+        'win_condition': 'Clear all orbital waves before ship shielding is depleted.',
+        'lose_condition': 'Ship shields collapse from debris impacts.',
+        'supports': ['Solo vs AI', '1v1 Duel'],
+        'default_objective': 'timed',
+        'objective_options': [
+            {'label': '45 Seconds', 'val': '45'},
+            {'label': '60 Seconds', 'val': '60'},
+            {'label': '120 Seconds', 'val': '120'}
+        ]
     },
     {
         'slug': 'bomb_defuse',
         'title': 'Bomb Defuse',
-        'badge': 'NEW',
-        'category': 'High-Pressure Code Cracking',
+        'badge': 'PRESSURE DECRYPT',
         'icon': '💣',
-        'desc': 'Defuse time bombs with sequential multi-stage passcodes. A single typo reduces countdown time.',
-        'modes': ['Solo vs Timer', '1v1 Duel'],
-        'skills': 'Zero-Error Precision, Coolness'
+        'category': 'Precision Code Cracking',
+        'summary': 'Defuse time bombs with sequential multi-character cryptograms. Typos inflict immediate timer penalties.',
+        'win_condition': 'Crack all stages before detonation clock reaches 00:00.',
+        'lose_condition': 'Countdown timer hits 00:00.',
+        'supports': ['Solo vs Timer', '1v1 Duel'],
+        'default_objective': 'stages',
+        'objective_options': [
+            {'label': '4 Detonation Stages', 'val': '4'},
+            {'label': '7 Detonation Stages', 'val': '7'},
+            {'label': '10 Detonation Stages', 'val': '10'}
+        ]
     },
     {
         'slug': 'typing_ninja',
         'title': 'Typing Ninja',
-        'badge': 'NEW',
-        'category': 'Combos & Slicing Mechanics',
+        'badge': 'COMBO SLICE',
         'icon': '🥷',
-        'desc': 'Slice across floating words as they launch into the air. Chain multiple words together for combos.',
-        'modes': ['Solo vs AI', '1v1 Challenge'],
-        'skills': 'Rhythmic Accuracy, Momentum'
+        'category': 'Airborne Word Trajectories',
+        'summary': 'Airborne words launch with parabolic momentum. Slice targets cleanly mid-air to build score multipliers.',
+        'win_condition': 'Amass highest slice score and maintain unbroken multiplier combos.',
+        'lose_condition': 'Drop 3 unsliced targets or score lower than opponent.',
+        'supports': ['Solo vs AI', '1v1 Challenge'],
+        'default_objective': 'timed',
+        'objective_options': [
+            {'label': '45 Seconds', 'val': '45'},
+            {'label': '60 Seconds', 'val': '60'}
+        ]
     },
     {
         'slug': 'memory_type',
         'title': 'Memory Type',
-        'badge': 'NEW',
-        'category': 'Cognitive Working Memory',
+        'badge': 'BLIND RECALL',
         'icon': '🧠',
-        'desc': 'Sequences flash for 1.5 seconds and disappear. Type the sequence completely from mental recall.',
-        'modes': ['Solo vs AI', '1v1 Duel'],
-        'skills': 'Visual Memory, Blind Execution'
+        'category': 'Working Cognitive Recall',
+        'summary': 'Sequences flash briefly and vanish. Type the sequence completely from mental recall.',
+        'win_condition': 'Successfully reproduce the highest quota of hidden sequences.',
+        'lose_condition': 'Fail 3 sequence recalls.',
+        'supports': ['Solo vs AI', '1v1 Duel'],
+        'default_objective': 'rounds',
+        'objective_options': [
+            {'label': '5 Memory Rounds', 'val': '5'},
+            {'label': '10 Memory Rounds', 'val': '10'},
+            {'label': '15 Memory Rounds', 'val': '15'}
+        ]
     },
     {
         'slug': 'keyboard_quest',
         'title': 'Keyboard Quest',
-        'badge': 'NEW',
-        'category': 'Biomechanic Row Progression',
+        'badge': 'BIOMECHANIC MAP',
         'icon': '🗺️',
-        'desc': 'Ergonomic stage map training home-row, upper reaches, bottom tucks, and numeric stretches.',
-        'modes': ['Solo Quest', 'Stage Duel'],
-        'skills': 'Ergonomic Technique, Reach Memory'
+        'category': 'Ergonomic Row Progression',
+        'summary': 'Journey through ergonomic training stages: Home Row anchors, upper extensions, bottom tucks, and number stretches.',
+        'win_condition': 'Clear all quest stages with at least 95% accuracy.',
+        'lose_condition': 'Accuracy falls below baseline stage threshold.',
+        'supports': ['Solo Quest', 'Stage Duel'],
+        'default_objective': 'stages',
+        'objective_options': [
+            {'label': 'Stage 1 to 3', 'val': '3'},
+            {'label': 'Stage 1 to 5 (Full Map)', 'val': '5'}
+        ]
     }
 ]
 
@@ -139,27 +218,25 @@ def index():
         user_high_scores = {r.game_mode: r.high_score for r in records}
         
     return render_template(
-        'games/index.html', 
-        games=ARCADE_GAMES_METADATA,
+        'games/index.html',
+        games=ARCADE_MASTER_REGISTRY,
         high_scores=user_high_scores
     )
 
 @games_bp.route('/play/<game_slug>')
 def play_arena(game_slug):
-    game_info = next((g for g in ARCADE_GAMES_METADATA if g['slug'] == game_slug), None)
+    game_info = next((g for g in ARCADE_MASTER_REGISTRY if g['slug'] == game_slug), None)
     if not game_info:
-        return render_template('games/index.html', games=ARCADE_GAMES_METADATA)
+        return render_template('games/index.html', games=ARCADE_MASTER_REGISTRY)
 
-    # Pre-fetch user weak keys for target practice options
     user_weak_keys = []
     if current_user.is_authenticated and current_user.dna_profile:
         stats = current_user.dna_profile.get_key_stats()
-        user_weak_keys = [k.upper() for k, v in stats.items() if v.get('total', 0) >= 4 and (v.get('errors', 0)/v['total']) > 0.08][:5]
+        user_weak_keys = [k.upper() for k, v in stats.items() if v.get('total', 0) >= 4 and (v.get('errors', 0)/v['total']) > 0.08][:6]
 
     return render_template(
         'games/arena.html',
         game=game_info,
-        ai_levels=['Beginner', 'Intermediate', 'Advanced', 'Expert', 'Adaptive'],
         weak_keys=user_weak_keys
     )
 
@@ -174,11 +251,13 @@ def submit_score():
     highest_combo = int(data.get('highest_combo', 0))
     reaction_ms = float(data.get('reaction_ms', 0.0))
     duration = float(data.get('duration', 0.0))
+    outcome = data.get('outcome', 'FINISHED')
 
     record = GameRecord(
         user_id=current_user.id if current_user.is_authenticated else None,
         game_mode=game_mode,
         play_type=data.get('play_type', 'solo_ai'),
+        result_outcome=outcome,
         score=score,
         net_wpm=net_wpm,
         accuracy=accuracy,

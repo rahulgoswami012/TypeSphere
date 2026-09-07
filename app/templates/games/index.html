@@ -1,59 +1,55 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="card" style="max-width:1140px; margin:0 auto;">
+<div class="card" style="max-width:1160px; margin:0 auto;">
   <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:1.25rem; margin-bottom:1.75rem; flex-wrap:wrap; gap:1rem;">
     <div>
       <div style="display:flex; align-items:center; gap:0.6rem;">
         <h1 style="font-size:1.85rem; font-weight:800; margin:0;">TypeSphere Arcade</h1>
         <span style="background:var(--accent-glow); color:var(--accent); font-weight:800; font-size:0.75rem; padding:0.2rem 0.55rem; border-radius:4px;">
-          12 MODALITIES
+          12 DISCIPLINES
         </span>
       </div>
       <p style="color:var(--text-secondary); font-size:0.88rem; margin-top:0.25rem;">
-        Skill-building gaming engines designed to train instinctive tactile muscle memory, peripheral vision, and velocity under pressure.
+        Competitive and educational gaming engines engineered to build instinctive tactile recognition, agility under pressure, and velocity.
       </p>
     </div>
 
     <div style="display:flex; gap:0.6rem;">
       <a href="{{ url_for('typing.test_page') }}" class="btn">&larr; Free Test Track</a>
-      <a href="{{ url_for('learn.index') }}" class="btn">Academy Curriculum &rarr;</a>
+      <a href="{{ url_for('learn.index') }}" class="btn">Academy &rarr;</a>
     </div>
   </div>
 
-  <!-- 12-Game Interactive Grid -->
+  <!-- 12-Game Arcade Matrix -->
   <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:1.25rem;">
     {% for g in games %}
-    <div class="card" style="background:var(--bg-card); border:1px solid var(--border-color); margin-bottom:0; display:flex; flex-direction:column; justify-content:space-between; position:relative; overflow:hidden;">
-      
+    <div class="card" style="background:var(--bg-card); border:1px solid var(--border-color); margin-bottom:0; display:flex; flex-direction:column; justify-content:space-between;">
       <div>
         <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.75rem;">
           <div style="display:flex; align-items:center; gap:0.75rem;">
-            <span style="font-size:2.2rem;">{{ g.icon }}</span>
+            <span style="font-size:2.3rem;">{{ g.icon }}</span>
             <div>
               <h3 style="font-size:1.2rem; font-weight:800; margin:0; color:var(--text-primary);">{{ g.title }}</h3>
               <span style="font-size:0.75rem; color:var(--accent); font-weight:700; text-transform:uppercase;">{{ g.category }}</span>
             </div>
           </div>
-          
           <span style="font-size:0.68rem; font-weight:800; background:var(--bg-secondary); border:1px solid var(--border-color); padding:0.15rem 0.45rem; border-radius:4px; color:var(--text-secondary);">
             {{ g.badge }}
           </span>
         </div>
 
         <p style="color:var(--text-secondary); font-size:0.86rem; line-height:1.55; margin-bottom:1rem;">
-          {{ g.desc }}
+          {{ g.summary }}
         </p>
       </div>
 
       <div>
-        <!-- Trained Competency -->
         <div style="background:var(--bg-secondary); border-radius:var(--radius-sm); padding:0.5rem 0.75rem; margin-bottom:0.85rem; font-size:0.78rem; display:flex; justify-content:space-between;">
-          <span style="color:var(--text-muted);">Focus Metric:</span>
-          <strong style="color:var(--text-primary);">{{ g.skills }}</strong>
+          <span style="color:var(--text-muted);">Play Modes:</span>
+          <strong style="color:var(--text-primary);">{{ g.supports|join(' &bull; ') }}</strong>
         </div>
 
-        <!-- High Score & Launch -->
         <div style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem;">
           {% set pb = high_scores.get(g.slug, 0) %}
           <div style="font-size:0.8rem; color:var(--text-muted);">
@@ -61,11 +57,10 @@
           </div>
           
           <a href="{{ url_for('games.play_arena', game_slug=g.slug) }}" class="btn btn-primary" style="padding:0.55rem 1.25rem; font-weight:700;">
-            Play Game &rarr;
+            Setup Game &rarr;
           </a>
         </div>
       </div>
-
     </div>
     {% endfor %}
   </div>
