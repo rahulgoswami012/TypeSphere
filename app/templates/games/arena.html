@@ -1,0 +1,243 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="card" style="max-width:1040px; margin:0 auto; padding:1.25rem 1.75rem;">
+  
+  <!-- =========================================================
+       PHASE 1: CLEAN PRE-GAME CONFIGURATION SETUP SCREEN
+       ========================================================= -->
+  <div id="game-setup-screen">
+    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:1rem; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
+      <div style="display:flex; align-items:center; gap:0.75rem;">
+        <span style="font-size:2.4rem;">{{ game.icon }}</span>
+        <div>
+          <h1 style="font-size:1.75rem; font-weight:800; margin:0;">{{ game.title }}</h1>
+          <span style="font-size:0.8rem; color:var(--accent); font-weight:700; text-transform:uppercase;">{{ game.category }} &bull; Practice Arena</span>
+        </div>
+      </div>
+      <a href="{{ url_for('games.index') }}" class="btn btn-sm">&larr; Return to Arcade Hub</a>
+    </div>
+
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:1.5rem; margin-bottom:2rem;">
+      <!-- Play Mode Selector -->
+      <div class="card" style="background:var(--bg-card); margin-bottom:0;">
+        <h3 style="font-size:1rem; font-weight:700; margin-bottom:0.75rem;">1. Select Arena Match Type</h3>
+        <div style="display:flex; flex-direction:column; gap:0.5rem;" id="setup-play-modes">
+          <button onclick="setSetupPlayMode('solo_ai', this)" class="btn active-choice" style="justify-content:flex-start;">
+            🤖 Solo vs Simulated AI Typist
+          </button>
+          <button onclick="setSetupPlayMode('1v1_private', this)" class="btn" style="justify-content:flex-start;">
+            🔒 Private 1v1 Room Challenge
+          </button>
+          {% if 'Multiplayer' in game.modes %}
+          <button onclick="setSetupPlayMode('multiplayer', this)" class="btn" style="justify-content:flex-start;">
+            🌐 Multi-Racer Arena
+          </button>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Difficulty & AI Calibration -->
+      <div class="card" style="background:var(--bg-card); margin-bottom:0;">
+        <h3 style="font-size:1rem; font-weight:700; margin-bottom:0.75rem;">2. Calibration & AI Level</h3>
+        <div style="display:flex; flex-direction:column; gap:0.85rem;">
+          <div>
+            <label style="display:block; font-size:0.75rem; text-transform:uppercase; color:var(--text-muted); font-weight:700; margin-bottom:0.25rem;">Lexical Difficulty</label>
+            <select id="setup-difficulty" class="form-select" style="width:100%;">
+              <option value="beginner">Beginner (3-4 Letter Basics)</option>
+              <option value="intermediate" selected>Intermediate (Standard Vocabulary)</option>
+              <option value="advanced">Advanced (Complex Polysyllables)</option>
+              <option value="expert">Expert (Rare Lexicon & Syntax)</option>
+            </select>
+          </div>
+
+          <div id="setup-ai-wrap">
+            <label style="display:block; font-size:0.75rem; text-transform:uppercase; color:var(--text-muted); font-weight:700; margin-bottom:0.25rem;">AI Opponent Profile</label>
+            <select id="setup-ai-level" class="form-select" style="width:100%;">
+              <option value="beginner">Beginner (28 WPM &bull; High Hesitations)</option>
+              <option value="intermediate" selected>Intermediate (55 WPM &bull; Standard Human)</option>
+              <option value="advanced">Advanced (85 WPM &bull; Fast Tactile Typist)</option>
+              <option value="expert">Expert (118 WPM &bull; Esports Velocity)</option>
+              <option value="adaptive">Adaptive (Auto-Matches Your Speed)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Specific Game Modifiers -->
+      <div class="card" style="background:var(--bg-card); margin-bottom:0;">
+        <h3 style="font-size:1rem; font-weight:700; margin-bottom:0.75rem;">3. Training Focus</h3>
+        <div style="display:flex; flex-direction:column; gap:0.6rem;">
+          {% if weak_keys %}
+          <label style="display:flex; align-items:center; gap:0.5rem; font-size:0.85rem; cursor:pointer;">
+            <input type="checkbox" id="setup-target-weak" checked>
+            <span>Target My Biometric Weak Keys: <strong>{{ weak_keys|join(', ') }}</strong></span>
+          </label>
+          {% endif %}
+          
+          {% if game.slug == 'bubble_pop' %}
+          <div>
+            <label style="display:block; font-size:0.75rem; text-transform:uppercase; color:var(--text-muted); font-weight:700; margin-bottom:0.25rem;">Target Characters</label>
+            <select id="setup-bubble-type" class="form-select" style="width:100%;">
+              <option value="lowercase" selected>Lowercase Letters (a-z)</option>
+              <option value="uppercase">Uppercase Letters (A-Z)</option>
+              <option value="numbers">Numeric Digits (0-9)</option>
+              <option value="symbols">Symbols & Punctuation (!@#$...)</option>
+              {% if weak_keys %}<option value="weak_keys">Target My Weak Keys Only</option>{% endif %}
+            </select>
+          </div>
+          {% endif %}
+
+          <div id="setup-code-input-wrap" style="display:none; margin-top:0.5rem;">
+            <input type="text" id="setup-room-code" placeholder="Enter 4-Digit Room Code" style="width:100%; padding:0.5rem; background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:var(--radius-sm); color:var(--text-primary); text-transform:uppercase; font-family:var(--font-mono);">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="text-align:center;">
+      <button onclick="launchArcadeSession()" class="btn btn-primary" style="padding:0.85rem 3rem; font-size:1.1rem; font-weight:800; box-shadow:0 0 25px var(--accent-glow);">
+        ⚡ Enter Arena & Launch
+      </button>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       PHASE 2: LIVE GAMEPLAY CANVAS ARENA
+       ========================================================= -->
+  <div id="game-active-arena" style="display:none;">
+    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:0.75rem; margin-bottom:1rem; flex-wrap:wrap; gap:0.5rem;">
+      <div style="display:flex; align-items:center; gap:0.85rem;">
+        <span style="font-size:1.6rem;">{{ game.icon }}</span>
+        <strong id="live-game-title" style="font-size:1.1rem;">{{ game.title }}</strong>
+      </div>
+
+      <!-- Live Multi-Racer & AI Progress Telemetry -->
+      <div id="live-racers-status" style="display:flex; gap:1rem; align-items:center; font-size:0.85rem;">
+        <div>You: <strong id="live-my-score" style="color:var(--accent); font-family:var(--font-mono);">0 pts</strong> (<span id="live-my-wpm">0 WPM</span>)</div>
+        <div id="live-opponent-status" style="color:var(--warning);">Opponent: <strong id="live-opp-score" style="font-family:var(--font-mono);">0 pts</strong> (<span id="live-opp-wpm">0 WPM</span>)</div>
+      </div>
+
+      <button onclick="abortGameSession()" class="btn btn-sm btn-danger">&times; Abort</button>
+    </div>
+
+    <!-- The Game Render Frame -->
+    <div id="arcade-viewport" tabindex="0" style="position:relative; width:100%; height:460px; background:var(--bg-secondary); border:2px solid var(--border-color); border-radius:var(--radius); overflow:hidden; outline:none;">
+      <!-- Vector/DOM Entities Rendered by arcade_runtime.js -->
+    </div>
+
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.75rem; font-size:0.82rem; color:var(--text-muted);">
+      <span id="game-input-hint">Direct tactile typing: Strike keys directly on your physical keyboard.</span>
+      <span>Live Combo: <strong id="live-combo-badge" style="color:var(--accent); font-family:var(--font-mono);">0x</strong></span>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       PHASE 3: DETAILED GAME RESULTS & TELEMETRY BREAKDOWN
+       ========================================================= -->
+  <div id="game-results-screen" style="display:none; text-align:center; padding:1.5rem 0;">
+    <div id="results-celebration-badge" style="font-size:4rem; margin-bottom:0.25rem;">🏆</div>
+    <h2 id="results-title" style="font-size:2rem; font-weight:800; color:var(--accent); margin-bottom:0.4rem;">Victory Champion!</h2>
+    <p id="results-summary" style="color:var(--text-secondary); font-size:0.95rem; max-width:620px; margin:0 auto 1.5rem;">
+      Game session concluded with exceptional mechanical velocity.
+    </p>
+
+    <div class="stats-hud" style="grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); max-width:820px; margin:0 auto 1.75rem;">
+      <div class="stat-box">
+        <div class="stat-label">Final Score</div>
+        <div class="stat-value" id="res-score" style="font-size:2rem; color:var(--accent);">0</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">Net WPM</div>
+        <div class="stat-value" id="res-wpm" style="font-size:2rem;">0</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">Accuracy</div>
+        <div class="stat-value" id="res-acc" style="font-size:2rem;">100%</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">Peak Combo</div>
+        <div class="stat-value" id="res-combo" style="font-size:2rem; color:var(--warning);">0x</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">Avg Reaction</div>
+        <div class="stat-value" id="res-reaction" style="font-size:2rem;">0ms</div>
+      </div>
+    </div>
+
+    <!-- Action Bar -->
+    <div style="display:flex; justify-content:center; gap:0.75rem; flex-wrap:wrap;">
+      <button onclick="launchArcadeSession()" class="btn btn-primary" style="padding:0.75rem 1.75rem; font-weight:800;">
+        🔄 Play Again (Space)
+      </button>
+      <button onclick="showGameSetup()" class="btn" style="padding:0.75rem 1.25rem;">
+        ⚙️ Change Settings
+      </button>
+      <a href="{{ url_for('games.index') }}" class="btn" style="padding:0.75rem 1.25rem;">
+        Arcade Hub
+      </a>
+      {% if current_user.is_authenticated %}
+      <a href="{{ url_for('typing.practice_page') }}" class="btn" style="border-color:var(--accent); color:var(--accent); padding:0.75rem 1.25rem;">
+        Train Weaknesses &rarr;
+      </a>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+
+<link rel="stylesheet" href="{{ url_for('static', filename='css/arcade.css') }}">
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<script src="{{ url_for('static', filename='js/arcade_runtime.js') }}"></script>
+<script>
+const CURRENT_GAME_SLUG = "{{ game.slug }}";
+let activePlayMode = 'solo_ai';
+
+function setSetupPlayMode(mode, btn) {
+  activePlayMode = mode;
+  document.querySelectorAll('#setup-play-modes .btn').forEach(b => b.classList.remove('active-choice'));
+  btn.classList.add('active-choice');
+  
+  const codeWrap = document.getElementById('setup-code-input-wrap');
+  const aiWrap = document.getElementById('setup-ai-wrap');
+  if (codeWrap) codeWrap.style.display = (mode === '1v1_private' || mode === 'multiplayer') ? 'block' : 'none';
+  if (aiWrap) aiWrap.style.display = (mode === 'solo_ai') ? 'block' : 'none';
+}
+
+function showGameSetup() {
+  document.getElementById('game-setup-screen').style.display = 'block';
+  document.getElementById('game-active-arena').style.display = 'none';
+  document.getElementById('game-results-screen').style.display = 'none';
+}
+
+function launchArcadeSession() {
+  const diff = document.getElementById('setup-difficulty').value;
+  const aiLvl = document.getElementById('setup-ai-level') ? document.getElementById('setup-ai-level').value : 'intermediate';
+  const targetWeak = document.getElementById('setup-target-weak') ? document.getElementById('setup-target-weak').checked : false;
+  const bubbleType = document.getElementById('setup-bubble-type') ? document.getElementById('setup-bubble-type').value : 'lowercase';
+  const roomCode = document.getElementById('setup-room-code') ? document.getElementById('setup-room-code').value.trim() : '';
+
+  document.getElementById('game-setup-screen').style.display = 'none';
+  document.getElementById('game-results-screen').style.display = 'none';
+  document.getElementById('game-active-arena').style.display = 'block';
+
+  window.arcadeEngine.start({
+    slug: CURRENT_GAME_SLUG,
+    playMode: activePlayMode,
+    difficulty: diff,
+    aiLevel: aiLvl,
+    targetWeak: targetWeak,
+    bubbleType: bubbleType,
+    roomCode: roomCode
+  });
+}
+
+function abortGameSession() {
+  window.arcadeEngine.stop();
+  showGameSetup();
+}
+</script>
+{% endblock %}

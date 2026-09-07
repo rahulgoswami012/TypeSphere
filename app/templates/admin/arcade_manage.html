@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+{% block robots %}noindex, nofollow{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:1rem; margin-bottom:1.5rem;">
+    <div>
+      <h1 style="font-size:1.8rem; font-weight:800; margin:0;">🕹️ Arcade Content & Wordbank Manager</h1>
+      <p style="color:var(--text-muted); font-size:0.85rem; margin-top:0.25rem;">Add target words, symbols, and difficulty tags across all 12 games.</p>
+    </div>
+    <a href="{{ url_for('admin.index') }}" class="btn">&larr; Admin Dashboard</a>
+  </div>
+
+  <!-- Word Injection Form -->
+  <form method="POST" action="{{ url_for('admin.add_arcade_word') }}" style="background:var(--bg-card); padding:1.25rem; border-radius:var(--radius); margin-bottom:2rem; border:1px solid var(--border-color);">
+    <h3 style="font-size:1.1rem; margin-bottom:1rem;">Add New Game Target Word</h3>
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:1rem; margin-bottom:1rem;">
+      <div>
+        <label style="display:block; font-size:0.75rem; text-transform:uppercase; color:var(--text-muted); font-weight:700; margin-bottom:0.35rem;">Target Game</label>
+        <select name="game_mode" class="form-select" style="width:100%;">
+          <option value="falling_words">Falling Words</option>
+          <option value="speed_racer">Speed Racer</option>
+          <option value="space_defender">Space Defender</option>
+          <option value="typing_ninja">Typing Ninja</option>
+          <option value="zombie_duel">Zombie Duel</option>
+          <option value="cipher_hacker">Cipher Hacker</option>
+        </select>
+      </div>
+
+      <div>
+        <label style="display:block; font-size:0.75rem; text-transform:uppercase; color:var(--text-muted); font-weight:700; margin-bottom:0.35rem;">Difficulty</label>
+        <select name="difficulty" class="form-select" style="width:100%;">
+          <option value="beginner">Beginner</option>
+          <option value="intermediate" selected>Intermediate</option>
+          <option value="advanced">Advanced</option>
+          <option value="expert">Expert</option>
+        </select>
+      </div>
+
+      <div>
+        <label style="display:block; font-size:0.75rem; text-transform:uppercase; color:var(--text-muted); font-weight:700; margin-bottom:0.35rem;">Target Word / String</label>
+        <input type="text" name="target_text" required placeholder="e.g. quantum" style="width:100%; padding:0.6rem; background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:4px; color:var(--text-primary); font-family:var(--font-mono);">
+      </div>
+    </div>
+    <button type="submit" class="btn btn-primary btn-sm">Add to Game Library</button>
+  </form>
+
+  <!-- Items Table -->
+  <div class="table-responsive-container">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Game</th>
+          <th>Difficulty</th>
+          <th>Target Text</th>
+          <th>Length</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in items %}
+        <tr>
+          <td>#{{ item.id }}</td>
+          <td><strong>{{ item.game_mode|capitalize }}</strong></td>
+          <td><span style="font-size:0.75rem; padding:0.2rem 0.5rem; border-radius:4px; background:var(--bg-card);">{{ item.difficulty|upper }}</span></td>
+          <td style="font-family:var(--font-mono); font-weight:700; color:var(--accent);">{{ item.target_text }}</td>
+          <td>{{ item.word_length }}</td>
+          <td>
+            <form method="POST" action="{{ url_for('admin.delete_arcade_word', item_id=item.id) }}">
+              <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" style="text-align:center; padding:2rem; color:var(--text-muted);">No custom words added yet. Engine using curated fallbacks.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
