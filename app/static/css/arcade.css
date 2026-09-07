@@ -1,10 +1,9 @@
-/* TypeSphere Arcade Hardware Canvas Elements */
 #arcade-viewport {
   box-shadow: inset 0 0 35px rgba(0, 0, 0, 0.6);
   user-select: none;
 }
 
-/* Speed Racer 5-Lane Circuit */
+/* Speed Racer Circuit */
 .racer-lane-stripes {
   position: absolute;
   top: 0;
@@ -13,39 +12,60 @@
   background: repeating-linear-gradient(
     90deg,
     transparent,
-    transparent 48px,
-    rgba(255, 255, 255, 0.08) 48px,
-    rgba(255, 255, 255, 0.08) 50px
+    transparent 58px,
+    rgba(255, 255, 255, 0.08) 58px,
+    rgba(255, 255, 255, 0.08) 60px
   );
 }
 
+/* Freestanding Car Icons: No enclosing boxes, enlarged, flipped forward to face finish line on right */
 .racer-car-entity {
   position: absolute;
-  width: 48px;
-  height: 26px;
-  border-radius: 4px;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  font-size: 1.2rem;
-  transition: top 0.2s ease, left 0.1s linear;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
-  z-index: 5;
+  transition: left 0.12s linear;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.racer-car-icon {
+  font-size: 2.5rem; /* Larger icon without rectangle box */
+  line-height: 1;
+  display: inline-block;
+  transform: scaleX(-1); /* Flips car forward toward finish line on the right */
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.6));
+}
+
+.racer-pilot-label {
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  white-space: nowrap;
+  margin-top: 2px;
+  background: rgba(11, 15, 23, 0.85);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
 }
 
 .nitro-flame {
   position: absolute;
-  right: -16px;
-  width: 16px;
-  height: 12px;
+  left: -14px; /* Placed behind the flipped car exhaust */
+  top: 50%;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 14px;
   background: radial-gradient(circle, #38bdf8, #0284c7, transparent);
   border-radius: 50%;
-  animation: nitroPulse 0.1s infinite alternate;
+  animation: nitroPulse 0.08s infinite alternate;
 }
 
 @keyframes nitroPulse {
-  0% { transform: scale(0.8); opacity: 0.8; }
-  100% { transform: scale(1.4); opacity: 1; }
+  0% { transform: translateY(-50%) scale(0.8); opacity: 0.8; }
+  100% { transform: translateY(-50%) scale(1.4); opacity: 1; }
 }
 
 /* Falling Meteor Word Nodes */
@@ -57,7 +77,7 @@
   padding: 0.3rem 0.65rem;
   border-radius: 6px;
   background: var(--bg-card);
-  border: 1px solid var(--border-color);
+  border: 1.5px solid var(--border-color);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
   white-space: nowrap;
 }
@@ -65,6 +85,24 @@
 .falling-meteor-word.target-locked {
   border-color: var(--accent);
   box-shadow: 0 0 14px var(--accent-glow);
+}
+
+/* Floating Character Bubble */
+.arcade-char-bubble {
+  position: absolute;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-weight: 800;
+  font-size: 1.3rem;
+  background: rgba(56, 189, 248, 0.18);
+  border: 2px solid var(--accent);
+  color: var(--text-primary);
+  box-shadow: 0 0 15px var(--accent-glow);
 }
 
 /* Ninja Sliced Word Fragment */
@@ -82,25 +120,6 @@
 @keyframes sliceFallRight {
   0% { transform: translate(0, 0) rotate(0deg); opacity: 1; }
   100% { transform: translate(30px, 40px) rotate(25deg); opacity: 0; }
-}
-
-/* Floating Character Bubble */
-.arcade-char-bubble {
-  position: absolute;
-  width: 46px;
-  height: 46px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--font-mono);
-  font-weight: 800;
-  font-size: 1.25rem;
-  background: rgba(56, 189, 248, 0.18);
-  border: 2px solid var(--accent);
-  color: var(--text-primary);
-  box-shadow: 0 0 15px var(--accent-glow);
-  transition: transform 0.1s ease;
 }
 
 /* Bomb Defusal Digital Matrix */

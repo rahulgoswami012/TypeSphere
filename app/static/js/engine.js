@@ -1,6 +1,10 @@
 /**
- * TypeSphere Core Engine
- * Fixed: parseUrlParameters called on startup, Zero-Error Gauntlet abort execution.
+ * TypeSphere Core Typing Engine
+ * Features:
+ * - Proper pause modal: closing never resumes or restarts automatically.
+ * - Shows paused floating bar with Resume / Restart buttons.
+ * - Zero-Error Gauntlet aborts on the first mistake.
+ * - Infinite text streaming and No Time Limit mode.
  */
 class TypingEngine {
   constructor() {
@@ -42,6 +46,7 @@ class TypingEngine {
     this.hudErrors = document.getElementById('hud-errors');
     this.speedometerArc = document.getElementById('speedo-arc');
     this.pauseModal = document.getElementById('pause-modal');
+    this.pausedFloatingBar = document.getElementById('paused-floating-bar');
     this.mobileProxy = document.getElementById('mobile-text-proxy');
     this.keyboardContainer = document.getElementById('keyboard-container');
     this.gauntletBanner = document.getElementById('gauntlet-active-banner');
@@ -51,7 +56,6 @@ class TypingEngine {
     }
 
     this.bindEvents();
-    // Parse URL parameter immediately on startup
     this.parseUrlParameters();
     this.loadUserSessionPreferences();
   }
@@ -178,6 +182,7 @@ class TypingEngine {
     this.ghostProgress = 0;
 
     if (this.pauseModal) this.pauseModal.style.display = 'none';
+    if (this.pausedFloatingBar) this.pausedFloatingBar.style.display = 'none';
     const abortModal = document.getElementById('gauntlet-abort-modal');
     if (abortModal) abortModal.style.display = 'none';
 
@@ -268,7 +273,18 @@ class TypingEngine {
     this.pausedAt = performance.now() / 1000.0;
     clearInterval(this.timerInterval);
     clearInterval(this.ghostInterval);
+
+    if (this.display) this.display.style.filter = 'blur(4px)';
     if (this.pauseModal) this.pauseModal.style.display = 'flex';
+    if (this.pausedFloatingBar) this.pausedFloatingBar.style.display = 'none';
+  }
+
+  closePauseModal() {
+    // Closes the popup box WITHOUT resuming or restarting
+    if (this.pauseModal) this.pauseModal.style.display = 'none';
+    if (this.isPaused && this.pausedFloatingBar) {
+      this.pausedFloatingBar.style.display = 'flex';
+    }
   }
 
   resumeTest() {
@@ -276,9 +292,14 @@ class TypingEngine {
     const now = performance.now() / 1000.0;
     this.totalPausedDuration += (now - this.pausedAt);
     this.isPaused = false;
+
+    if (this.display) this.display.style.filter = 'none';
     if (this.pauseModal) this.pauseModal.style.display = 'none';
+    if (this.pausedFloatingBar) this.pausedFloatingBar.style.display = 'none';
+
     this.startTick(true);
     if (this.ghostEnabled) this.startGhostRacer();
+    if (this.mobileProxy) this.mobileProxy.focus();
   }
 
   handleKeystroke(key, originalEvent) {
@@ -298,10 +319,10 @@ class TypingEngine {
 
     const expectedChar = this.targetText[this.currentIndex];
 
-    // Backspace handling
+    // Backspace: in Blind Mode (default ON), Backspace is disabled
     if (key === 'Backspace') {
       if (originalEvent) originalEvent.preventDefault();
-      if (this.blindModeActive) return; // Disables Backspace in Blind Mode
+      if (this.blindModeActive) return;
 
       if (this.currentIndex > 0) {
         this.currentIndex--;
@@ -326,7 +347,7 @@ class TypingEngine {
       this.errors++;
       if (window.soundEngine) window.soundEngine.playKey(true);
 
-      // ZERO-ERROR GAUNTLET: Immediately abort on a single mistake
+      // ZERO-ERROR GAUNTLET: Abort on the first mistake
       if (this.mode === 'accuracy') {
         this.triggerGauntletAbort(expectedChar, key);
         return;
@@ -370,7 +391,7 @@ class TypingEngine {
         `Mistake detected at character <strong>#${this.currentIndex + 1}</strong>.<br>Expected '<strong>${expected}</strong>', but typed '<span style="color:var(--danger); font-weight:800;">${got}</span>'. Zero-Error Gauntlet terminated.`;
       abortModal.style.display = 'flex';
     } else {
-      alert(`Gauntlet Aborted! Mistake on '${expected}'. Accuracy challenge requires 100% precision.`);
+      alert(`Gauntlet Terminated! Mistake on '${expected}'.`);
       this.reset();
     }
   }
