@@ -37,7 +37,7 @@
   </div>
 </div>
 
-<!-- Key Diagnostic Modal -->
+<!-- Key Diagnostic Telemetry Modal (Clean Heatmap Popup Restored) -->
 <div id="key-inspect-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 1002; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
   <div class="card" style="width: 90%; max-width: 440px; border-color: var(--accent);">
     <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem; margin-bottom: 1.25rem;">
@@ -105,7 +105,7 @@
   <span id="daily-challenge-title" style="font-weight: 600;">The Kinetic Discipline</span>
 </div>
 
-<!-- Mode Controls Bar -->
+<!-- Mode Controls Bar with Language Switcher -->
 <div class="mode-selectors">
   <div class="mode-group">
     <button class="mode-btn active" onclick="setBenchmarkTime(60)" data-tooltip="Start standard 1-minute benchmark" data-tooltip-title="1 MINUTE">1 Min</button>
@@ -118,13 +118,15 @@
   </div>
 
   <div class="mode-group">
-    <!-- Version 2.0 In-Browser Ergonomic Layout Selector -->
-    <select id="layout-picker" onchange="changeKeyboardLayout(this.value)" style="background: var(--bg-card); border: 1.5px solid var(--accent); color: var(--accent); border-radius: 4px; padding: 0.3rem 0.6rem; font-size: 0.85rem; font-weight: 700; font-family: inherit;" data-tooltip="In-browser hardware key remapping. Practice Dvorak, Colemak, Workman without changing OS settings!" data-tooltip-title="LAYOUT SWITCHER">
-      <option value="qwerty">Layout: QWERTY</option>
-      <option value="dvorak">Layout: Dvorak</option>
-      <option value="colemak">Layout: Colemak</option>
-      <option value="workman">Layout: Workman</option>
-      <option value="azerty">Layout: AZERTY</option>
+    <!-- Version 2.0 Multi-Language Selector -->
+    <select id="language-picker" onchange="changeLanguage(this.value)" style="background: var(--bg-card); border: 1.5px solid var(--accent); color: var(--accent); border-radius: 4px; padding: 0.3rem 0.6rem; font-size: 0.85rem; font-weight: 700; font-family: inherit;" data-tooltip="Select typing language with authentic native vocabulary" data-tooltip-title="LANGUAGE SELECTOR">
+      <option value="english">🇺🇸 English</option>
+      <option value="spanish">🇪🇸 Español</option>
+      <option value="french">🇫🇷 Français</option>
+      <option value="german">🇩🇪 Deutsch</option>
+      <option value="italian">🇮🇹 Italiano</option>
+      <option value="portuguese">🇵🇹 Português</option>
+      <option value="japanese">🇯🇵 Romaji</option>
     </select>
 
     <select id="code-lang-picker" onchange="setCodeLanguage(this.value)" style="background: var(--bg-card); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 4px; padding: 0.3rem 0.6rem; font-size: 0.85rem; font-family: inherit;" data-tooltip="Select programming syntax" data-tooltip-title="CODE PICKER">
@@ -243,19 +245,15 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/layouts.js') }}"></script>
 <script src="{{ url_for('static', filename='js/keyboard.js') }}"></script>
 <script src="{{ url_for('static', filename='js/engine.js') }}"></script>
 <script>
 let blindModeActive = false;
 
-function changeKeyboardLayout(layoutKey) {
-  if (window.layoutManager) {
-    window.layoutManager.setLayout(layoutKey);
-  }
-  if (window.typingEngine && window.virtualKeyboard) {
-    const nextChar = window.typingEngine.targetText[window.typingEngine.currentIndex] || '';
-    window.virtualKeyboard.updateCurrentExpectedKey(nextChar);
+function changeLanguage(langKey) {
+  if (window.typingEngine) {
+    window.typingEngine.language = langKey;
+    window.typingEngine.loadPrompt().then(updatePreviewMetadata);
   }
 }
 
@@ -281,7 +279,9 @@ function updatePreviewMetadata() {
     else if (window.typingEngine.mode === 'daily') modeText = `Official Daily Run`;
     else if (window.typingEngine.mode === 'custom') modeText = `Custom Studio Text`;
     else if (window.typingEngine.durationLimit >= 300) modeText = `${Math.round(window.typingEngine.durationLimit / 60)}-Min Marathon`;
-    modeEl.textContent = `Mode: ${modeText}`;
+    
+    const langLabel = window.typingEngine.language ? ` [${window.typingEngine.language.toUpperCase()}]` : '';
+    modeEl.textContent = `Mode: ${modeText}${langLabel}`;
   }
 }
 
@@ -372,9 +372,6 @@ document.addEventListener('DOMContentLoaded', () => {
     updatePreviewMetadata();
     if (window.virtualKeyboard && window.typingEngine.targetText.length > 0) {
       window.virtualKeyboard.updateCurrentExpectedKey(window.typingEngine.targetText[0]);
-    }
-    if (window.layoutManager && document.getElementById('layout-picker')) {
-      document.getElementById('layout-picker').value = window.layoutManager.activeLayout;
     }
   }, 400);
 });

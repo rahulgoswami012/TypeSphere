@@ -1,5 +1,5 @@
 /**
- * TypeSphere Unified Engine with Version 2.0 In-Browser Layout Translation
+ * TypeSphere Unified Engine with Multi-Language Support
  */
 class TypingEngine {
   constructor() {
@@ -12,6 +12,7 @@ class TypingEngine {
     this.durationLimit = 60;
     this.wordLimit = 25;
     this.mode = 'timed';
+    this.language = 'english';
     this.codeLanguage = 'python';
     this.withPunctuation = false;
     this.withNumbers = false;
@@ -106,20 +107,20 @@ class TypingEngine {
     }
 
     if (this.durationLimit >= 300 && !endpoint) {
-      endpoint = `/typing/api/text?mode=timed&words=600&punctuation=${this.withPunctuation}&numbers=${this.withNumbers}`;
+      endpoint = `/typing/api/text?mode=timed&words=600&language=${this.language}&punctuation=${this.withPunctuation}&numbers=${this.withNumbers}`;
     }
 
     if (!endpoint) {
       if (this.mode === 'daily') {
         endpoint = '/typing/api/daily-text';
       } else if (this.mode === 'words') {
-        endpoint = `/typing/api/text?mode=words&words=${this.wordLimit}&punctuation=${this.withPunctuation}&numbers=${this.withNumbers}`;
+        endpoint = `/typing/api/text?mode=words&words=${this.wordLimit}&language=${this.language}&punctuation=${this.withPunctuation}&numbers=${this.withNumbers}`;
       } else if (this.mode === 'quote') {
         endpoint = `/typing/api/text?category=Quote&punctuation=true`;
       } else if (this.mode === 'code') {
         endpoint = `/typing/api/text?is_code=true&code_lang=${this.codeLanguage}`;
       } else {
-        endpoint = `/typing/api/text?mode=timed&punctuation=${this.withPunctuation}&numbers=${this.withNumbers}`;
+        endpoint = `/typing/api/text?mode=timed&language=${this.language}&punctuation=${this.withPunctuation}&numbers=${this.withNumbers}`;
       }
     }
 
@@ -257,9 +258,7 @@ class TypingEngine {
         return;
       }
 
-      // Translate through layout manager if active
-      const translatedKey = window.layoutManager ? window.layoutManager.translateEvent(e) : e.key;
-      this.handleKeystroke(translatedKey, e);
+      this.handleKeystroke(e.key, e);
     });
 
     this.container.addEventListener('click', () => {
@@ -520,8 +519,7 @@ class TypingEngine {
       timeline: this.timeline,
       duration: Math.max(1.0, duration),
       target_text: this.targetText,
-      mode: this.mode,
-      layout: window.layoutManager ? window.layoutManager.activeLayout : 'qwerty'
+      mode: this.mode
     };
 
     this.displayResultOverlay(survivalFailed);

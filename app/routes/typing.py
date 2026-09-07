@@ -16,6 +16,48 @@ from app.services.achievement_service import AchievementService
 
 typing_bp = Blueprint('typing', __name__)
 
+LANGUAGE_WORD_BANKS = {
+    'english': [
+        "the", "be", "to", "of", "and", "a", "in", "that", "have", "it", "for", "not", "on", "with", "he", "as",
+        "you", "do", "at", "this", "but", "his", "by", "from", "they", "we", "say", "her", "she", "or", "an",
+        "will", "my", "one", "all", "would", "there", "their", "what", "so", "up", "out", "if", "about", "who",
+        "get", "which", "go", "me", "when", "make", "can", "like", "time", "no", "just", "him", "know", "take"
+    ],
+    'spanish': [
+        "de", "la", "que", "el", "en", "y", "a", "los", "se", "del", "las", "un", "por", "con", "no", "una",
+        "su", "para", "es", "al", "lo", "como", "mas", "pero", "sus", "le", "ya", "o", "fue", "este", "ha",
+        "si", "porque", "esta", "son", "entre", "cuando", "muy", "sin", "sobre", "ser", "tiene", "tambien",
+        "me", "hasta", "hay", "donde", "quien", "desde", "todo", "nos", "durante", "todos", "uno", "les", "ni"
+    ],
+    'french': [
+        "de", "la", "le", "et", "les", "des", "en", "un", "du", "une", "que", "est", "pour", "qui", "dans", "a",
+        "par", "sur", "pas", "plus", "au", "avec", "ce", "ne", "on", "se", "sont", "comme", "mais", "ou",
+        "nous", "sa", "fait", "ses", "tout", "faire", "leur", "aussi", "ces", "deux", "bien", "elle", "si",
+        "sans", "peut", "encore", "temps", "tres", "meme", "autre", "apres", "mon", "leur", "sous", "notre"
+    ],
+    'german': [
+        "der", "die", "und", "in", "den", "von", "zu", "das", "mit", "sich", "des", "auf", "fur", "ist", "im",
+        "dem", "nicht", "ein", "eine", "als", "auch", "es", "an", "werden", "aus", "er", "hat", "dass", "sie",
+        "nach", "wird", "bei", "einer", "um", "am", "sind", "noch", "wie", "einem", "uber", "einen", "so",
+        "sie", "zum", "war", "haben", "nur", "oder", "aber", "vor", "zur", "bis", "mehr", "durch", "man", "sein"
+    ],
+    'italian': [
+        "di", "e", "il", "che", "la", "a", "in", "un", "per", "del", "non", "i", "si", "da", "le", "della",
+        "con", "sono", "una", "dei", "delle", "come", "al", "ha", "su", "nel", "anche", "piu", "ma", "questo",
+        "ed", "dalla", "gli", "nel", "questa", "se", "tutto", "uno", "dopo", "loro", "senza", "quando", "molto"
+    ],
+    'portuguese': [
+        "de", "a", "o", "que", "e", "do", "da", "em", "um", "para", "com", "nao", "uma", "os", "no", "se",
+        "na", "por", "mais", "as", "dos", "como", "mas", "foi", "ao", "ele", "das", "tem", "a", "seu", "sua",
+        "ou", "ser", "quando", "muito", "ha", "nos", "ja", "estao", "eu", "tambem", "so", "pelo", "pela", "ate"
+    ],
+    'japanese': [
+        "kono", "sono", "ano", "hito", "koto", "toki", "sekai", "kokoro", "hikari", "kaze", "michi", "yume",
+        "mirai", "chikara", "shinjitsu", "kotoba", "shizukesa", "hoshi", "sora", "umi", "hana", "tsuki",
+        "jibun", "anata", "watashi", "ima", "kinou", "ashita", "tsuyoi", "yasashii", "utsukushii", "subete"
+    ]
+}
+
 CODE_SNIPPETS = {
     'python': "def quicksort(arr):\n    if len(arr) <= 1:\n        return arr\n    pivot = arr[len(arr) // 2]\n    left = [x for x in arr if x < pivot]\n    middle = [x for x in arr if x == pivot]\n    right = [x for x in arr if x > pivot]\n    return quicksort(left) + middle + quicksort(right)",
     'javascript': "const calculateCadence = (events) => {\n  return events.reduce((acc, curr, idx, arr) => {\n    if (idx === 0) return acc;\n    return acc + (curr.timestamp - arr[idx - 1].timestamp);\n  }, 0) / (events.length - 1);\n};",
@@ -79,6 +121,7 @@ def get_text():
 
     mode = request.args.get('mode', 'timed')
     category = request.args.get('category', 'General')
+    language = request.args.get('language', 'english').lower()
     is_code = request.args.get('is_code', 'false') == 'true'
     code_lang = request.args.get('code_lang', 'python').lower()
     word_count = int(request.args.get('words', 25))
@@ -94,22 +137,28 @@ def get_text():
             'is_code': True
         })
 
-    query = TypingText.query
-    if category == 'Quote':
-        query = query.filter_by(category='Literature', is_code=False)
-    elif category != 'All':
-        query = query.filter_by(category=category, is_code=False)
-
-    texts = query.all()
-    if not texts:
-        base_words = ["the", "be", "to", "of", "and", "a", "in", "that", "have", "it", "for", "not", "on", "with", "he", "as", "you", "do", "at", "this", "but", "his", "by", "from", "they", "we", "say", "her", "she", "or", "an", "will", "my", "one", "all", "would", "there", "their", "what", "so", "up", "out", "if", "about", "who", "get", "which", "go", "me"]
-        selected_content = " ".join(random.choices(base_words, k=word_count))
+    # Multi-language word generation
+    if language in LANGUAGE_WORD_BANKS and language != 'english':
+        bank = LANGUAGE_WORD_BANKS[language]
+        selected_content = " ".join(random.choices(bank, k=word_count))
+        category = f"Language: {language.capitalize()}"
     else:
-        selected = random.choice(texts)
-        selected_content = selected.content.strip()
-        if mode == 'words':
-            word_list = selected_content.split()
-            selected_content = " ".join(word_list[:word_count]) if len(word_list) >= word_count else " ".join(word_list)
+        query = TypingText.query
+        if category == 'Quote':
+            query = query.filter_by(category='Literature', is_code=False)
+        elif category != 'All':
+            query = query.filter_by(category=category, is_code=False)
+
+        texts = query.all()
+        if not texts:
+            bank = LANGUAGE_WORD_BANKS['english']
+            selected_content = " ".join(random.choices(bank, k=word_count))
+        else:
+            selected = random.choice(texts)
+            selected_content = selected.content.strip()
+            if mode == 'words':
+                word_list = selected_content.split()
+                selected_content = " ".join(word_list[:word_count]) if len(word_list) >= word_count else " ".join(word_list)
 
     words = selected_content.split()
     if with_numbers:
@@ -177,15 +226,15 @@ def submit_test():
         if current_user.is_authenticated:
             try:
                 ProfileAnalyzer.update_dna(current_user.id, events)
-            except Exception as e:
-                print("DNA Telemetry update note:", e)
+            except Exception:
+                pass
 
         unlocked = []
         if current_user.is_authenticated:
             try:
                 unlocked = AchievementService.check_and_award(current_user)
-            except Exception as e:
-                print("Achievement award note:", e)
+            except Exception:
+                pass
 
         return jsonify({
             'success': True,
