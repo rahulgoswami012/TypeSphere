@@ -1,14 +1,14 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="card" style="max-width: 1060px; margin: 0 auto; box-shadow: 0 15px 35px rgba(0,0,0,0.5);">
+<div class="card" style="max-width: 1060px; margin: 0 auto;">
   
   <!-- =========================================================
        1. PERSISTENT THREE-MODE TOP BAR (ALWAYS ACCESSIBLE)
        ========================================================= -->
   <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 1.25rem; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
     <div>
-      <h1 style="font-size: 1.75rem; font-weight: 800; margin: 0; display: flex; align-items: center; gap: 0.6rem;">
+      <h1 style="font-size: 1.75rem; font-weight: 800; margin: 0;">
         Multiplayer Arena
       </h1>
       <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.2rem;">
@@ -16,7 +16,7 @@
       </p>
     </div>
 
-    <!-- Mode Switcher Navigation Pills (Never reloads page) -->
+    <!-- Mode Switcher Navigation Pills (Instant In-Page Switching) -->
     <div style="display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap;">
       <button onclick="switchModeTab('public')" id="tab-pill-public" class="btn btn-primary" style="padding: 0.45rem 0.9rem; font-size: 0.85rem; font-weight: 700;">
         🌐 Public Rooms
@@ -37,10 +37,9 @@
   </div>
 
   <!-- =========================================================
-       VIEW 1: MULTIPLAYER HUB (Three Accessible Modes)
+       VIEW 1: MULTIPLAYER HUB (Mode Selection Cards & Directory)
        ========================================================= -->
   <div id="view-hub">
-    <!-- Mode Description Cards Grid -->
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.25rem; margin-bottom: 2rem;">
       
       <!-- 1. Public Rooms Card -->
@@ -51,7 +50,7 @@
             <span style="font-size: 0.7rem; font-weight: 800; background: var(--accent); color: #fff; padding: 0.15rem 0.5rem; border-radius: 4px;">OPEN</span>
           </div>
           <p style="color: var(--text-muted); font-size: 0.85rem; line-height: 1.5; margin-bottom: 1.25rem;">
-            Browse open rooms or create your own with custom limits (up to 8 players), duration, and passages.
+            Browse open rooms or create your own with custom player limits (up to 8), test durations, and custom passages.
           </p>
         </div>
         <button onclick="openCreateModal('public')" class="btn btn-primary" style="width: 100%; justify-content: center; font-weight: 700;">
@@ -67,7 +66,7 @@
             <span style="font-size: 0.7rem; font-weight: 800; background: var(--success); color: #fff; padding: 0.15rem 0.5rem; border-radius: 4px;">AUTOMATIC</span>
           </div>
           <p style="color: var(--text-muted); font-size: 0.85rem; line-height: 1.5; margin-bottom: 1.25rem;">
-            Instant pairing. Enter the waiting queue and automatically duel another available player without sharing links.
+            Instant pairing. Enter the waiting queue and automatically duel another available pilot without sharing links.
           </p>
         </div>
         <button onclick="startQuickMatchQueue()" class="btn" style="width: 100%; justify-content: center; font-weight: 700; border-color: var(--success); color: var(--success);">
@@ -80,7 +79,7 @@
         <div>
           <h3 style="margin: 0 0 0.5rem 0; font-size: 1.2rem;">🔒 Private 1v1</h3>
           <p style="color: var(--text-muted); font-size: 0.85rem; line-height: 1.5; margin-bottom: 1.25rem;">
-            Generate an exclusive room code or link. Exactly 2 players. Both must be marked Ready before starting.
+            Generate an exclusive room code or invite link. Strictly 2 players. Both must be ready before match initiation.
           </p>
         </div>
         <div style="display: flex; flex-direction: column; gap: 0.5rem;">
@@ -88,18 +87,18 @@
             Create Private 1v1
           </button>
           <div style="display: flex; gap: 0.4rem;">
-            <input type="text" id="join-code-input" placeholder="Enter Code (1V1-XXXX)" style="flex: 1; padding: 0.55rem 0.75rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius); color: var(--text-primary); font-family: var(--font-mono); font-size: 0.85rem; text-transform: uppercase;">
+            <input type="text" id="join-code-input" placeholder="Room Code (1V1-XXXX)" style="flex: 1; padding: 0.55rem 0.75rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary); font-family: var(--font-mono); font-size: 0.85rem; text-transform: uppercase;">
             <button onclick="joinRoomByCodeInput()" class="btn btn-primary" style="padding: 0.55rem 1rem;">Join</button>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Public Rooms Directory Table -->
+    <!-- Public Rooms Live Directory -->
     <div id="public-directory-section" style="border-top: 1px solid var(--border-color); padding-top: 1.5rem;">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
         <h3 style="font-size: 1.15rem; margin: 0;">Open Public Rooms</h3>
-        <button onclick="requestPublicRooms()" class="btn" style="padding: 0.35rem 0.75rem; font-size: 0.8rem;">
+        <button onclick="requestPublicRooms()" class="btn btn-sm">
           🔄 Refresh Directory
         </button>
       </div>
@@ -107,14 +106,14 @@
       <div class="table-responsive-container">
         <table style="width: 100%; border-collapse: collapse; text-align: left;">
           <thead>
-            <tr style="border-bottom: 1px solid var(--border-color); color: var(--text-muted); font-size: 0.82rem;">
-              <th style="padding: 0.65rem 1rem;">Code</th>
-              <th style="padding: 0.65rem 1rem;">Room Title</th>
-              <th style="padding: 0.65rem 1rem;">Host</th>
-              <th style="padding: 0.65rem 1rem;">Racers</th>
-              <th style="padding: 0.65rem 1rem;">Duration</th>
-              <th style="padding: 0.65rem 1rem;">Status</th>
-              <th style="padding: 0.65rem 1rem;">Action</th>
+            <tr>
+              <th>Code</th>
+              <th>Room Title</th>
+              <th>Host</th>
+              <th>Racers</th>
+              <th>Duration</th>
+              <th>Status</th>
+              <th>Action</th>
             </tr>
           </thead>
           <tbody id="public-rooms-tbody">
@@ -133,13 +132,13 @@
        VIEW 2: QUICK MATCH SEARCHING MODAL
        ========================================================= -->
   <div id="modal-quick-searching" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 2500; align-items: center; justify-content: center; backdrop-filter: blur(8px); padding: 1rem;">
-    <div class="card" style="width: 100%; max-width: 440px; text-align: center; border-color: var(--accent); padding: 2.5rem 2rem; box-shadow: 0 20px 45px rgba(0,0,0,0.8);">
+    <div class="card" style="width: 100%; max-width: 440px; text-align: center; border-color: var(--accent); padding: 2.5rem 2rem;">
       <div style="font-size: 3rem; margin-bottom: 1rem; animation: pulse 1.2s infinite;">⚡</div>
       <h2 style="font-size: 1.5rem; font-weight: 800; color: var(--accent); margin-bottom: 0.5rem;">Quick Match Queue</h2>
       <p style="color: var(--text-muted); font-size: 0.9rem; line-height: 1.5; margin-bottom: 2rem;">
-        Searching for another available pilot... You will be automatically moved to the match when paired.
+        Searching for an opponent... You will be automatically transferred to the starting grid once paired.
       </p>
-      <button onclick="cancelQuickMatchQueue()" class="btn" style="border-color: var(--danger); color: var(--danger); padding: 0.65rem 1.5rem; font-weight: 700;">
+      <button onclick="cancelQuickMatchQueue()" class="btn btn-danger" style="padding: 0.65rem 1.5rem; font-weight: 700;">
         Cancel Queue
       </button>
     </div>
@@ -149,31 +148,31 @@
        VIEW 3: CREATE ROOM CONFIGURATION MODAL
        ========================================================= -->
   <div id="modal-create-room" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 2500; align-items: center; justify-content: center; backdrop-filter: blur(8px); padding: 1rem;">
-    <div class="card" style="width: 100%; max-width: 520px; border-color: var(--accent); padding: 2rem; box-shadow: 0 20px 45px rgba(0,0,0,0.8); max-height: 90vh; overflow-y: auto;">
+    <div class="card" style="width: 100%; max-width: 520px; border-color: var(--accent); padding: 2rem; max-height: 90vh; overflow-y: auto;">
       <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem; margin-bottom: 1.25rem;">
         <h3 id="create-modal-title" style="margin: 0; font-size: 1.3rem; font-weight: 800; color: var(--accent);">Create Room</h3>
-        <button onclick="closeCreateModal()" class="btn" style="padding: 0.2rem 0.5rem; font-size: 1rem;">&times;</button>
+        <button onclick="closeCreateModal()" class="btn btn-sm">&times;</button>
       </div>
 
       <div style="margin-bottom: 1.25rem;">
         <label style="display: block; font-size: 0.8rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-bottom: 0.35rem;">Room Title</label>
-        <input type="text" id="create-room-name" value="Speed Sprint" style="width: 100%; padding: 0.65rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius); color: var(--text-primary); font-family: inherit;">
+        <input type="text" id="create-room-name" value="Speed Sprint" style="width: 100%; padding: 0.65rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary); font-family: inherit;">
       </div>
 
       <div style="margin-bottom: 1.25rem;">
         <label style="display: block; font-size: 0.8rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-bottom: 0.35rem;">Duration</label>
         <div style="display: flex; gap: 0.4rem; flex-wrap: wrap;" id="create-dur-group">
-          <button type="button" class="btn" onclick="selectCreateDur(30, this)">30s</button>
-          <button type="button" class="btn active-choice" onclick="selectCreateDur(60, this)">60s</button>
-          <button type="button" class="btn" onclick="selectCreateDur(120, this)">120s</button>
-          <button type="button" class="btn" onclick="selectCreateDur(300, this)">300s</button>
-          <button type="button" class="btn" onclick="selectCreateDur(600, this)">600s</button>
+          <button type="button" class="btn btn-sm" onclick="selectCreateDur(30, this)">30s</button>
+          <button type="button" class="btn btn-sm active-choice" onclick="selectCreateDur(60, this)">60s</button>
+          <button type="button" class="btn btn-sm" onclick="selectCreateDur(120, this)">120s</button>
+          <button type="button" class="btn btn-sm" onclick="selectCreateDur(300, this)">300s</button>
+          <button type="button" class="btn btn-sm" onclick="selectCreateDur(600, this)">600s</button>
         </div>
       </div>
 
       <div id="create-players-wrap" style="margin-bottom: 1.25rem;">
         <label style="display: block; font-size: 0.8rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-bottom: 0.35rem;">Maximum Racers</label>
-        <select id="create-max-players" style="width: 100%; padding: 0.65rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius); color: var(--text-primary); font-family: inherit;">
+        <select id="create-max-players" style="width: 100%; padding: 0.65rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary); font-family: inherit;">
           <option value="2">2 Players (1v1)</option>
           <option value="4" selected>4 Players</option>
           <option value="6">6 Players</option>
@@ -182,8 +181,8 @@
       </div>
 
       <div style="margin-bottom: 1.5rem;">
-        <label style="display: block; font-size: 0.8rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-bottom: 0.35rem;">Custom Passage (Optional &bull; Unlimited Length)</label>
-        <textarea id="create-custom-text" rows="3" placeholder="Leave blank to use curated passages, or paste custom text..." style="width: 100%; padding: 0.65rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius); color: var(--text-primary); font-family: var(--font-mono); font-size: 0.85rem; line-height: 1.5;"></textarea>
+        <label style="display: block; font-size: 0.8rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-bottom: 0.35rem;">Custom Passage (Optional)</label>
+        <textarea id="create-custom-text" rows="3" placeholder="Leave blank to use curated passages, or paste custom text..." style="width: 100%; padding: 0.65rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary); font-family: var(--font-mono); font-size: 0.85rem; line-height: 1.5;"></textarea>
       </div>
 
       <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
@@ -196,7 +195,7 @@
   </div>
 
   <!-- =========================================================
-       VIEW 4: WAITING LOBBY (Player Cards & Ready Status)
+       VIEW 4: WAITING ROOM / LOBBY
        ========================================================= -->
   <div id="view-waiting" style="display: none;">
     <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1.5rem;">
@@ -205,7 +204,7 @@
           <span style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted);">Active Room Code</span>
           <div style="display: flex; align-items: center; gap: 0.6rem; margin-top: 0.2rem;">
             <span id="waiting-room-code" style="font-size: 1.5rem; font-family: var(--font-mono); font-weight: 800; color: var(--accent);">ROOM-CODE</span>
-            <button onclick="copyLobbyInvite()" id="btn-copy-lobby" class="btn" style="padding: 0.35rem 0.75rem; font-size: 0.8rem; border-color: var(--accent); color: var(--accent);">
+            <button onclick="copyLobbyInvite()" id="btn-copy-lobby" class="btn btn-sm">
               📋 Copy Link
             </button>
           </div>
@@ -218,11 +217,10 @@
       </div>
 
       <h3 style="font-size: 1.1rem; margin-bottom: 1rem;">Connected Racers</h3>
-      <div id="waiting-racers-list" style="display: flex; flex-direction: column; gap: 0.65rem; margin-bottom: 1.5rem;">
-      </div>
+      <div id="waiting-racers-list" style="display: flex; flex-direction: column; gap: 0.65rem; margin-bottom: 1.5rem;"></div>
 
       <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; border-top: 1px solid var(--border-color); padding-top: 1.25rem;">
-        <button onclick="safeLeaveRoom()" class="btn" style="border-color: var(--danger); color: var(--danger);">
+        <button onclick="safeLeaveRoom()" class="btn btn-danger">
           &larr; Leave Room
         </button>
 
@@ -248,19 +246,19 @@
       <div id="arena-countdown-num" style="font-size: 4.5rem; font-family: var(--font-mono); font-weight: 900; color: var(--accent); margin: 0.2rem 0;">3</div>
     </div>
 
-    <!-- Finished Early Banner: Spectate or Leave -->
-    <div id="finished-spectate-banner" style="display: none; background: rgba(16, 185, 129, 0.15); border: 1.5px solid var(--success); border-radius: var(--radius); padding: 1rem 1.5rem; margin-bottom: 1.25rem; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+    <!-- Finished Early Banner (Live Spectate Mode) -->
+    <div id="finished-spectate-banner" style="display: none; background: var(--success-bg); border: 1.5px solid var(--success); border-radius: var(--radius); padding: 1rem 1.5rem; margin-bottom: 1.25rem; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
       <div>
         <div style="font-size: 1.15rem; font-weight: 800; color: var(--success);" id="spectate-title">
           🏁 You finished! Position: #1
         </div>
         <div style="font-size: 0.85rem; color: var(--text-muted);" id="spectate-subtext">
-          Other racers are still typing. You are now spectating live.
+          Other racers are still on track. You are now spectating live.
         </div>
       </div>
       <div style="display: flex; gap: 0.6rem;">
-        <button onclick="leaveEarlyAfterFinish()" class="btn" style="border-color: var(--border-color); font-size: 0.85rem;">
-          🚪 Leave Race
+        <button onclick="leaveEarlyAfterFinish()" class="btn btn-sm">
+          🚪 Leave Race (Save Place)
         </button>
       </div>
     </div>
@@ -276,17 +274,17 @@
 
     <!-- Smooth Auto-Centering Passage Box -->
     <div style="margin-bottom: 1rem;">
-      <div id="arena-passage-box" class="typing-container focus-ring" style="min-height: 140px; max-height: 240px; overflow-y: auto; scroll-behavior: smooth; position: relative; user-select: none;">
+      <div id="arena-passage-box" class="typing-container focus-ring" style="min-height: 140px; max-height: 220px; overflow-y: auto; scroll-behavior: smooth; position: relative;">
         <div id="arena-caret" class="caret caret-block"></div>
         <div id="arena-passage-text" class="typing-text-display"></div>
       </div>
     </div>
 
-    <!-- Robust Input Field -->
+    <!-- Universal Cockpit Input -->
     <div>
-      <input type="text" id="arena-cockpit-input" placeholder="Type here when race begins (Space advances)..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="width: 100%; padding: 0.95rem 1.15rem; background: var(--bg-card); border: 2px solid var(--border-color); border-radius: var(--radius); color: var(--text-primary); font-family: var(--font-mono); font-size: 1.1rem; outline: none; transition: border-color 0.2s ease;">
+      <input type="text" id="arena-cockpit-input" placeholder="Type here when race begins (Space advances)..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="width: 100%; padding: 0.95rem 1.15rem; background: var(--bg-card); border: 2px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary); font-family: var(--font-mono); font-size: 1.1rem; outline: none; transition: border-color var(--transition-fast);">
       <div style="text-align: center; margin-top: 0.5rem; font-size: 0.8rem; color: var(--text-muted);">
-        Passage auto-centers automatically as you type &bull; Works with PC, phone soft keyboard, and Bluetooth keyboards.
+        Active line auto-centers smoothly as you type.
       </div>
     </div>
   </div>
@@ -295,14 +293,14 @@
        VIEW 6: FINAL RESULTS SCREEN (Celebration & Motivation)
        ========================================================= -->
   <div id="view-results" style="display: none; text-align: center;">
-    <div class="card" id="results-card-container" style="background: var(--bg-card); border-color: var(--accent); padding: 2.5rem 2rem; position: relative; overflow: hidden;">
+    <div class="card" id="results-card-container" style="background: var(--bg-card); border-color: var(--accent); padding: 2.5rem 2rem;">
       
       <div id="results-trophy-icon" style="font-size: 4rem; margin-bottom: 0.4rem;">🏆</div>
       <h2 id="results-headline-title" style="font-size: 2.1rem; font-weight: 800; color: var(--accent); margin-bottom: 0.4rem;">
         Race Concluded
       </h2>
 
-      <div id="results-motivational-banner" style="background: rgba(88, 166, 255, 0.12); border: 1px solid var(--accent); border-radius: 6px; padding: 0.85rem 1.25rem; max-width: 680px; margin: 0 auto 1.75rem; font-size: 0.95rem; font-weight: 600; line-height: 1.5;">
+      <div id="results-motivational-banner" style="background: var(--accent-glow); border: 1px solid var(--accent); border-radius: var(--radius-sm); padding: 0.85rem 1.25rem; max-width: 680px; margin: 0 auto 1.75rem; font-size: 0.95rem; font-weight: 600; line-height: 1.5;">
         Great race everyone!
       </div>
 
@@ -310,13 +308,13 @@
       <div class="table-responsive-container" style="margin-bottom: 2rem;">
         <table style="width: 100%; text-align: left;">
           <thead>
-            <tr style="border-bottom: 1px solid var(--border-color); color: var(--text-muted); font-size: 0.85rem;">
-              <th style="padding: 0.75rem 1rem;">Position</th>
-              <th style="padding: 0.75rem 1rem;">Pilot</th>
-              <th style="padding: 0.75rem 1rem;">Net Speed</th>
-              <th style="padding: 0.75rem 1rem;">Accuracy</th>
-              <th style="padding: 0.75rem 1rem;">Errors</th>
-              <th style="padding: 0.75rem 1rem;">Status</th>
+            <tr>
+              <th>Position</th>
+              <th>Pilot</th>
+              <th>Net Speed</th>
+              <th>Accuracy</th>
+              <th>Errors</th>
+              <th>Status</th>
             </tr>
           </thead>
           <tbody id="results-standings-tbody"></tbody>
@@ -334,7 +332,7 @@
         <button onclick="switchModeTab('public')" class="btn" style="padding: 0.75rem 1.25rem;">
           🌐 Public Rooms
         </button>
-        <button onclick="safeLeaveRoom()" class="btn" style="padding: 0.75rem 1.25rem; border-color: var(--border-color);">
+        <button onclick="safeLeaveRoom()" class="btn" style="padding: 0.75rem 1.25rem;">
           🏠 Return to Hub
         </button>
       </div>
@@ -374,7 +372,6 @@ const trackElements = {};
 document.addEventListener('DOMContentLoaded', () => {
   initSocket();
 
-  // Check URL join code
   const params = new URLSearchParams(window.location.search);
   const joinParam = params.get('join') || params.get('room');
   if (joinParam) {
@@ -431,7 +428,6 @@ function initSocket() {
     alert(data.message || 'Action failed.');
   });
 
-  // Quick match queue
   socket.on('quick_queue_waiting', () => {
     document.getElementById('modal-quick-searching').style.display = 'flex';
   });
@@ -450,7 +446,6 @@ function initSocket() {
     renderWaitingLobby();
   });
 
-  // Match countdown
   socket.on('match_countdown_started', (data) => {
     currentPassage = data.text;
     hasLocallyFinished = false;
@@ -462,7 +457,6 @@ function initSocket() {
     renderArenaTracks(data.players || []);
   });
 
-  // Independent player finishes (DOES NOT END RACE FOR REMAINING PLAYERS)
   socket.on('individual_player_finished', (data) => {
     const finishedPlayer = data.player;
     const isMe = (finishedPlayer.sid === mySid);
@@ -512,13 +506,11 @@ function initSocket() {
 // Mode Switching & Safety Guards
 // ==========================================
 function switchModeTab(targetMode) {
-  // If user is currently in an active race, prompt before abandoning
   if (activeRoomData && (activeRoomData.status === 'in_progress' || activeRoomData.status === 'countdown') && !hasLocallyFinished) {
-    const confirmLeave = confirm("You are currently inside an active race! Switching modes will leave this race and record you as DNF. Continue?");
+    const confirmLeave = confirm("You are currently inside an active race! Switching modes will record you as DNF. Continue?");
     if (!confirmLeave) return;
   }
 
-  // Cleanup prior room or queue safely
   if (activeRoomData) {
     socket.emit('leave_room_voluntary');
   }
@@ -532,7 +524,6 @@ function switchModeTab(targetMode) {
   } else if (targetMode === 'private') {
     openCreateModal('private');
   } else {
-    // Public directory
     const dir = document.getElementById('public-directory-section');
     if (dir) dir.scrollIntoView({ behavior: 'smooth' });
     requestPublicRooms();
@@ -548,7 +539,6 @@ function highlightActiveNavPill(activeMode) {
   pQck.className = (activeMode === 'quick') ? 'btn btn-primary' : 'btn';
   pPrv.className = (activeMode === 'private') ? 'btn btn-primary' : 'btn';
 
-  // Highlight corresponding card in hub
   const cPub = document.getElementById('card-mode-public');
   const cQck = document.getElementById('card-mode-quick');
   const cPrv = document.getElementById('card-mode-private');
@@ -602,20 +592,17 @@ function renderPublicRooms(rooms) {
 
   rooms.forEach(r => {
     const tr = document.createElement('tr');
-    tr.style.borderBottom = '1px solid var(--border-color)';
-    tr.style.fontSize = '0.9rem';
-
     tr.innerHTML = `
-      <td style="padding: 0.75rem 1rem; font-family: var(--font-mono); font-weight: 700; color: var(--accent);">${r.code}</td>
-      <td style="padding: 0.75rem 1rem; font-weight: 600;">${r.name}</td>
-      <td style="padding: 0.75rem 1rem;">${r.host_name}</td>
-      <td style="padding: 0.75rem 1rem;">${r.current_players} / ${r.max_players}</td>
-      <td style="padding: 0.75rem 1rem;">${r.duration}s</td>
-      <td style="padding: 0.75rem 1rem;">
-        <span style="background: rgba(63, 185, 80, 0.2); color: var(--success); padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 700;">WAITING</span>
+      <td style="font-family: var(--font-mono); font-weight: 700; color: var(--accent);">${r.code}</td>
+      <td style="font-weight: 600;">${r.name}</td>
+      <td>${r.host_name}</td>
+      <td>${r.current_players} / ${r.max_players}</td>
+      <td>${r.duration}s</td>
+      <td>
+        <span style="background: var(--success-bg); color: var(--success); padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 700;">WAITING</span>
       </td>
-      <td style="padding: 0.75rem 1rem;">
-        <button onclick="joinRoomByCode('${r.code}')" class="btn btn-primary" style="padding: 0.25rem 0.75rem; font-size: 0.8rem;">
+      <td>
+        <button onclick="joinRoomByCode('${r.code}')" class="btn btn-primary btn-sm">
           Join Room
         </button>
       </td>
@@ -644,6 +631,7 @@ function startQuickMatchQueue() {
 
 function cancelQuickMatchQueue() {
   socket.emit('cancel_quick_queue');
+  highlightActiveNavPill('public');
 }
 
 function openCreateModal(type) {
@@ -665,7 +653,7 @@ function selectCreateDur(dur, btn) {
 
 function submitCreateRoom() {
   const name = document.getElementById('create-room-name').value.trim() || 'Speed Duel';
-  const maxP = (creationType === 'private') ? 2 : parseInt(document.getElementById('create-max-players').value);
+  const maxP = (creationType === 'private') ? 2 : parseInt(document.getElementById('create-max-players').value, 10);
   const customText = document.getElementById('create-custom-text').value.trim();
 
   socket.emit('create_room', {
@@ -704,20 +692,20 @@ function renderWaitingLobby() {
     div.style.display = 'flex';
     div.style.justifyContent = 'space-between';
     div.style.alignItems = 'center';
-    div.style.background = isMe ? 'rgba(88, 166, 255, 0.12)' : 'var(--bg-secondary)';
+    div.style.background = isMe ? 'rgba(56, 189, 248, 0.12)' : 'var(--bg-secondary)';
     div.style.border = isMe ? '1.5px solid var(--accent)' : '1px solid var(--border-color)';
     div.style.padding = '0.75rem 1rem';
-    div.style.borderRadius = 'var(--radius)';
+    div.style.borderRadius = 'var(--radius-sm)';
 
     div.innerHTML = `
       <div style="display: flex; align-items: center; gap: 0.6rem;">
         <span style="font-size: 1.15rem;">🏎️</span>
-        <strong style="font-size: 0.95rem;">${isMe ? 'You (' + p.name + ')' : p.name}</strong>
-        ${p.is_host ? '<span style="font-size: 0.7rem; background: var(--accent); color: #fff; padding: 0.1rem 0.45rem; border-radius: 4px; font-weight: 700;">HOST</span>' : ''}
+        <strong style="font-size: 0.95rem;">${isMe ? `You (${p.name})` : p.name}</strong>
+        ${p.is_host ? '<span style="font-size: 0.7rem; background: var(--accent); color: #04101e; padding: 0.1rem 0.45rem; border-radius: 4px; font-weight: 700;">HOST</span>' : ''}
       </div>
 
       <div>
-        <span style="font-size: 0.8rem; font-weight: 700; padding: 0.25rem 0.65rem; border-radius: 4px; background: ${p.ready ? 'rgba(63, 185, 80, 0.2)' : 'rgba(210, 153, 34, 0.2)'}; color: ${p.ready ? 'var(--success)' : 'var(--warning)'};">
+        <span style="font-size: 0.8rem; font-weight: 700; padding: 0.25rem 0.65rem; border-radius: 4px; background: ${p.ready ? 'var(--success-bg)' : 'var(--warning-bg)'}; color: ${p.ready ? 'var(--success)' : 'var(--warning)'};">
           ${p.ready ? '✓ Ready' : '⏳ Not Ready'}
         </span>
       </div>
@@ -741,8 +729,7 @@ function renderWaitingLobby() {
   const myRecord = activeRoomData.players[mySid];
   if (myRecord) {
     readyBtn.textContent = myRecord.ready ? 'Cancel Ready' : 'Mark Ready (✓)';
-    readyBtn.style.background = myRecord.ready ? 'var(--bg-secondary)' : 'var(--accent)';
-    readyBtn.style.color = myRecord.ready ? 'var(--text-muted)' : '#ffffff';
+    readyBtn.className = myRecord.ready ? 'btn' : 'btn btn-primary';
   }
 }
 
@@ -755,7 +742,7 @@ function copyLobbyInvite() {
     btn.style.color = 'var(--success)';
     setTimeout(() => {
       btn.textContent = '📋 Copy Link';
-      btn.style.color = 'var(--accent)';
+      btn.style.color = '';
     }, 2000);
   });
 }
@@ -813,7 +800,6 @@ function executeCountdown(durationSec) {
       input.disabled = false;
       input.focus();
 
-      // Start duration countdown watcher
       startClientRaceTimer(durationSec);
     } else {
       clearInterval(cdTimer);
@@ -851,10 +837,6 @@ function renderArenaPassage() {
   updateArenaCaret();
 }
 
-/**
- * Smooth Line Auto-Centering
- * Keeps active line centered in viewing window without jumping page
- */
 function updateArenaCaret() {
   const spans = document.querySelectorAll('#arena-passage-text .char');
   const caret = document.getElementById('arena-caret');
@@ -864,10 +846,9 @@ function updateArenaCaret() {
   if (currentInputIndex < spans.length) {
     const target = spans[currentInputIndex];
     caret.style.display = 'block';
-    caret.style.left = target.offsetLeft + 'px';
-    caret.style.top = (target.offsetTop + 4) + 'px';
+    caret.style.left = `${target.offsetLeft}px`;
+    caret.style.top = `${target.offsetTop + 4}px`;
 
-    // Auto-center current line vertically in viewing box
     const targetMid = target.offsetTop - (box.clientHeight / 2) + 25;
     if (Math.abs(box.scrollTop - targetMid) > 20) {
       box.scrollTo({
@@ -877,8 +858,8 @@ function updateArenaCaret() {
     }
   } else if (spans.length > 0) {
     const last = spans[spans.length - 1];
-    caret.style.left = (last.offsetLeft + last.offsetWidth) + 'px';
-    caret.style.top = (last.offsetTop + 4) + 'px';
+    caret.style.left = `${last.offsetLeft + last.offsetWidth}px`;
+    caret.style.top = `${last.offsetTop + 4}px`;
   }
 }
 
@@ -895,7 +876,7 @@ function renderArenaTracks(players) {
       track.id = `arena-track-${p.sid}`;
       track.style.background = 'var(--bg-card)';
       track.style.padding = '0.75rem 1rem';
-      track.style.borderRadius = 'var(--radius)';
+      track.style.borderRadius = 'var(--radius-sm)';
       track.style.border = isMe ? '1.5px solid var(--accent)' : '1px solid var(--border-color)';
       track.innerHTML = `
         <div style="display:flex; justify-content:space-between; font-size:0.85rem; margin-bottom:0.35rem;">
@@ -928,9 +909,6 @@ function renderArenaTracks(players) {
   });
 }
 
-// ----------------------------------------------------
-// Unified Input: Full Desktop & Mobile Keyboard Support
-// ----------------------------------------------------
 function bindArenaInput() {
   const input = document.getElementById('arena-cockpit-input');
 
@@ -968,7 +946,6 @@ function bindArenaInput() {
       }
     }
 
-    // Telemetry
     const progress = Math.min(100, Math.round((currentInputIndex / currentPassage.length) * 100));
     const elapsedMin = (performance.now() - raceStartTime) / 60000;
     const netWords = Math.max(0, (currentInputIndex - mistakes) / 5.0);
@@ -982,7 +959,6 @@ function bindArenaInput() {
       errors: mistakes
     });
 
-    // Local Completion Check
     if (val === currentPassage) {
       hasLocallyFinished = true;
       raceActive = false;
@@ -998,7 +974,7 @@ function bindArenaInput() {
 }
 
 // ==========================================
-// Results Screen & Contextual Motivational Messages
+// Results Screen & Contextual Feedback
 // ==========================================
 function showResultsView(standings) {
   showView('results');
@@ -1008,7 +984,6 @@ function showResultsView(standings) {
   const winner = standings[0];
   const isWinnerMe = (winner && winner.sid === mySid);
 
-  // Visual celebration effects
   const trophyIcon = document.getElementById('results-trophy-icon');
   const titleEl = document.getElementById('results-headline-title');
   const bannerEl = document.getElementById('results-motivational-banner');
@@ -1016,16 +991,16 @@ function showResultsView(standings) {
   if (isWinnerMe) {
     trophyIcon.textContent = "🏆";
     titleEl.textContent = "VICTORY! Outstanding Speed!";
-    titleEl.style.color = "#f59e0b";
-    bannerEl.style.borderColor = "#f59e0b";
-    bannerEl.style.background = "rgba(245, 158, 11, 0.15)";
-    bannerEl.innerHTML = `🥇 <strong>First Place Champion!</strong> You dominated the race track with unmatched precision and lightning velocity!`;
+    titleEl.style.color = "var(--warning)";
+    bannerEl.style.borderColor = "var(--warning)";
+    bannerEl.style.background = "var(--warning-bg)";
+    bannerEl.innerHTML = `🥇 <strong>First Place Champion!</strong> You dominated the grid with unmatched precision!`;
   } else {
     trophyIcon.textContent = "🏁";
     titleEl.textContent = "Race Concluded";
     titleEl.style.color = "var(--accent)";
     bannerEl.style.borderColor = "var(--accent)";
-    bannerEl.style.background = "rgba(88, 166, 255, 0.12)";
+    bannerEl.style.background = "var(--accent-glow)";
 
     const myIndex = standings.findIndex(p => p.sid === mySid);
     const myRank = myIndex + 1;
@@ -1041,14 +1016,11 @@ function showResultsView(standings) {
     bannerEl.innerHTML = `You placed <strong>#${myRank > 0 ? myRank : 'DNF'}</strong> &bull; ${motivation}`;
   }
 
-  // Standings table
   standings.forEach((p, idx) => {
     const isMe = (p.sid === mySid);
     const tr = document.createElement('tr');
-    tr.style.borderBottom = '1px solid var(--border-color)';
-    tr.style.fontSize = '0.95rem';
     if (isMe) {
-      tr.style.background = 'rgba(88, 166, 255, 0.12)';
+      tr.style.background = 'rgba(56, 189, 248, 0.1)';
     }
 
     const medal = (idx === 0) ? '🥇 1st' : ((idx === 1) ? '🥈 2nd' : ((idx === 2) ? '🥉 3rd' : `${idx + 1}th`));
@@ -1057,12 +1029,12 @@ function showResultsView(standings) {
       : (p.finished ? '<span style="color:var(--success); font-weight:700;">Finished</span>' : '<span style="color:var(--warning); font-weight:700;">Racing</span>');
 
     tr.innerHTML = `
-      <td style="padding: 0.75rem 1rem; font-weight: 800; color: ${idx === 0 ? '#f59e0b' : 'var(--text-primary)'};">${medal}</td>
-      <td style="padding: 0.75rem 1rem; font-weight: 700;">${isMe ? 'You (' + p.name + ')' : p.name}</td>
-      <td style="padding: 0.75rem 1rem; font-family: var(--font-mono); font-weight: 800; color: var(--accent);">${Math.round(p.wpm || 0)} WPM</td>
-      <td style="padding: 0.75rem 1rem;">${Math.round(p.accuracy || 100)}%</td>
-      <td style="padding: 0.75rem 1rem; color: var(--danger); font-weight: 700;">${p.errors || 0}</td>
-      <td style="padding: 0.75rem 1rem;">${statusTag}</td>
+      <td style="font-weight: 800; color: ${idx === 0 ? 'var(--warning)' : 'var(--text-primary)'};">${medal}</td>
+      <td style="font-weight: 700;">${isMe ? `You (${p.name})` : p.name}</td>
+      <td style="font-family: var(--font-mono); font-weight: 800; color: var(--accent);">${Math.round(p.wpm || 0)} WPM</td>
+      <td>${Math.round(p.accuracy || 100)}%</td>
+      <td style="color: var(--danger); font-weight: 700;">${p.errors || 0}</td>
+      <td>${statusTag}</td>
     `;
     tbody.appendChild(tr);
   });

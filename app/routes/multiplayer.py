@@ -10,9 +10,9 @@ from app.models.typing import TypingTest
 
 multiplayer_bp = Blueprint('multiplayer', __name__)
 
-# Core state containers
-ROOMS = {}         # room_code -> room_dict
-QUICK_QUEUE = []   # list of {'sid': sid, 'user_id': uid, 'name': str, 'queued_at': float}
+# Primary Memory Stores
+ROOMS = {}         # room_code -> dict
+QUICK_QUEUE = []   # [{'sid': sid, 'user_id': uid, 'name': str, 'queued_at': float}]
 SID_TO_ROOM = {}   # sid -> room_code
 
 CURATED_PASSAGES = {
@@ -22,16 +22,16 @@ CURATED_PASSAGES = {
         "Real velocity is born from economy of motion. Eliminate tension from your fingers and allow muscle memory to guide every stroke."
     ],
     60: [
-        "Yes, the story is real, but the Taj Mahal did not physically disappear. The magician was P. C. Sorcar Jr., one of India's most famous illusionists. On 8 November 2000, he performed an illusion in Agra in which the Taj Mahal appeared to vanish for about two minutes to the spectators.",
-        "It is a truth universally acknowledged, that a single man in possession of a good fortune, must be in want of a wife. However little known the feelings or views of such a man may be on his first entering a neighbourhood, this truth is fixed in the minds of the surrounding families.",
+        "Yes, the story is real, but the Taj Mahal did not physically disappear. The magician was P. C. Sorcar Jr., one of India's most famous illusionists. On 8 November 2000, he performed an illusion in Agra in which the Taj Mahal appeared to vanish for about two minutes.",
+        "It is a truth universally acknowledged, that a single man in possession of a good fortune, must be in want of a wife. However little known the feelings or views of such a man may be on his first entering a neighbourhood, this truth is fixed.",
         "Distributed event streaming architectures enable modern services to communicate asynchronously with high throughput and resilience against failures by decoupling producers from consumers through immutable append-only logs."
     ],
     120: [
-        "It was the best of times, it was the worst of times, it was the age of wisdom, it was the age of foolishness, it was the epoch of belief, it was the epoch of incredulity, it was the season of light, it was the season of darkness, it was the spring of hope, it was the winter of despair. We had everything before us, we had nothing before us, we were all going direct to Heaven, we were all going direct the other way."
+        "It was the best of times, it was the worst of times, it was the age of wisdom, it was the age of foolishness, it was the epoch of belief, it was the epoch of incredulity, it was the season of light, it was the season of darkness, it was the spring of hope, it was the winter of despair."
     ]
 }
 
-def get_passage(duration, custom_text=None):
+def fetch_passage(duration, custom_text=None):
     if custom_text and len(custom_text.strip()) >= 10:
         return custom_text.strip()
     if duration <= 30:
@@ -44,19 +44,20 @@ def serialize_public_rooms():
     public_list = []
     for code, r in ROOMS.items():
         if r['type'] == 'public' and r['status'] == 'waiting':
+            active_count = len([p for p in r['players'].values() if not p.get('left_early')])
             public_list.append({
                 'code': code,
                 'name': r['name'],
                 'host_name': r['host_name'],
-                'current_players': len([p for p in r['players'].values() if not p.get('left_early')]),
+                'current_players': active_count,
                 'max_players': r['max_players'],
                 'duration': r['duration'],
                 'status': r['status']
             })
     return public_list
 
-def get_sorted_standings(room):
-    plist = [p for p in room['players'].values()]
+def calculate_standings(room):
+    plist = list(room['players'].values())
     plist.sort(key=lambda x: (
         x.get('left_early', False),
         not x.get('finished', False),
@@ -68,14 +69,27 @@ def get_sorted_standings(room):
 
 @multiplayer_bp.route('/')
 def index():
-    return render_template('multiplayer/room.html')
+    user_elo = current_user.elo_rating if current_user.is_authenticated else 1000
+    user_division = current_user.rank_division if current_user.is_authenticated else "Bronze"
+    user_badge = current_user.rank_badge if current_user.is_authenticated else {"icon": "🥉", "color": "#b45309"}
+    wins = current_user.ranked_wins if current_user.is_authenticated else 0
+    losses = current_user.ranked_losses if current_user.is_authenticated else 0
+
+    return render_template(
+        'multiplayer/room.html',
+        user_elo=user_elo,
+        user_division=user_division,
+        user_badge=user_badge,
+        wins=wins,
+        losses=losses
+    )
 
 @multiplayer_bp.route('/api/public-rooms')
 def get_public_rooms():
     return jsonify({'rooms': serialize_public_rooms()})
 
 # ==========================================
-# Socket.IO Event Handlers
+# Socket.IO Multiplayer Lifecycle Handlers
 # ==========================================
 
 @socketio.on('request_public_rooms')
@@ -86,7 +100,7 @@ def handle_request_public_rooms():
 def handle_create_room(data):
     sid = request.sid
     room_type = data.get('type', 'public') # 'public' or 'private'
-    name = (data.get('name') or f"Room-{random.randint(100,999)}").strip()
+    name = (data.get('name') or f"Room-{random.randint(100, 999)}").strip()
     player_name = (data.get('player_name') or 'Pilot').strip()
     duration = int(data.get('duration', 60))
     max_players = 2 if room_type == 'private' else int(data.get('max_players', 4))
@@ -106,7 +120,7 @@ def handle_create_room(data):
         'max_players': max_players,
         'duration': duration,
         'custom_text': custom_text,
-        'text': get_passage(duration, custom_text),
+        'text': fetch_passage(duration, custom_text),
         'status': 'waiting',
         'race_start_time': None,
         'created_at': time.time(),
@@ -117,7 +131,7 @@ def handle_create_room(data):
         'sid': sid,
         'user_id': current_user.id if current_user.is_authenticated else None,
         'name': player_name,
-        'ready': True, # Host is ready by default
+        'ready': True, # Host initialized as ready
         'is_host': True,
         'progress': 0,
         'wpm': 0,
@@ -142,18 +156,18 @@ def handle_join_room(data):
     player_name = (data.get('player_name') or 'Pilot').strip()
 
     if room_code not in ROOMS:
-        emit('join_error', {'message': f"Room '{room_code}' was not found or has closed."})
+        emit('join_error', {'message': f"Room '{room_code}' does not exist or has concluded."})
         return
 
     room = ROOMS[room_code]
 
     if room['status'] != 'waiting':
-        emit('join_error', {'message': "This room is currently in progress or finished."})
+        emit('join_error', {'message': "This match is currently in progress or finished."})
         return
 
-    active_count = len([p for p in room['players'].values() if not p.get('left_early')])
-    if active_count >= room['max_players']:
-        emit('join_error', {'message': f"Room '{room_code}' is full (maximum {room['max_players']} players)."})
+    active_racers = [p for p in room['players'].values() if not p.get('left_early')]
+    if len(active_racers) >= room['max_players']:
+        emit('join_error', {'message': f"Room '{room_code}' has reached capacity."})
         return
 
     if sid in room['players']:
@@ -212,14 +226,14 @@ def handle_start_match():
         return
 
     if room['host_sid'] != sid:
-        emit('action_error', {'message': 'Only the room host can initiate the match.'})
+        emit('action_error', {'message': 'Only the room host can start the match.'})
         return
 
     players = room['players']
     active_players = [p for p in players.values() if not p.get('left_early')]
 
     if room['type'] in ['private', 'quick'] and len(active_players) < 2:
-        emit('action_error', {'message': 'Cannot start a 1v1 match without an opponent.'})
+        emit('action_error', {'message': 'Cannot start a 1v1 match without an opponent in room.'})
         return
 
     not_ready = [p['name'] for p in active_players if not p['ready']]
@@ -288,18 +302,16 @@ def handle_progress_update(data):
     player['accuracy'] = accuracy
     player['errors'] = errors
 
-    # Individual Player Finish Execution
+    # Process Individual Finish without disrupting other racers
     if progress >= 100 and not player['finished']:
         player['finished'] = True
         
-        # Calculate rank based on non-left finished players
         finished_racers = [p for p in room['players'].values() if p['finished'] and not p.get('left_early')]
         player['place'] = len(finished_racers)
         
         elapsed = time.time() - room['race_start_time'] if room.get('race_start_time') else room['duration']
         player['finish_time'] = round(elapsed, 2)
 
-        # Save to database for authenticated users
         if player.get('user_id'):
             try:
                 test_rec = TypingTest(
@@ -318,7 +330,6 @@ def handle_progress_update(data):
             except Exception:
                 db.session.rollback()
 
-        # Check if ALL active participants have now finished
         active_remaining = [p for p in room['players'].values() if not p['finished'] and not p.get('left_early')]
         all_done = (len(active_remaining) == 0)
 
@@ -329,7 +340,7 @@ def handle_progress_update(data):
             'player': player,
             'remaining_count': len(active_remaining),
             'all_finished': all_done,
-            'standings': get_sorted_standings(room) if all_done else []
+            'standings': calculate_standings(room) if all_done else []
         }, room=room_code)
 
     emit('room_progress_update', {'players': list(room['players'].values())}, room=room_code)
@@ -353,12 +364,11 @@ def handle_time_expired():
 
     emit('race_concluded', {
         'room': room,
-        'standings': get_sorted_standings(room)
+        'standings': calculate_standings(room)
     }, room=room_code)
 
 @socketio.on('leave_race_after_finish')
 def handle_leave_after_finish():
-    """Player finished and chooses to leave instead of spectating."""
     sid = request.sid
     room_code = SID_TO_ROOM.get(sid)
     if not room_code or room_code not in ROOMS:
@@ -371,13 +381,12 @@ def handle_leave_after_finish():
 
     emit('left_room_confirmed')
 
-    # Check if remaining active players are all finished
     active_remaining = [p for p in room['players'].values() if not p['finished'] and not p.get('left_early')]
     if len(active_remaining) == 0 and room['status'] == 'in_progress':
         room['status'] = 'finished'
         emit('race_concluded', {
             'room': room,
-            'standings': get_sorted_standings(room)
+            'standings': calculate_standings(room)
         }, room=room_code)
 
 @socketio.on('rematch_request')
@@ -390,7 +399,7 @@ def handle_rematch():
     room = ROOMS[room_code]
     room['status'] = 'waiting'
     room['race_start_time'] = None
-    room['text'] = get_passage(room['duration'], room.get('custom_text'))
+    room['text'] = fetch_passage(room['duration'], room.get('custom_text'))
 
     for p in room['players'].values():
         p['progress'] = 0
@@ -407,7 +416,7 @@ def handle_rematch():
     emit('public_rooms_update', {'rooms': serialize_public_rooms()}, broadcast=True)
 
 # ==========================================
-# Quick Match Matchmaking Queue
+# Automated Quick Match 1v1 Queue
 # ==========================================
 
 @socketio.on('join_quick_queue')
@@ -432,7 +441,7 @@ def handle_join_quick_queue(data):
 
         match_code = f"QM-{uuid.uuid4().hex[:6].upper()}"
         duration = 60
-        text = get_passage(duration)
+        text = fetch_passage(duration)
 
         ROOMS[match_code] = {
             'code': match_code,
@@ -502,7 +511,7 @@ def handle_cancel_quick_queue():
     emit('quick_queue_cancelled')
 
 # ==========================================
-# Disconnect & Navigation Cleanup
+# Disconnection Cleanups
 # ==========================================
 
 @socketio.on('leave_room_voluntary')
@@ -530,20 +539,17 @@ def cleanup_player(sid):
 
     if sid in room['players']:
         player = room['players'][sid]
-        # If left during active race, mark as DNF
         if room['status'] in ['countdown', 'in_progress'] and not player.get('finished'):
             player['left_early'] = True
             player['place'] = 'DNF'
         elif room['status'] == 'waiting':
             del room['players'][sid]
 
-    # Delete if entirely empty
-    active_any = [p for p in room['players'].values() if not p.get('left_early')]
-    if not active_any:
+    active_members = [p for p in room['players'].values() if not p.get('left_early')]
+    if not active_members:
         del ROOMS[room_code]
         return
 
-    # If host departed in lobby, assign next player
     if room['status'] == 'waiting' and room['host_sid'] == sid:
         next_sid = next(iter(room['players']))
         room['host_sid'] = next_sid
@@ -551,14 +557,13 @@ def cleanup_player(sid):
         room['players'][next_sid]['is_host'] = True
         room['players'][next_sid]['ready'] = True
 
-    # If all remaining players in active match are finished, conclude
     if room['status'] == 'in_progress':
         active_remaining = [p for p in room['players'].values() if not p['finished'] and not p.get('left_early')]
         if len(active_remaining) == 0:
             room['status'] = 'finished'
             emit('race_concluded', {
                 'room': room,
-                'standings': get_sorted_standings(room)
+                'standings': calculate_standings(room)
             }, room=room_code)
 
     emit('room_state_updated', {'room': room}, room=room_code)

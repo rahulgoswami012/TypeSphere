@@ -1,5 +1,6 @@
 /**
- * TypeSphere Unified Engine with Multi-Language Support
+ * TypeSphere Core Engine (v2.1 Refined)
+ * Universal desktop/mobile input, line-by-line auto-scroll, fatigue detection, and reliable state recovery.
  */
 class TypingEngine {
   constructor() {
@@ -7,15 +8,17 @@ class TypingEngine {
     this.currentIndex = 0;
     this.events = [];
     this.timeline = [];
+
     this.startTime = null;
     this.timerInterval = null;
     this.durationLimit = 60;
     this.wordLimit = 25;
-    this.mode = 'timed';
+    this.mode = 'timed'; // 'timed', 'words', 'quote', 'code', 'survival', 'accuracy', 'daily', 'custom'
     this.language = 'english';
     this.codeLanguage = 'python';
     this.withPunctuation = false;
     this.withNumbers = false;
+
     this.isFinished = false;
     this.isPaused = false;
     this.pausedAt = 0;
@@ -23,18 +26,17 @@ class TypingEngine {
     this.streak = 0;
     this.errors = 0;
 
-    // Survival Mode
+    // Survival Mode Attributes
     this.maxLives = 3;
     this.lives = 3;
 
-    // Ghost Replay
+    // Ghost Pacer System
     this.ghostEnabled = true;
     this.ghostWpm = 70;
-    this.ghostTimeline = null;
     this.ghostProgress = 0;
     this.ghostInterval = null;
 
-    // DOM Bindings
+    // DOM Caches
     this.container = document.getElementById('typing-box');
     this.display = document.getElementById('text-display');
     this.caret = document.getElementById('caret');
@@ -53,31 +55,30 @@ class TypingEngine {
     this.speedometerArc = document.getElementById('speedo-arc');
 
     this.bindEvents();
-    this.checkUrlParameters();
+    this.parseUrlParameters();
   }
 
-  async checkUrlParameters() {
+  parseUrlParameters() {
     const params = new URLSearchParams(window.location.search);
-    
     const ghostTestId = params.get('ghost_race');
     if (ghostTestId) {
-      try {
-        const res = await fetch(`/typing/api/ghost/${ghostTestId}`);
-        const data = await res.json();
-        if (data && data.timeline) {
-          this.ghostTimeline = data.timeline;
-          this.ghostWpm = Math.round(data.wpm);
-          const banner = document.getElementById('ghost-toggle');
-          if (banner) banner.textContent = `Ghost: PB (${this.ghostWpm} WPM)`;
-        }
-      } catch (err) {}
+      fetch(`/typing/api/ghost/${ghostTestId}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data && data.wpm) {
+            this.ghostWpm = Math.round(data.wpm);
+            const toggleBtn = document.getElementById('ghost-toggle');
+            if (toggleBtn) toggleBtn.textContent = `Ghost: PB (${this.ghostWpm} WPM)`;
+          }
+        })
+        .catch(() => {});
     }
 
     const modeParam = params.get('mode');
     if (modeParam) this.mode = modeParam;
 
     const durationParam = params.get('duration');
-    if (durationParam) this.durationLimit = parseInt(durationParam);
+    if (durationParam) this.durationLimit = parseInt(durationParam, 10);
   }
 
   async loadPrompt(customEndpoint = null) {
@@ -94,8 +95,8 @@ class TypingEngine {
       const storedDuration = sessionStorage.getItem('typesphere_custom_duration');
 
       if (storedDuration !== null && storedDuration !== undefined) {
-        const dur = parseInt(storedDuration);
-        this.durationLimit = dur > 0 ? dur : 0;
+        const parsedDur = parseInt(storedDuration, 10);
+        this.durationLimit = parsedDur > 0 ? parsedDur : 0;
       }
 
       if (storedText && storedText.length > 0) {
@@ -104,10 +105,6 @@ class TypingEngine {
         this.reset();
         return;
       }
-    }
-
-    if (this.durationLimit >= 300 && !endpoint) {
-      endpoint = `/typing/api/text?mode=timed&words=600&language=${this.language}&punctuation=${this.withPunctuation}&numbers=${this.withNumbers}`;
     }
 
     if (!endpoint) {
@@ -127,10 +124,10 @@ class TypingEngine {
     try {
       const res = await fetch(endpoint);
       const data = await res.json();
-      this.targetText = data.content.trim();
+      this.targetText = (data.content || "").trim();
 
       if (this.durationLimit >= 300) {
-        this.targetText = this.targetText + " " + this.targetText + " " + this.targetText;
+        this.targetText = `${this.targetText} ${this.targetText} ${this.targetText}`;
       }
 
       if (this.dailyBanner) {
@@ -145,8 +142,8 @@ class TypingEngine {
 
       this.renderText();
       this.reset();
-    } catch (err) {
-      this.targetText = "Speed and precision compound into true keyboard mastery.";
+    } catch {
+      this.targetText = "Speed and precision compound into true keyboard mastery. Maintain cadence and relaxed posture.";
       this.renderText();
       this.reset();
     }
@@ -154,12 +151,14 @@ class TypingEngine {
 
   renderText() {
     this.display.innerHTML = '';
+    const fragment = document.createDocumentFragment();
     for (let i = 0; i < this.targetText.length; i++) {
       const span = document.createElement('span');
       span.className = 'char';
       span.textContent = this.targetText[i];
-      this.display.appendChild(span);
+      fragment.appendChild(span);
     }
+    this.display.appendChild(fragment);
     this.updateCaretPosition();
   }
 
@@ -192,7 +191,7 @@ class TypingEngine {
     if (this.durationLimit > 0) {
       this.hudTime.textContent = this.formatTimeDisplay(this.durationLimit);
     } else if (this.mode === 'words') {
-      this.hudTime.textContent = this.wordLimit + 'w';
+      this.hudTime.textContent = `${this.wordLimit}w`;
     } else {
       this.hudTime.textContent = 'FULL';
     }
@@ -216,7 +215,7 @@ class TypingEngine {
     if (totalSeconds >= 60) {
       const mins = Math.floor(totalSeconds / 60);
       const secs = totalSeconds % 60;
-      return `${mins}m ${secs > 0 ? secs + 's' : ''}`;
+      return `${mins}m ${secs > 0 ? `${secs}s` : ''}`;
     }
     return `${totalSeconds}s`;
   }
@@ -227,7 +226,7 @@ class TypingEngine {
     for (let i = 0; i < this.maxLives; i++) {
       const heart = document.createElement('span');
       heart.textContent = i < this.lives ? '❤️' : '🖤';
-      heart.style.fontSize = '1.3rem';
+      heart.style.fontSize = '1.15rem';
       this.livesContainer.appendChild(heart);
     }
   }
@@ -269,7 +268,7 @@ class TypingEngine {
     });
 
     if (this.mobileProxy) {
-      this.mobileProxy.addEventListener('input', (e) => {
+      this.mobileProxy.addEventListener('input', () => {
         if (this.isPaused || this.isFinished) return;
         const val = this.mobileProxy.value;
         if (val.length > 0) {
@@ -369,12 +368,12 @@ class TypingEngine {
     if (isCorrect) {
       spans[this.currentIndex].className = 'char correct';
       this.streak++;
-      window.soundEngine.playKey(false);
+      if (window.soundEngine) window.soundEngine.playKey(false);
     } else {
       spans[this.currentIndex].className = 'char incorrect';
       this.streak = 0;
       this.errors++;
-      window.soundEngine.playKey(true);
+      if (window.soundEngine) window.soundEngine.playKey(true);
 
       if (this.mode === 'survival') {
         this.lives--;
@@ -386,7 +385,7 @@ class TypingEngine {
       }
 
       if (this.mode === 'accuracy') {
-        alert("Accuracy challenge breached! Restarting run.");
+        alert("Flawless run interrupted. Resetting track.");
         this.reset();
         return;
       }
@@ -451,8 +450,8 @@ class TypingEngine {
       const spans = this.display.querySelectorAll('.char');
       if (spans[ghostIdx] && this.ghostCaret) {
         this.ghostCaret.style.display = 'block';
-        this.ghostCaret.style.left = spans[ghostIdx].offsetLeft + 'px';
-        this.ghostCaret.style.top = spans[ghostIdx].offsetTop + 4 + 'px';
+        this.ghostCaret.style.left = `${spans[ghostIdx].offsetLeft}px`;
+        this.ghostCaret.style.top = `${spans[ghostIdx].offsetTop + 4}px`;
       }
     }, 100);
   }
@@ -466,7 +465,7 @@ class TypingEngine {
     const acc = this.currentIndex > 0 ? Math.round((correctChars / this.currentIndex) * 100) : 100;
 
     this.hudWpm.textContent = netWpm;
-    this.hudAcc.textContent = acc + '%';
+    this.hudAcc.textContent = `${acc}%`;
     this.hudStreak.textContent = this.streak;
     this.updateSpeedometer(netWpm);
 
@@ -479,7 +478,7 @@ class TypingEngine {
 
   updateSpeedometer(wpm) {
     if (!this.speedometerArc) return;
-    const pct = Math.min(1.0, wpm / 140.0);
+    const pct = Math.min(1.0, wpm / 150.0);
     const offset = 100 - (pct * 100);
     this.speedometerArc.style.strokeDashoffset = offset;
   }
@@ -488,11 +487,11 @@ class TypingEngine {
     const spans = this.display.querySelectorAll('.char');
     if (this.currentIndex < spans.length) {
       const target = spans[this.currentIndex];
-      this.caret.style.left = target.offsetLeft + 'px';
-      this.caret.style.top = target.offsetTop + 4 + 'px';
+      this.caret.style.left = `${target.offsetLeft}px`;
+      this.caret.style.top = `${target.offsetTop + 4}px`;
 
-      const targetMid = target.offsetTop - (this.container.clientHeight / 2) + 30;
-      if (Math.abs(this.container.scrollTop - targetMid) > 25) {
+      const targetMid = target.offsetTop - (this.container.clientHeight / 2) + 25;
+      if (Math.abs(this.container.scrollTop - targetMid) > 20) {
         this.container.scrollTo({
           top: Math.max(0, targetMid),
           behavior: 'smooth'
@@ -500,8 +499,8 @@ class TypingEngine {
       }
     } else if (spans.length > 0) {
       const last = spans[spans.length - 1];
-      this.caret.style.left = (last.offsetLeft + last.offsetWidth) + 'px';
-      this.caret.style.top = last.offsetTop + 4 + 'px';
+      this.caret.style.left = `${last.offsetLeft + last.offsetWidth}px`;
+      this.caret.style.top = `${last.offsetTop + 4}px`;
     }
   }
 
@@ -534,9 +533,11 @@ class TypingEngine {
       if (data.success && data.test_id) {
         setTimeout(() => {
           window.location.href = `/typing/result/${data.test_id}`;
-        }, 1200);
+        }, 900);
       }
-    } catch (err) {}
+    } catch {
+      // Local fallback preserves completion metrics
+    }
   }
 
   displayResultOverlay(survivalFailed) {
@@ -550,7 +551,7 @@ class TypingEngine {
     document.getElementById('res-wpm').textContent = finalWpm;
     document.getElementById('res-acc').textContent = finalAcc;
     document.getElementById('res-chars').textContent = `${correctChars} / ${this.events.length}`;
-    document.getElementById('res-status').textContent = survivalFailed ? "ELIMINATED (Out of Lives)" : "BENCHMARK COMPLETED";
+    document.getElementById('res-status').textContent = survivalFailed ? "SURVIVAL ELIMINATED" : "BENCHMARK COMPLETED";
 
     overlay.style.display = 'flex';
   }
