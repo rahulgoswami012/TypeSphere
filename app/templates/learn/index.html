@@ -2,17 +2,40 @@
 
 {% block content %}
 <div class="card" style="max-width:1080px; margin:0 auto;">
+  <!-- Header with Placement Assessment -->
   <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:1.25rem; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
     <div>
-      <h1 style="font-size:1.75rem; font-weight:800; margin:0;">Structured Typing Academy</h1>
+      <h1 style="font-size:1.8rem; font-weight:800; margin:0;">TypeSphere Academy</h1>
       <p style="color:var(--text-secondary); font-size:0.88rem; margin-top:0.25rem;">
-        Progress through 12 developmental milestones from basic keyboard posture to high-speed workplace execution.
+        Structured typing curriculum with multi-attempt mastery verification and skill tracks.
       </p>
     </div>
-    <a href="{{ url_for('typing.test_page') }}" class="btn btn-sm">&larr; Free Test Track</a>
+    
+    <div style="display:flex; gap:0.6rem;">
+      <a href="{{ url_for('learn.skill_assessment') }}" class="btn" style="border-color:var(--accent); color:var(--accent); font-weight:700;">
+        🎯 Take Placement Assessment
+      </a>
+      <a href="{{ url_for('typing.test_page') }}" class="btn">&larr; Free Test Track</a>
+    </div>
   </div>
 
-  <!-- Curriculum Grid -->
+  <!-- Track Switcher Navigation -->
+  <div style="display:flex; gap:0.5rem; margin-bottom:2rem; flex-wrap:wrap;">
+    <a href="{{ url_for('learn.index', track='beginner') }}" class="btn {{ 'btn-primary' if active_track == 'beginner' else '' }}">
+      Beginner Track (0–40 WPM)
+    </a>
+    <a href="{{ url_for('learn.index', track='intermediate') }}" class="btn {{ 'btn-primary' if active_track == 'intermediate' else '' }}">
+      Intermediate Track (40–70 WPM)
+    </a>
+    <a href="{{ url_for('learn.index', track='advanced') }}" class="btn {{ 'btn-primary' if active_track == 'advanced' else '' }}">
+      Advanced Track (70–100 WPM)
+    </a>
+    <a href="{{ url_for('learn.index', track='expert') }}" class="btn {{ 'btn-primary' if active_track == 'expert' else '' }}">
+      Expert Track (100+ WPM)
+    </a>
+  </div>
+
+  <!-- Stage Cards Grid -->
   <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(310px, 1fr)); gap:1.25rem;">
     {% for st in stages %}
       {% set prog = progress_map.get(st.id) %}
@@ -24,11 +47,11 @@
             </span>
             {% if prog and prog.completed %}
               <span style="font-size:0.75rem; font-weight:800; color:var(--success); background:var(--success-bg); padding:0.15rem 0.5rem; border-radius:4px;">
-                ✓ COMPLETED
+                ✓ MASTERED
               </span>
             {% else %}
               <span style="font-size:0.75rem; color:var(--text-muted);">
-                Target: {{ st.min_wpm_to_pass|int }} WPM / {{ st.min_accuracy_to_pass|int }}%
+                Req: {{ st.min_wpm_to_pass|int }} WPM / {{ st.min_accuracy_to_pass|int }}%
               </span>
             {% endif %}
           </div>
@@ -42,11 +65,11 @@
         <div>
           {% if prog %}
             <div style="font-size:0.78rem; color:var(--text-muted); margin-bottom:0.75rem;">
-              Personal Best: <strong style="color:var(--text-primary);">{{ prog.best_wpm|int }} WPM</strong> &bull; Acc: <strong style="color:var(--text-primary);">{{ prog.best_accuracy|int }}%</strong> ({{ prog.attempts }} attempts)
+              Progress: <strong style="color:var(--accent);">{{ prog.successful_attempts }} / {{ st.required_attempts or 2 }} Verified Passes</strong> &bull; PB: {{ prog.best_wpm|int }} WPM
             </div>
           {% endif %}
-          <a href="{{ url_for('learn.lesson', stage_number=st.stage_number) }}" class="btn btn-primary" style="width:100%; justify-content:center; padding:0.65rem;">
-            Start Stage {{ st.stage_number }} &rarr;
+          <a href="{{ url_for('learn.lesson', slug=st.slug) }}" class="btn btn-primary" style="width:100%; justify-content:center; padding:0.65rem; font-weight:700;">
+            Practice Stage {{ st.stage_number }} &rarr;
           </a>
         </div>
       </div>

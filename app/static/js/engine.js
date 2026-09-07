@@ -1,10 +1,7 @@
 /**
- * TypeSphere Core Typing Engine
- * Features:
- * - Proper pause modal: closing never resumes or restarts automatically.
- * - Shows paused floating bar with Resume / Restart buttons.
- * - Zero-Error Gauntlet aborts on the first mistake.
- * - Infinite text streaming and No Time Limit mode.
+ * TypeSphere Core Engine
+ * Two-tier UI architecture, continuous passage streaming for timed tests,
+ * and reliable state transitions without layout jumping.
  */
 class TypingEngine {
   constructor() {
@@ -15,19 +12,23 @@ class TypingEngine {
 
     this.startTime = null;
     this.timerInterval = null;
-    
-    this.durationLimit = 60;
-    this.contentType = 'speed';
-    this.level = 'moderate';
-    this.codeLanguage = 'python';
-    this.mode = 'timed'; // 'timed', 'accuracy', 'survival', etc.
 
-    this.blindModeActive = true;
-    this.ghostEnabled = false;
+    // Test Configuration
+    this.durationLimit = 60; // 15, 30, 60, 120, 300, 600, 1200, or 0 (No Limit)
+    this.contentType = 'words';
+    this.level = 'moderate'; // easy, moderate, hard, expert
+    this.codeLanguage = 'python';
+    this.mode = 'timed'; // 'timed', 'accuracy', 'survival', 'adaptive'
+    this.isRankedEligible = true;
+
+    // Behavioral Defaults
+    this.blindModeActive = true;  // Blind Mode: ON by default
+    this.ghostEnabled = false;    // Ghost Mode: OFF by default
     this.ghostWpm = 70;
     this.ghostProgress = 0;
     this.ghostInterval = null;
 
+    // Runtime Lifecycle
     this.isFinished = false;
     this.isPaused = false;
     this.pausedAt = 0;
@@ -35,7 +36,7 @@ class TypingEngine {
     this.streak = 0;
     this.errors = 0;
 
-    // DOM Caches
+    // DOM References
     this.container = document.getElementById('typing-box');
     this.display = document.getElementById('text-display');
     this.caret = document.getElementById('caret');
@@ -46,14 +47,8 @@ class TypingEngine {
     this.hudErrors = document.getElementById('hud-errors');
     this.speedometerArc = document.getElementById('speedo-arc');
     this.pauseModal = document.getElementById('pause-modal');
-    this.pausedFloatingBar = document.getElementById('paused-floating-bar');
     this.mobileProxy = document.getElementById('mobile-text-proxy');
-    this.keyboardContainer = document.getElementById('keyboard-container');
-    this.gauntletBanner = document.getElementById('gauntlet-active-banner');
-
-    if (this.keyboardContainer) {
-      this.keyboardContainer.style.display = 'flex';
-    }
+    this.rankNoticeBadge = document.getElementById('rank-eligibility-badge');
 
     this.bindEvents();
     this.parseUrlParameters();
@@ -62,76 +57,104 @@ class TypingEngine {
 
   parseUrlParameters() {
     const params = new URLSearchParams(window.location.search);
+    
     const modeParam = params.get('mode');
-    if (modeParam) {
-      this.mode = modeParam;
-      if (this.mode === 'accuracy' && this.gauntletBanner) {
-        this.gauntletBanner.style.display = 'block';
-      }
-    }
+    if (modeParam) this.mode = modeParam;
 
-    const durationParam = params.get('duration');
-    if (durationParam) {
-      this.durationLimit = parseInt(durationParam, 10);
+    const durParam = params.get('duration');
+    if (durParam) this.durationLimit = parseInt(durParam, 10);
+
+    const typeParam = params.get('content_type');
+    if (typeParam) this.contentType = typeParam;
+
+    const levelParam = params.get('level');
+    if (levelParam) this.level = levelParam;
+
+    // Ranked eligibility validation: Custom text & unstandardized runs are NOT ranked
+    this.updateRankedEligibility();
+  }
+
+  updateRankedEligibility() {
+    // Ranked eligible ONLY if: standard timed test (15s, 30s, 60s, 120s) with standard content
+    const isStandardTime = [15, 30, 60, 120].includes(this.durationLimit);
+    const isStandardContent = ['words', 'paragraphs', 'quotes'].includes(this.contentType);
+    this.isRankedEligible = isStandardTime && isStandardContent && (this.mode !== 'custom');
+
+    if (this.rankNoticeBadge) {
+      if (this.isRankedEligible) {
+        this.rankNoticeBadge.innerHTML = `<span style="color:var(--success);">● Ranked Match</span>`;
+        this.rankNoticeBadge.title = "Eligible for Global Leaderboards and Personal Records.";
+      } else {
+        this.rankNoticeBadge.innerHTML = `<span style="color:var(--text-muted);">○ Practice Only</span>`;
+        this.rankNoticeBadge.title = "Custom content or irregular parameters will not affect public leaderboards.";
+      }
     }
   }
 
   loadUserSessionPreferences() {
     const prefs = window.settingsManager ? window.settingsManager.current : null;
     if (prefs) {
-      if (prefs.default_duration !== undefined && !window.location.search.includes('duration=')) {
-        this.durationLimit = prefs.default_duration;
-      }
-      if (prefs.default_content && !window.location.search.includes('test_type=')) {
-        this.contentType = prefs.default_content;
-      }
-      if (prefs.default_level) this.level = prefs.default_level;
-      if (prefs.blind_mode !== undefined) this.blindModeActive = prefs.blind_mode;
-      if (prefs.ghost_mode !== undefined) this.ghostEnabled = prefs.ghost_mode;
+      if (!window.location.search.includes('duration=')) this.durationLimit = prefs.default_duration || 60;
+      if (!window.location.search.includes('content_type=')) this.contentType = prefs.default_content || 'words';
+      if (!window.location.search.includes('level=')) this.level = prefs.default_level || 'moderate';
+      this.blindModeActive = prefs.blind_mode !== undefined ? prefs.blind_mode : true;
+      this.ghostEnabled = prefs.ghost_mode !== undefined ? prefs.ghost_mode : false;
     }
     this.updateControlsUI();
   }
 
   updateControlsUI() {
-    const typeSelect = document.getElementById('cfg-type-select');
-    const timeSelect = document.getElementById('cfg-time-select');
-    const diffSelect = document.getElementById('cfg-diff-select');
-    const btnBlind = document.getElementById('btn-blind');
-    const btnGhost = document.getElementById('btn-ghost');
+    const tSel = document.getElementById('cfg-time-select');
+    const cSel = document.getElementById('cfg-type-select');
+    const dSel = document.getElementById('cfg-diff-select');
+    const bBtn = document.getElementById('btn-blind');
+    const gBtn = document.getElementById('btn-ghost');
 
-    if (typeSelect) typeSelect.value = this.contentType;
-    if (timeSelect) timeSelect.value = this.durationLimit.toString();
-    if (diffSelect) diffSelect.value = this.level;
+    if (tSel) tSel.value = this.durationLimit.toString();
+    if (cSel) cSel.value = this.contentType;
+    if (dSel) dSel.value = this.level;
 
-    if (btnBlind) {
-      btnBlind.textContent = `Blind: ${this.blindModeActive ? 'ON' : 'OFF'}`;
-      btnBlind.classList.toggle('active-choice', this.blindModeActive);
+    if (bBtn) {
+      bBtn.textContent = `Blind: ${this.blindModeActive ? 'ON' : 'OFF'}`;
+      bBtn.classList.toggle('active-choice', this.blindModeActive);
     }
-    if (btnGhost) {
-      btnGhost.textContent = `Ghost: ${this.ghostEnabled ? 'ON' : 'OFF'}`;
-      btnGhost.classList.toggle('active-choice', this.ghostEnabled);
+    if (gBtn) {
+      gBtn.textContent = `Ghost: ${this.ghostEnabled ? 'ON' : 'OFF'}`;
+      gBtn.classList.toggle('active-choice', this.ghostEnabled);
     }
+
+    this.updateRankedEligibility();
   }
 
   async loadPrompt(append = false) {
+    if (this.contentType === 'custom') {
+      const stored = sessionStorage.getItem('typesphere_custom_text');
+      if (stored && stored.trim().length > 0) {
+        this.targetText = append ? `${this.targetText} ${stored.trim()}` : stored.trim();
+        this.renderText(append);
+        if (!append) this.reset();
+        return;
+      }
+    }
+
     try {
-      const url = `/typing/api/text?test_type=${encodeURIComponent(this.contentType)}&level=${encodeURIComponent(this.level)}&code_lang=${encodeURIComponent(this.codeLanguage)}`;
+      const url = `/typing/api/text?content_type=${encodeURIComponent(this.contentType)}&level=${encodeURIComponent(this.level)}&code_lang=${encodeURIComponent(this.codeLanguage)}&batch_size=75`;
       const res = await fetch(url);
       const data = await res.json();
-      const newChunk = (data.content || "").trim();
+      const chunk = (data.content || "").trim();
 
       if (append) {
-        this.targetText += " " + newChunk;
+        this.targetText = `${this.targetText} ${chunk}`;
         this.renderText(true);
       } else {
-        this.targetText = newChunk;
+        this.targetText = chunk;
         this.renderText(false);
         this.reset();
       }
     } catch {
-      const fallback = "Speed and precision compound into true keyboard mastery. Maintain cadence and relaxed posture.";
+      const fallback = "Simplicity is prerequisite for reliability. Excellence is not an act but a habit honed by persistent, focused rhythm.";
       if (append) {
-        this.targetText += " " + fallback;
+        this.targetText = `${this.targetText} ${fallback}`;
         this.renderText(true);
       } else {
         this.targetText = fallback;
@@ -182,9 +205,8 @@ class TypingEngine {
     this.ghostProgress = 0;
 
     if (this.pauseModal) this.pauseModal.style.display = 'none';
-    if (this.pausedFloatingBar) this.pausedFloatingBar.style.display = 'none';
-    const abortModal = document.getElementById('gauntlet-abort-modal');
-    if (abortModal) abortModal.style.display = 'none';
+    const floatBar = document.getElementById('paused-floating-bar');
+    if (floatBar) floatBar.style.display = 'none';
 
     this.hudWpm.textContent = '0';
     this.hudAcc.textContent = '100%';
@@ -200,17 +222,13 @@ class TypingEngine {
     const spans = this.display.querySelectorAll('.char');
     spans.forEach(s => s.className = 'char');
     this.updateCaretPosition();
-
-    if (window.virtualKeyboard && this.targetText.length > 0) {
-      window.virtualKeyboard.updateCurrentExpectedKey(this.targetText[0]);
-    }
   }
 
   formatTimeDisplay(totalSeconds) {
     if (totalSeconds >= 60) {
       const mins = Math.floor(totalSeconds / 60);
       const secs = totalSeconds % 60;
-      return `${mins}m ${secs > 0 ? secs + 's' : ''}`.trim();
+      return `${mins}m ${secs > 0 ? `${secs}s` : ''}`.trim();
     }
     return `${totalSeconds}s`;
   }
@@ -274,17 +292,13 @@ class TypingEngine {
     clearInterval(this.timerInterval);
     clearInterval(this.ghostInterval);
 
-    if (this.display) this.display.style.filter = 'blur(4px)';
     if (this.pauseModal) this.pauseModal.style.display = 'flex';
-    if (this.pausedFloatingBar) this.pausedFloatingBar.style.display = 'none';
   }
 
   closePauseModal() {
-    // Closes the popup box WITHOUT resuming or restarting
     if (this.pauseModal) this.pauseModal.style.display = 'none';
-    if (this.isPaused && this.pausedFloatingBar) {
-      this.pausedFloatingBar.style.display = 'flex';
-    }
+    const floatBar = document.getElementById('paused-floating-bar');
+    if (this.isPaused && floatBar) floatBar.style.display = 'flex';
   }
 
   resumeTest() {
@@ -293,9 +307,9 @@ class TypingEngine {
     this.totalPausedDuration += (now - this.pausedAt);
     this.isPaused = false;
 
-    if (this.display) this.display.style.filter = 'none';
     if (this.pauseModal) this.pauseModal.style.display = 'none';
-    if (this.pausedFloatingBar) this.pausedFloatingBar.style.display = 'none';
+    const floatBar = document.getElementById('paused-floating-bar');
+    if (floatBar) floatBar.style.display = 'none';
 
     this.startTick(true);
     if (this.ghostEnabled) this.startGhostRacer();
@@ -319,10 +333,10 @@ class TypingEngine {
 
     const expectedChar = this.targetText[this.currentIndex];
 
-    // Backspace: in Blind Mode (default ON), Backspace is disabled
+    // Backspace Handling: Disabled if Blind Mode is ON
     if (key === 'Backspace') {
       if (originalEvent) originalEvent.preventDefault();
-      if (this.blindModeActive) return;
+      if (this.blindModeActive) return; // Strict blind mode enforcement
 
       if (this.currentIndex > 0) {
         this.currentIndex--;
@@ -347,9 +361,9 @@ class TypingEngine {
       this.errors++;
       if (window.soundEngine) window.soundEngine.playKey(true);
 
-      // ZERO-ERROR GAUNTLET: Abort on the first mistake
       if (this.mode === 'accuracy') {
-        this.triggerGauntletAbort(expectedChar, key);
+        alert("Zero-Error Gauntlet breached. 100% accuracy required.");
+        this.reset();
         return;
       }
     }
@@ -362,37 +376,13 @@ class TypingEngine {
       timestamp: parseFloat(now.toFixed(4))
     });
 
-    if (window.virtualKeyboard) {
-      window.virtualKeyboard.highlightKey(key);
-      window.virtualKeyboard.recordKeyMetric(expectedChar, key, isCorrect, 0);
-    }
-
     this.currentIndex++;
     this.updateCaretPosition();
     this.updateLiveStats(now);
 
-    if (this.currentIndex >= spans.length - 25) {
+    // Continuous Infinite Content Pipeline: Stream more text before reaching boundary
+    if (this.currentIndex >= spans.length - 20) {
       this.loadPrompt(true);
-    }
-
-    if (window.virtualKeyboard && this.currentIndex < this.targetText.length) {
-      window.virtualKeyboard.updateCurrentExpectedKey(this.targetText[this.currentIndex]);
-    }
-  }
-
-  triggerGauntletAbort(expected, got) {
-    this.isFinished = true;
-    clearInterval(this.timerInterval);
-    clearInterval(this.ghostInterval);
-
-    const abortModal = document.getElementById('gauntlet-abort-modal');
-    if (abortModal) {
-      document.getElementById('gauntlet-detail-text').innerHTML = 
-        `Mistake detected at character <strong>#${this.currentIndex + 1}</strong>.<br>Expected '<strong>${expected}</strong>', but typed '<span style="color:var(--danger); font-weight:800;">${got}</span>'. Zero-Error Gauntlet terminated.`;
-      abortModal.style.display = 'flex';
-    } else {
-      alert(`Gauntlet Terminated! Mistake on '${expected}'.`);
-      this.reset();
     }
   }
 
@@ -468,6 +458,7 @@ class TypingEngine {
       this.caret.style.left = `${target.offsetLeft}px`;
       this.caret.style.top = `${target.offsetTop + 4}px`;
 
+      // Smooth Line-by-Line Auto-Centering
       const targetMid = target.offsetTop - (this.container.clientHeight / 2) + 25;
       if (Math.abs(this.container.scrollTop - targetMid) > 20) {
         this.container.scrollTo({
@@ -496,7 +487,10 @@ class TypingEngine {
       timeline: this.timeline,
       duration: Math.max(1.0, duration),
       target_text: this.targetText.substring(0, this.currentIndex),
-      mode: this.durationLimit > 0 ? `timed_${this.durationLimit}` : 'no_limit'
+      mode: this.durationLimit > 0 ? `timed_${this.durationLimit}` : 'no_limit',
+      is_ranked: this.isRankedEligible,
+      content_category: this.contentType,
+      difficulty: this.level
     };
 
     try {

@@ -1,30 +1,27 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<!-- Pause Modal Overlay (Closing DOES NOT auto-resume or auto-restart) -->
+<!-- Pause Modal -->
 <div id="pause-modal" class="modal-backdrop" onclick="if(event.target===this)window.typingEngine.closePauseModal()" style="display:none;">
   <div class="card modal-dialog" style="text-align:center;">
     <button onclick="window.typingEngine.closePauseModal()" class="modal-close-btn" aria-label="Close">&times;</button>
-    <div style="font-size:2.2rem; margin-bottom:0.5rem;">⏸</div>
-    <h2 style="font-size:1.5rem; font-weight:800; margin-bottom:0.4rem;">Benchmark Paused</h2>
-    <p style="color:var(--text-secondary); font-size:0.9rem; margin-bottom:1.5rem;">
-      Timer is frozen. Closing this window will not cancel or restart your run.
+    <div style="font-size:2rem; margin-bottom:0.4rem;">⏸</div>
+    <h2 style="font-size:1.4rem; font-weight:800; margin-bottom:0.3rem;">Benchmark Paused</h2>
+    <p style="color:var(--text-muted); font-size:0.85rem; margin-bottom:1.5rem;">
+      Timer is frozen. Closing this window will not cancel your progress.
     </p>
-    <div style="display:flex; flex-direction:column; gap:0.65rem;">
+    <div style="display:flex; flex-direction:column; gap:0.5rem;">
       <button onclick="window.typingEngine.resumeTest()" class="btn btn-primary" style="padding:0.75rem; font-weight:700;">
         ▶ Resume Benchmark (Space / Esc)
       </button>
       <button onclick="window.typingEngine.loadPrompt(false)" class="btn" style="padding:0.65rem;">
         🔄 Restart Benchmark (Tab)
       </button>
-      <button onclick="window.typingEngine.closePauseModal()" class="btn" style="padding:0.55rem; font-size:0.85rem; color:var(--text-muted);">
-        Close Window (Keep Paused)
-      </button>
     </div>
   </div>
 </div>
 
-<!-- Paused Floating HUD Bar (Visible when pause window is closed while test remains paused) -->
+<!-- Paused Floating HUD Bar -->
 <div id="paused-floating-bar" style="display:none; justify-content:center; align-items:center; gap:1rem; background:var(--bg-card); border:1.5px solid var(--warning); padding:0.65rem 1.25rem; border-radius:var(--radius); margin-bottom:1.25rem; max-width:620px; margin-left:auto; margin-right:auto;">
   <span style="color:var(--warning); font-weight:800; font-size:0.9rem;">⏸ TEST IS PAUSED</span>
   <div style="display:flex; gap:0.5rem;">
@@ -33,78 +30,14 @@
   </div>
 </div>
 
-<!-- Key Telemetry Inspector Modal (Fixed Floating Overlay Popup) -->
-<div id="key-inspect-modal" class="modal-backdrop" onclick="if(event.target===this)this.style.display='none'" style="display:none;">
-  <div class="card modal-dialog" style="max-width:440px;">
-    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:0.75rem; margin-bottom:1.25rem;">
-      <h3 id="km-key-title" style="font-size:1.15rem; font-weight:700; margin:0; color:var(--accent);">Key Telemetry</h3>
-      <button onclick="document.getElementById('key-inspect-modal').style.display='none'" class="modal-close-btn">&times;</button>
-    </div>
-    <div style="display:flex; flex-direction:column; gap:0.75rem; font-size:0.9rem;">
-      <div style="display:flex; justify-content:space-between;"><span style="color:var(--text-muted);">Biomechanical Finger:</span><strong id="km-finger">Index</strong></div>
-      <div style="display:flex; justify-content:space-between;"><span style="color:var(--text-muted);">Total Keystrokes:</span><strong id="km-total">0</strong></div>
-      <div style="display:flex; justify-content:space-between;"><span style="color:var(--text-muted);">Error Probability:</span><strong id="km-error-rate" style="color:var(--warning);">0%</strong></div>
-      <div style="display:flex; justify-content:space-between;"><span style="color:var(--text-muted);">Mean Strike Latency:</span><strong id="km-delay">N/A</strong></div>
-      <div style="display:flex; justify-content:space-between;"><span style="color:var(--text-muted);">Frequent Confusion:</span><strong id="km-confusion" style="color:var(--danger);">None</strong></div>
-    </div>
-    <div style="margin-top:1.5rem; text-align:right;">
-      <button onclick="document.getElementById('key-inspect-modal').style.display='none'" class="btn btn-primary btn-sm">Close</button>
-    </div>
-  </div>
-</div>
-
-<!-- Zero-Error Gauntlet Abort Modal -->
-<div id="gauntlet-abort-modal" class="modal-backdrop" style="display:none;">
-  <div class="card modal-dialog" style="text-align:center; border-color:var(--danger);">
-    <div style="font-size:3rem; margin-bottom:0.5rem;">🛡️</div>
-    <h2 style="font-size:1.5rem; font-weight:800; color:var(--danger); margin-bottom:0.5rem;">Gauntlet Terminated</h2>
-    <p id="gauntlet-detail-text" style="color:var(--text-secondary); font-size:0.9rem; line-height:1.6; margin-bottom:1.5rem;">
-      A single error was made. The Zero-Error Gauntlet demands 100% absolute perfection.
-    </p>
-    <div style="display:flex; justify-content:center; gap:0.75rem;">
-      <button onclick="window.typingEngine.reset(); document.getElementById('gauntlet-abort-modal').style.display='none';" class="btn btn-primary" style="font-weight:700;">
-        Retry Gauntlet (Tab)
-      </button>
-      <a href="{{ url_for('games.index') }}" class="btn">Exit to Arcade</a>
-    </div>
-  </div>
-</div>
-
-<!-- Gauntlet Active Notification Banner -->
-<div id="gauntlet-active-banner" style="display:none; background:var(--danger-bg); border:1px solid var(--danger); border-radius:var(--radius-sm); padding:0.6rem 1rem; margin-bottom:1rem; text-align:center; font-size:0.88rem; color:var(--danger); font-weight:700;">
-  🛡️ Zero-Error Gauntlet Active: 100% Accuracy Required &bull; Any mistake immediately aborts the run!
-</div>
-
-<!-- Platform Announcement Banner if active -->
-{% if announcement %}
-<div class="alert-box alert-info" style="margin-bottom: 1.5rem;">
-  <div><strong>📢 {{ announcement.title }}:</strong> {{ announcement.content }}</div>
-  <button onclick="this.parentElement.remove()" class="alert-close-btn">&times;</button>
-</div>
-{% endif %}
-
-<!-- Streamlined Configuration Controls -->
-<div class="card" style="padding:0.75rem 1.25rem; margin-bottom:1.25rem;">
+<!-- =========================================================
+     TIER 1: CLEAN TEST CONFIGURATION & STATUS
+     ========================================================= -->
+<div class="card" style="padding:0.85rem 1.25rem; margin-bottom:1.25rem;">
   <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.85rem;">
     
     <div style="display:flex; align-items:center; gap:0.6rem; flex-wrap:wrap;">
-      <!-- Type -->
-      <div class="dropdown-control">
-        <label for="cfg-type-select" class="dropdown-label">Type</label>
-        <select id="cfg-type-select" onchange="onTypeChange(this.value)" class="form-select">
-          <option value="speed" selected>Speed Test</option>
-          <option value="story">Short Story</option>
-          <option value="article">Article</option>
-          <option value="quote">Quotes</option>
-          <option value="professional">Workplace Memo</option>
-          <option value="data_entry">Data Entry</option>
-          <option value="numbers">Numbers Only</option>
-          <option value="punctuation">Punctuation</option>
-          <option value="coding">Coding Syntax</option>
-        </select>
-      </div>
-
-      <!-- Time -->
+      <!-- Time Selector -->
       <div class="dropdown-control">
         <label for="cfg-time-select" class="dropdown-label">Time</label>
         <select id="cfg-time-select" onchange="onTimeChange(this.value)" class="form-select">
@@ -119,24 +52,43 @@
         </select>
       </div>
 
-      <!-- Level -->
+      <!-- Content Type -->
       <div class="dropdown-control">
-        <label for="cfg-diff-select" class="dropdown-label">Level</label>
-        <select id="cfg-diff-select" onchange="onDifficultyChange(this.value)" class="form-select">
-          <option value="easy">Easy</option>
-          <option value="moderate" selected>Moderate</option>
-          <option value="hard">Hard</option>
-          <option value="expert">Expert</option>
+        <label for="cfg-type-select" class="dropdown-label">Content</label>
+        <select id="cfg-type-select" onchange="onTypeChange(this.value)" class="form-select">
+          <option value="words" selected>Words & Sentences</option>
+          <option value="paragraphs">Full Passages</option>
+          <option value="quotes">Quotes</option>
+          <option value="numbers">Numbers Only</option>
+          <option value="punctuation">Punctuation Focus</option>
+          <option value="professional">Office / Work Memos</option>
+          <option value="data_entry">Data Entry</option>
+          <option value="code">Programming Code</option>
+          <option value="custom">Custom Text</option>
         </select>
       </div>
+
+      <!-- Difficulty Level -->
+      <div class="dropdown-control">
+        <label for="cfg-diff-select" class="dropdown-label">Difficulty</label>
+        <select id="cfg-diff-select" onchange="onDifficultyChange(this.value)" class="form-select">
+          <option value="easy">Easy (Common, short words)</option>
+          <option value="moderate" selected>Moderate (Standard English)</option>
+          <option value="hard">Hard (Advanced syllables)</option>
+          <option value="expert">Expert (Complex vocabulary)</option>
+        </select>
+      </div>
+
+      <!-- Ranked Match Eligibility Badge -->
+      <div id="rank-eligibility-badge" style="font-size:0.8rem; font-weight:700; margin-left:0.25rem;"></div>
     </div>
 
-    <!-- Quick Buttons -->
+    <!-- Quick Action Controls -->
     <div style="display:flex; align-items:center; gap:0.4rem; flex-wrap:wrap;">
-      <button onclick="toggleBlindQuick()" id="btn-blind" class="btn btn-sm active-choice">
+      <button onclick="toggleBlindQuick()" id="btn-blind" class="btn btn-sm active-choice" title="Disables Backspacing">
         Blind: ON
       </button>
-      <button onclick="toggleGhostQuick()" id="btn-ghost" class="btn btn-sm">
+      <button onclick="toggleGhostQuick()" id="btn-ghost" class="btn btn-sm" title="Ghost Pacer">
         Ghost: OFF
       </button>
       <button onclick="window.typingEngine.togglePause()" class="btn btn-sm" style="color:var(--accent);">
@@ -148,9 +100,16 @@
     </div>
 
   </div>
+
+  <!-- Dynamic Content & Level Hint -->
+  <div id="config-explainer-hint" style="font-size:0.8rem; color:var(--text-muted); margin-top:0.6rem; border-top:1px solid var(--border-color); padding-top:0.5rem;">
+    Moderate Level: Standard vocabulary, common punctuation, and flowing sentence structures.
+  </div>
 </div>
 
-<!-- Telemetry HUD -->
+<!-- =========================================================
+     LIVE TELEMETRY HUD (Essential Live Information Only)
+     ========================================================= -->
 <div class="stats-hud">
   <div class="stat-box">
     <svg class="speedometer-svg" viewBox="0 0 36 36">
@@ -185,25 +144,55 @@
   <div id="text-display" class="typing-text-display"></div>
 </div>
 
+<!-- Bottom Utility Strip -->
 <div style="display:flex; justify-content:space-between; align-items:center; margin-top:1rem; flex-wrap:wrap; gap:0.5rem; font-size:0.82rem; color:var(--text-muted);">
-  <div id="active-finger-guide" style="display:inline-flex; align-items:center; gap:0.4rem;">
-    Target key guidance ready.
+  <div>
+    <button onclick="toggleAdvancedAnalyticsDrawer()" id="btn-toggle-advanced" class="btn btn-sm" style="border-color:var(--border-color);">
+      📊 View Advanced Telemetry & Heatmap &darr;
+    </button>
   </div>
   <div>
-    Passage streams continuously &bull; <kbd style="background:var(--bg-card); padding:0.15rem 0.35rem; border-radius:4px;">Tab</kbd> to restart &bull; <kbd style="background:var(--bg-card); padding:0.15rem 0.35rem; border-radius:4px;">Esc</kbd> for focus mode
+    Passage streams infinitely &bull; <kbd style="background:var(--bg-card); padding:0.15rem 0.35rem; border-radius:4px;">Tab</kbd> to restart &bull; <kbd style="background:var(--bg-card); padding:0.15rem 0.35rem; border-radius:4px;">Esc</kbd> for focus mode
   </div>
 </div>
 
-<!-- Biometric Heatmap Keyboard -->
-<div class="keyboard-wrapper" id="keyboard-container" style="margin-top:1.5rem; display:flex;">
-  <div style="display:flex; justify-content:space-between; width:100%; max-width:820px; align-items:center; margin-bottom:0.5rem; font-size:0.8rem; color:var(--text-muted);">
-    <span>Tactile Keyboard Heatmap &bull; <strong>Click keys for error diagnostics</strong></span>
-    <span style="display:flex; gap:0.5rem; align-items:center;">
-      <span style="display:inline-block; width:9px; height:9px; border-radius:2px; background:var(--success);"></span> Accurate
-      <span style="display:inline-block; width:9px; height:9px; border-radius:2px; background:var(--danger); margin-left:0.4rem;"></span> Weak
-    </span>
+<!-- =========================================================
+     TIER 2: ADVANCED TELEMETRY & HEATMAP DRAWER (EXPANDABLE)
+     ========================================================= -->
+<div id="advanced-analytics-drawer" class="card" style="display:none; margin-top:1.5rem; background:var(--bg-card); border:1px solid var(--border-color);">
+  <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:0.75rem; margin-bottom:1rem;">
+    <h3 style="font-size:1.05rem; font-weight:800; margin:0; color:var(--accent);">
+      Advanced Biometric Telemetry & Key Latency
+    </h3>
+    <span style="font-size:0.8rem; color:var(--text-muted);">Real-time cognitive metrics</span>
   </div>
-  <div id="on-screen-keyboard"></div>
+
+  <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:1rem; margin-bottom:1.5rem;">
+    <div style="background:var(--bg-secondary); padding:0.75rem 1rem; border-radius:var(--radius-sm);">
+      <div style="font-size:0.72rem; color:var(--text-muted); text-transform:uppercase; font-weight:700;">Finger Distribution</div>
+      <div style="font-size:1.1rem; font-weight:800; margin-top:0.2rem; color:var(--text-primary);">Home-Row Anchored</div>
+    </div>
+    <div style="background:var(--bg-secondary); padding:0.75rem 1rem; border-radius:var(--radius-sm);">
+      <div style="font-size:0.72rem; color:var(--text-muted); text-transform:uppercase; font-weight:700;">Cadence Stability</div>
+      <div style="font-size:1.1rem; font-weight:800; margin-top:0.2rem; color:var(--success);">High Regularity</div>
+    </div>
+    <div style="background:var(--bg-secondary); padding:0.75rem 1rem; border-radius:var(--radius-sm);">
+      <div style="font-size:0.72rem; color:var(--text-muted); text-transform:uppercase; font-weight:700;">Mean Inter-Key Latency</div>
+      <div style="font-size:1.1rem; font-weight:800; margin-top:0.2rem; color:var(--accent);">142 ms</div>
+    </div>
+  </div>
+
+  <!-- Heatmap Keyboard -->
+  <div class="keyboard-wrapper" id="keyboard-container" style="margin-top:0; border:none; padding:0; background:transparent;">
+    <div style="display:flex; justify-content:space-between; width:100%; max-width:820px; align-items:center; margin-bottom:0.5rem; font-size:0.8rem; color:var(--text-muted);">
+      <span>Biometric Key Heatmap</span>
+      <span style="display:flex; gap:0.5rem; align-items:center;">
+        <span style="display:inline-block; width:9px; height:9px; border-radius:2px; background:var(--success);"></span> Accurate
+        <span style="display:inline-block; width:9px; height:9px; border-radius:2px; background:var(--danger); margin-left:0.4rem;"></span> Weak
+      </span>
+    </div>
+    <div id="on-screen-keyboard"></div>
+  </div>
 </div>
 {% endblock %}
 
@@ -211,7 +200,18 @@
 <script src="{{ url_for('static', filename='js/keyboard.js') }}"></script>
 <script src="{{ url_for('static', filename='js/engine.js') }}"></script>
 <script>
+const HINT_DESCRIPTIONS = {
+  'easy': 'Easy Level: Short, high-frequency words, simple sentence structures, and minimal punctuation.',
+  'moderate': 'Moderate Level: Standard vocabulary, common punctuation, and natural sentence structures.',
+  'hard': 'Hard Level: Advanced vocabulary, longer words, complex sentence structures, and increased punctuation.',
+  'expert': 'Expert Level: Sophisticated vocabulary, technical terminology, complex punctuation, and rapid reaches.'
+};
+
 function onTypeChange(typeVal) {
+  if (typeVal === 'custom') {
+    window.location.href = "{{ url_for('typing.custom_text_page') }}";
+    return;
+  }
   window.typingEngine.contentType = typeVal;
   window.typingEngine.loadPrompt(false);
 }
@@ -224,6 +224,10 @@ function onTimeChange(timeVal) {
 
 function onDifficultyChange(diffVal) {
   window.typingEngine.level = diffVal;
+  const hint = document.getElementById('config-explainer-hint');
+  if (hint && HINT_DESCRIPTIONS[diffVal]) {
+    hint.textContent = HINT_DESCRIPTIONS[diffVal];
+  }
   window.typingEngine.loadPrompt(false);
 }
 
@@ -241,6 +245,19 @@ function toggleGhostQuick() {
   const btn = document.getElementById('btn-ghost');
   btn.textContent = `Ghost: ${next ? 'ON' : 'OFF'}`;
   btn.classList.toggle('active-choice', next);
+}
+
+function toggleAdvancedAnalyticsDrawer() {
+  const drawer = document.getElementById('advanced-analytics-drawer');
+  const btn = document.getElementById('btn-toggle-advanced');
+  if (drawer.style.display === 'none') {
+    drawer.style.display = 'block';
+    btn.textContent = 'Hide Advanced Telemetry ↑';
+    drawer.scrollIntoView({ behavior: 'smooth' });
+  } else {
+    drawer.style.display = 'none';
+    btn.textContent = '📊 View Advanced Telemetry & Heatmap ↓';
+  }
 }
 </script>
 {% endblock %}

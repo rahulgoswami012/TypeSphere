@@ -2,30 +2,39 @@
 
 {% block content %}
 <div class="card" style="max-width:980px; margin:0 auto;">
-  <!-- Header Banner -->
+  <!-- Result Header -->
   <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:1.25rem; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
     <div>
       <div style="display:flex; align-items:center; gap:0.6rem;">
-        <h1 style="font-size:1.8rem; font-weight:800; margin:0;">Performance Summary</h1>
+        <h1 style="font-size:1.8rem; font-weight:800; margin:0;">Test Results</h1>
         <span style="background:{{ tier_color }}; color:#04101e; font-weight:800; font-size:0.75rem; padding:0.2rem 0.55rem; border-radius:4px; text-transform:uppercase;">
           {{ skill_tier }}
         </span>
+        {% if test.is_ranked %}
+          <span style="background:var(--success-bg); color:var(--success); font-weight:800; font-size:0.75rem; padding:0.2rem 0.55rem; border-radius:4px;">
+            VERIFIED RANKED
+          </span>
+        {% else %}
+          <span style="background:var(--bg-card); color:var(--text-muted); font-size:0.75rem; padding:0.2rem 0.55rem; border-radius:4px;">
+            PRACTICE RUN
+          </span>
+        {% endif %}
       </div>
       <p style="color:var(--text-secondary); font-size:0.85rem; margin-top:0.25rem;">
-        Test #{{ test.id }} &bull; Completed {{ test.completed_at.strftime('%b %d, %Y at %H:%M') }}
+        Completed on {{ test.completed_at.strftime('%b %d, %Y at %H:%M') }} &bull; Mode: {{ test.mode }}
       </p>
     </div>
 
-    <!-- Actions -->
+    <!-- Essential Actions -->
     <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
-      <a href="{{ url_for('typing.test_page') }}" class="btn btn-primary">&larr; New Test (Tab)</a>
+      <a href="{{ url_for('typing.test_page') }}" class="btn btn-primary">&larr; Next Test (Tab)</a>
       <a href="{{ url_for('typing.test_page') }}?retry_test_id={{ test.id }}" class="btn">🔁 Retry Text</a>
       <a href="{{ url_for('typing.certificate_page', test_id=test.id) }}" class="btn" style="border-color:var(--warning); color:var(--warning);">🏆 Certificate</a>
     </div>
   </div>
 
   <!-- Primary Results Card: High-Impact Essential Data First -->
-  <div class="stats-hud" style="grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); margin-bottom:2rem;">
+  <div class="stats-hud" style="grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); margin-bottom:1.75rem;">
     <div class="stat-box">
       <div class="stat-label">Net Speed</div>
       <div class="stat-value" style="font-size:2.2rem; color:var(--accent);">{{ test.wpm }} <span style="font-size:0.9rem; color:var(--text-muted);">WPM</span></div>
@@ -44,38 +53,79 @@
     </div>
   </div>
 
-  <!-- WPM Velocity Trajectory Chart -->
-  <div style="margin-bottom:2rem;">
-    <h3 style="font-size:1.15rem; font-weight:700; margin-bottom:0.75rem;">Velocity Trajectory</h3>
+  <!-- =========================================================
+       INTELLIGENT ECOSYSTEM RECOMMENDATION (CONNECTING ALL FEATURES)
+       ========================================================= -->
+  {% if recommendation %}
+  <div class="card" style="background:var(--bg-card); border:1.5px solid var(--accent); margin-bottom:1.75rem; padding:1.25rem 1.5rem;">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:1rem;">
+      <div style="max-width:640px;">
+        <span style="font-size:0.75rem; font-weight:800; background:var(--accent-glow); color:var(--accent); padding:0.15rem 0.5rem; border-radius:4px; text-transform:uppercase;">
+          Intelligent Next Step
+        </span>
+        <h3 style="font-size:1.15rem; font-weight:800; margin:0.4rem 0 0.25rem 0;">{{ recommendation.title }}</h3>
+        <p style="color:var(--text-secondary); font-size:0.88rem; line-height:1.5; margin:0;">
+          {{ recommendation.reason }}
+        </p>
+      </div>
+
+      <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+        <a href="{{ recommendation.action_url }}" class="btn btn-primary" style="font-weight:700;">
+          {{ recommendation.action_label }} &rarr;
+        </a>
+      </div>
+    </div>
+
+    <!-- Suggested Curriculum & Game Pathways -->
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:0.75rem; margin-top:1.25rem; border-top:1px solid var(--border-color); padding-top:0.85rem; font-size:0.82rem;">
+      <div>
+        <span style="color:var(--text-muted);">Recommended Academy Lesson:</span><br>
+        <a href="{{ url_for('learn.index') }}" style="color:var(--accent); font-weight:700; text-decoration:none;">
+          {{ recommendation.stage_recommendation }} &rarr;
+        </a>
+      </div>
+      <div>
+        <span style="color:var(--text-muted);">Recommended Skill-Building Game:</span><br>
+        <a href="{{ url_for('games.index') }}" style="color:var(--warning); font-weight:700; text-decoration:none;">
+          🎮 {{ recommendation.game_recommendation }} &rarr;
+        </a>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Speed Velocity Timeline -->
+  <div style="margin-bottom:1.75rem;">
+    <h3 style="font-size:1.1rem; font-weight:700; margin-bottom:0.75rem;">Speed Progression</h3>
     <div id="chart-timeline" style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--radius-sm); padding:1rem; min-height:220px;"></div>
   </div>
 
-  <!-- Progressive Disclosure: Detailed Biometric Diagnostics -->
-  <div style="border-top:1px solid var(--border-color); padding-top:1.5rem;">
+  <!-- Detailed Diagnostics Dropdown -->
+  <div style="border-top:1px solid var(--border-color); padding-top:1.25rem;">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-      <h3 style="font-size:1.15rem; font-weight:700; margin:0;">Biometric Breakdown & Recommendations</h3>
+      <h3 style="font-size:1.05rem; font-weight:700; margin:0;">Detailed Biometric Metrics</h3>
       <button onclick="toggleDetails()" id="btn-toggle-details" class="btn btn-sm">
-        Hide Detailed Diagnostics
+        View Detailed Diagnostics &darr;
       </button>
     </div>
 
-    <div id="detailed-diagnostics-panel" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:1.25rem;">
+    <div id="detailed-diagnostics-panel" style="display:none; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:1rem;">
       <div class="card" style="background:var(--bg-card); margin-bottom:0;">
-        <h4 style="font-size:0.95rem; margin-bottom:0.75rem;">Character Distribution</h4>
-        <div style="font-size:0.88rem; display:flex; flex-direction:column; gap:0.45rem;">
+        <h4 style="font-size:0.9rem; margin-bottom:0.6rem;">Keystroke Breakdown</h4>
+        <div style="font-size:0.85rem; display:flex; flex-direction:column; gap:0.4rem;">
           <div style="display:flex; justify-content:space-between;"><span style="color:var(--text-muted);">Correct Characters:</span><strong>{{ test.correct_chars }}</strong></div>
           <div style="display:flex; justify-content:space-between;"><span style="color:var(--text-muted);">Incorrect Characters:</span><strong style="color:var(--danger);">{{ test.incorrect_chars }}</strong></div>
-          <div style="display:flex; justify-content:space-between;"><span style="color:var(--text-muted);">Raw Uncorrected Speed:</span><strong>{{ test.raw_wpm }} WPM</strong></div>
+          <div style="display:flex; justify-content:space-between;"><span style="color:var(--text-muted);">Gross Uncorrected Speed:</span><strong>{{ test.raw_wpm }} WPM</strong></div>
         </div>
       </div>
 
       <div class="card" style="background:var(--bg-card); margin-bottom:0;">
-        <h4 style="font-size:0.95rem; margin-bottom:0.75rem;">Error Keys in this Run</h4>
-        <div style="font-size:0.88rem; display:flex; flex-direction:column; gap:0.4rem;">
+        <h4 style="font-size:0.9rem; margin-bottom:0.6rem;">Mistake Locations in this Run</h4>
+        <div style="font-size:0.85rem; display:flex; flex-direction:column; gap:0.35rem;">
           {% for k, cnt in difficult_keys %}
-            <div style="display:flex; justify-content:space-between; background:var(--bg-secondary); padding:0.35rem 0.65rem; border-radius:4px;">
+            <div style="display:flex; justify-content:space-between; background:var(--bg-secondary); padding:0.3rem 0.6rem; border-radius:4px;">
               <span>Key '<strong>{{ k }}</strong>'</span>
-              <span style="color:var(--danger); font-weight:700;">{{ cnt }} mistake{{ 's' if cnt > 1 else '' }}</span>
+              <span style="color:var(--danger); font-weight:700;">{{ cnt }} typo{{ 's' if cnt > 1 else '' }}</span>
             </div>
           {% else %}
             <span style="color:var(--success);">Zero character errors detected!</span>
@@ -104,10 +154,10 @@ function toggleDetails() {
   const btn = document.getElementById('btn-toggle-details');
   if (panel.style.display === 'none') {
     panel.style.display = 'grid';
-    btn.textContent = 'Hide Detailed Diagnostics';
+    btn.textContent = 'Hide Detailed Diagnostics ↑';
   } else {
     panel.style.display = 'none';
-    btn.textContent = 'View Detailed Diagnostics';
+    btn.textContent = 'View Detailed Diagnostics ↓';
   }
 }
 </script>
