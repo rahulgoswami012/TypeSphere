@@ -1,19 +1,14 @@
 /**
- * TypeSphere Biometric Heatmap & Key Diagnostics Telemetry Inspector
+ * TypeSphere Biometric Heatmap & Layout-Adaptive Virtual Keyboard
+ * Supports: QWERTY, Dvorak, Colemak, Workman, AZERTY
  */
 class VirtualKeyboard {
   constructor() {
     this.container = document.getElementById('on-screen-keyboard');
     this.fingerGuide = document.getElementById('active-finger-guide');
     this.keyData = {};
-    
-    this.layout = [
-      ["`", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "-", "=", "Backspace"],
-      ["Tab", "q", "w", "e", "r", "t", "y", "u", "i", "o", "p", "[", "]", "\\"],
-      ["Caps", "a", "s", "d", "f", "g", "h", "j", "k", "l", ";", "'", "Enter"],
-      ["Shift", "z", "x", "c", "v", "b", "n", "m", ",", ".", "/", "Shift"],
-      ["Space"]
-    ];
+    this.keyElements = {};
+    this.currentLayoutKey = window.layoutManager ? window.layoutManager.activeLayout : 'qwerty';
 
     this.fingerMapping = {
       'q': 'Left Pinky', 'a': 'Left Pinky', 'z': 'Left Pinky', '1': 'Left Pinky', '`': 'Left Pinky',
@@ -27,7 +22,6 @@ class VirtualKeyboard {
       ' ': 'Left / Right Thumb', 'space': 'Left / Right Thumb'
     };
 
-    this.keyElements = {};
     if (this.container) {
       this.render();
       this.fetchHeatmapData();
@@ -35,8 +29,23 @@ class VirtualKeyboard {
   }
 
   render() {
+    const layoutConfig = (window.KEYBOARD_LAYOUTS && window.KEYBOARD_LAYOUTS[this.currentLayoutKey])
+      ? window.KEYBOARD_LAYOUTS[this.currentLayoutKey]
+      : {
+          rows: [
+            ["`", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "-", "=", "Backspace"],
+            ["Tab", "q", "w", "e", "r", "t", "y", "u", "i", "o", "p", "[", "]", "\\"],
+            ["Caps", "a", "s", "d", "f", "g", "h", "j", "k", "l", ";", "'", "Enter"],
+            ["Shift", "z", "x", "c", "v", "b", "n", "m", ",", ".", "/", "Shift"],
+            ["Space"]
+          ],
+          homeKeys: ['a', 's', 'd', 'f', 'j', 'k', 'l', ';']
+        };
+
     this.container.innerHTML = '';
-    this.layout.forEach(row => {
+    this.keyElements = {};
+
+    layoutConfig.rows.forEach(row => {
       const rowDiv = document.createElement('div');
       rowDiv.className = 'keyboard-row';
       row.forEach(key => {
@@ -51,6 +60,10 @@ class VirtualKeyboard {
         else if (key === 'Enter') specialClass = 'enter';
         else if (key === 'Shift') specialClass = 'shift';
 
+        if (layoutConfig.homeKeys.includes(lower)) {
+          specialClass += ' home-pos';
+        }
+
         keyDiv.className = `k-key ${specialClass}`;
         keyDiv.innerHTML = `<span class="key-label">${key}</span>`;
         keyDiv.dataset.key = lower;
@@ -58,11 +71,17 @@ class VirtualKeyboard {
         rowDiv.appendChild(keyDiv);
         this.keyElements[lower] = keyDiv;
 
-        // Opens diagnostic modal popup
         keyDiv.addEventListener('click', () => this.inspectKey(key));
       });
       this.container.appendChild(rowDiv);
     });
+
+    this.paintHeatmap();
+  }
+
+  renderForLayout(layoutKey) {
+    this.currentLayoutKey = layoutKey;
+    this.render();
   }
 
   inspectKey(key) {
@@ -87,7 +106,7 @@ class VirtualKeyboard {
       });
     }
 
-    document.getElementById('km-key-title').textContent = `Key Diagnostics: [ ${key.toUpperCase()} ]`;
+    document.getElementById('km-key-title').textContent = `Key Diagnostics: [ ${key.toUpperCase()} ] (${window.layoutManager ? window.layoutManager.activeLayout.toUpperCase() : 'QWERTY'})`;
     document.getElementById('km-finger').textContent = finger;
     document.getElementById('km-total').textContent = data.total;
     document.getElementById('km-error-rate').textContent = `${errRate}%`;
@@ -103,7 +122,7 @@ class VirtualKeyboard {
     const finger = this.fingerMapping[lower] || this.fingerMapping[expectedChar] || 'Touch Key';
     
     if (this.fingerGuide) {
-      this.fingerGuide.innerHTML = `Use Finger: <strong style="color: var(--accent);">${finger}</strong> &bull; Target: <span style="font-family: var(--font-mono); color: #f59e0b; background: var(--bg-card); padding: 0.1rem 0.45rem; border-radius: 4px; font-weight: 800;">${expectedChar === ' ' ? 'Space' : expectedChar}</span>`;
+      this.fingerGuide.innerHTML = `Layout: <strong>${this.currentLayoutKey.toUpperCase()}</strong> &bull; Finger: <strong style="color: var(--accent);">${finger}</strong> &bull; Target: <span style="font-family: var(--font-mono); color: #f59e0b; background: var(--bg-card); padding: 0.1rem 0.45rem; border-radius: 4px; font-weight: 800;">${expectedChar === ' ' ? 'Space' : expectedChar}</span>`;
     }
   }
 
@@ -134,8 +153,6 @@ class VirtualKeyboard {
     this.keyData[k].total++;
     if (!isCorrect) {
       this.keyData[k].errors++;
-      const t = typed.toLowerCase();
-      this.keyData[k].confusions[t] = (this.keyData[k].confusions[t] || 0) + 1;
     }
     if (latencyMs && latencyMs > 0 && latencyMs < 2000) {
       this.keyData[k].delays.push(latencyMs);

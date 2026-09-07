@@ -1,7 +1,5 @@
 /**
- * TypeSphere Unified Engine
- * Features: Timed Countdown, Retry Parameter Hook, Long-Form Streaming, Speedometer Arc,
- * and Soft Keyboard Focus Proxy.
+ * TypeSphere Unified Engine with Version 2.0 In-Browser Layout Translation
  */
 class TypingEngine {
   constructor() {
@@ -13,7 +11,7 @@ class TypingEngine {
     this.timerInterval = null;
     this.durationLimit = 60;
     this.wordLimit = 25;
-    this.mode = 'timed'; // 'timed', 'words', 'quote', 'code', 'survival', 'accuracy', 'daily', 'custom'
+    this.mode = 'timed';
     this.codeLanguage = 'python';
     this.withPunctuation = false;
     this.withNumbers = false;
@@ -60,7 +58,6 @@ class TypingEngine {
   async checkUrlParameters() {
     const params = new URLSearchParams(window.location.search);
     
-    // Ghost race check
     const ghostTestId = params.get('ghost_race');
     if (ghostTestId) {
       try {
@@ -72,33 +69,25 @@ class TypingEngine {
           const banner = document.getElementById('ghost-toggle');
           if (banner) banner.textContent = `Ghost: PB (${this.ghostWpm} WPM)`;
         }
-      } catch (err) {
-        console.warn("Ghost race initialization note:", err);
-      }
+      } catch (err) {}
     }
 
     const modeParam = params.get('mode');
-    if (modeParam) {
-      this.mode = modeParam;
-    }
+    if (modeParam) this.mode = modeParam;
 
     const durationParam = params.get('duration');
-    if (durationParam) {
-      this.durationLimit = parseInt(durationParam);
-    }
+    if (durationParam) this.durationLimit = parseInt(durationParam);
   }
 
   async loadPrompt(customEndpoint = null) {
     let endpoint = customEndpoint;
 
-    // Check if retrying an identical test passage
     const params = new URLSearchParams(window.location.search);
     const retryTestId = params.get('retry_test_id');
     if (retryTestId && !endpoint) {
       endpoint = `/typing/api/text?retry_test_id=${retryTestId}`;
     }
 
-    // Custom Text Studio
     if (this.mode === 'custom' && !endpoint) {
       const storedText = sessionStorage.getItem('typesphere_custom_text');
       const storedDuration = sessionStorage.getItem('typesphere_custom_duration');
@@ -116,7 +105,6 @@ class TypingEngine {
       }
     }
 
-    // Long-Form Marathon Streaming
     if (this.durationLimit >= 300 && !endpoint) {
       endpoint = `/typing/api/text?mode=timed&words=600&punctuation=${this.withPunctuation}&numbers=${this.withNumbers}`;
     }
@@ -157,7 +145,6 @@ class TypingEngine {
       this.renderText();
       this.reset();
     } catch (err) {
-      console.warn("Fallback prompt loaded:", err);
       this.targetText = "Speed and precision compound into true keyboard mastery.";
       this.renderText();
       this.reset();
@@ -270,7 +257,9 @@ class TypingEngine {
         return;
       }
 
-      this.handleKeystroke(e.key, e);
+      // Translate through layout manager if active
+      const translatedKey = window.layoutManager ? window.layoutManager.translateEvent(e) : e.key;
+      this.handleKeystroke(translatedKey, e);
     });
 
     this.container.addEventListener('click', () => {
@@ -322,8 +311,8 @@ class TypingEngine {
 
   closePauseModal() {
     if (this.pauseModal) this.pauseModal.style.display = 'none';
-    if (this.isPaused) {
-      if (this.pausedFloatingBar) this.pausedFloatingBar.style.display = 'flex';
+    if (this.isPaused && this.pausedFloatingBar) {
+      this.pausedFloatingBar.style.display = 'flex';
     }
   }
 
@@ -531,7 +520,8 @@ class TypingEngine {
       timeline: this.timeline,
       duration: Math.max(1.0, duration),
       target_text: this.targetText,
-      mode: this.mode
+      mode: this.mode,
+      layout: window.layoutManager ? window.layoutManager.activeLayout : 'qwerty'
     };
 
     this.displayResultOverlay(survivalFailed);
@@ -548,9 +538,7 @@ class TypingEngine {
           window.location.href = `/typing/result/${data.test_id}`;
         }, 1200);
       }
-    } catch (err) {
-      console.error("Submission error note:", err);
-    }
+    } catch (err) {}
   }
 
   displayResultOverlay(survivalFailed) {

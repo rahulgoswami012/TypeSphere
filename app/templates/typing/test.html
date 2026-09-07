@@ -118,7 +118,16 @@
   </div>
 
   <div class="mode-group">
-    <select id="code-lang-picker" onchange="setCodeLanguage(this.value)" style="background: var(--bg-card); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 4px; padding: 0.3rem 0.6rem; font-size: 0.85rem; font-family: inherit;" data-tooltip="Select programming syntax (Python, JS, HTML, CSS, SQL, Java)" data-tooltip-title="CODE PICKER">
+    <!-- Version 2.0 In-Browser Ergonomic Layout Selector -->
+    <select id="layout-picker" onchange="changeKeyboardLayout(this.value)" style="background: var(--bg-card); border: 1.5px solid var(--accent); color: var(--accent); border-radius: 4px; padding: 0.3rem 0.6rem; font-size: 0.85rem; font-weight: 700; font-family: inherit;" data-tooltip="In-browser hardware key remapping. Practice Dvorak, Colemak, Workman without changing OS settings!" data-tooltip-title="LAYOUT SWITCHER">
+      <option value="qwerty">Layout: QWERTY</option>
+      <option value="dvorak">Layout: Dvorak</option>
+      <option value="colemak">Layout: Colemak</option>
+      <option value="workman">Layout: Workman</option>
+      <option value="azerty">Layout: AZERTY</option>
+    </select>
+
+    <select id="code-lang-picker" onchange="setCodeLanguage(this.value)" style="background: var(--bg-card); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 4px; padding: 0.3rem 0.6rem; font-size: 0.85rem; font-family: inherit;" data-tooltip="Select programming syntax" data-tooltip-title="CODE PICKER">
       <option value="python">Code: Python</option>
       <option value="javascript">Code: JavaScript</option>
       <option value="html">Code: HTML</option>
@@ -205,7 +214,7 @@
 <!-- Primary Typing Box with Smooth Auto-Centering and Mobile Proxy -->
 <div id="typing-box" class="typing-container focus-ring" tabindex="0">
   <input type="text" id="mobile-text-proxy" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="position: absolute; opacity: 0; left: 0; top: 0; width: 100%; height: 100%; cursor: default; z-index: 1;">
-  <div id="caret" class="caret"></div>
+  <div id="caret" class="caret caret-smooth"></div>
   <div id="ghost-caret" class="ghost-caret" style="display: none;" title="Pacing Ghost"></div>
   <div id="text-display" class="typing-text-display"></div>
 </div>
@@ -214,7 +223,7 @@
   Tip: Tap text to type &bull; Press <kbd style="background: var(--bg-card); padding: 0.2rem 0.4rem; border-radius: 4px;">Esc</kbd> to Pause &bull; Click <kbd style="background: var(--bg-card); padding: 0.2rem 0.4rem; border-radius: 4px;">Restart</kbd> anytime
 </div>
 
-<!-- Heatmap Section -->
+<!-- Heatmap Controls & Section -->
 <div style="text-align: center; margin-top: 1.5rem;">
   <button onclick="toggleMobileKeyboard()" class="btn" id="mobile-kb-btn" style="display: none; margin: 0 auto 0.75rem; font-size: 0.8rem;">
     ⌨️ Toggle Tactile Keyboard
@@ -223,7 +232,7 @@
 
 <div class="keyboard-wrapper" id="keyboard-container">
   <div style="display: flex; justify-content: space-between; width: 100%; max-width: 820px; align-items: center; margin-bottom: 0.5rem; font-size: 0.8rem; color: var(--text-muted);">
-    <span>Live Heatmap &bull; <strong>Click any key to inspect diagnostics</strong></span>
+    <span>Biometric Heatmap &bull; <strong>Click any key to inspect diagnostics</strong></span>
     <span style="display: flex; gap: 0.5rem; align-items: center;">
       <span style="display: inline-block; width: 10px; height: 10px; border-radius: 2px; background: var(--success);"></span> Accurate
       <span style="display: inline-block; width: 10px; height: 10px; border-radius: 2px; background: var(--danger); margin-left: 0.5rem;"></span> Weak
@@ -234,10 +243,21 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/layouts.js') }}"></script>
 <script src="{{ url_for('static', filename='js/keyboard.js') }}"></script>
 <script src="{{ url_for('static', filename='js/engine.js') }}"></script>
 <script>
 let blindModeActive = false;
+
+function changeKeyboardLayout(layoutKey) {
+  if (window.layoutManager) {
+    window.layoutManager.setLayout(layoutKey);
+  }
+  if (window.typingEngine && window.virtualKeyboard) {
+    const nextChar = window.typingEngine.targetText[window.typingEngine.currentIndex] || '';
+    window.virtualKeyboard.updateCurrentExpectedKey(nextChar);
+  }
+}
 
 function updatePreviewMetadata() {
   const text = window.typingEngine.targetText || "";
@@ -352,6 +372,9 @@ document.addEventListener('DOMContentLoaded', () => {
     updatePreviewMetadata();
     if (window.virtualKeyboard && window.typingEngine.targetText.length > 0) {
       window.virtualKeyboard.updateCurrentExpectedKey(window.typingEngine.targetText[0]);
+    }
+    if (window.layoutManager && document.getElementById('layout-picker')) {
+      document.getElementById('layout-picker').value = window.layoutManager.activeLayout;
     }
   }, 400);
 });
