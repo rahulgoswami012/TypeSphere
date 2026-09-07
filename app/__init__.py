@@ -23,7 +23,7 @@ def create_app(config_class=Config):
     login_manager.login_view = 'auth.login'
     login_manager.login_message_category = 'info'
 
-    # 1. Explicitly import all models so SQLAlchemy discovers their tables
+    # Register all database models before create_all
     from app.models.user import User
     from app.models.typing import TypingTest, TypingText, TypingDNA
     from app.models.challenge import DailyChallenge, Achievement, UserAchievement
@@ -38,9 +38,9 @@ def create_app(config_class=Config):
     def load_user(user_id):
         return User.query.get(int(user_id))
 
-    # 2. Guarantee all tables exist on startup
     with app.app_context():
         db.create_all()
+        # Safe SQLite migrations
         try:
             with db.engine.connect() as conn:
                 res = conn.execute(text("PRAGMA table_info(user_settings)"))
@@ -53,7 +53,7 @@ def create_app(config_class=Config):
         except Exception:
             pass
 
-    # 3. Register Blueprints
+    # Register All Blueprints
     from app.routes.auth import auth_bp
     from app.routes.typing import typing_bp
     from app.routes.dashboard import dashboard_bp

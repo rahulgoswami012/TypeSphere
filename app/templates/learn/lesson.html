@@ -1,0 +1,123 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="card" style="max-width:880px; margin:0 auto;">
+  <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:1rem; margin-bottom:1.5rem;">
+    <div>
+      <span style="font-size:0.75rem; font-weight:800; color:var(--accent);">STAGE {{ stage.stage_number }} EXERCISE</span>
+      <h2 style="font-size:1.5rem; font-weight:800; margin:0.2rem 0 0;">{{ stage.title }}</h2>
+    </div>
+    <a href="{{ url_for('learn.index') }}" class="btn btn-sm">&larr; Curriculum</a>
+  </div>
+
+  <p style="color:var(--text-secondary); font-size:0.9rem; line-height:1.5; margin-bottom:1.5rem;">
+    {{ stage.description }}
+  </p>
+
+  <div class="alert-box alert-info" style="margin-bottom:1.5rem;">
+    Passing Requirements: Minimum <strong>{{ stage.min_wpm_to_pass|int }} WPM</strong> and <strong>{{ stage.min_accuracy_to_pass|int }}% Accuracy</strong>.
+  </div>
+
+  <!-- Lesson Arena -->
+  <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:0.75rem; margin-bottom:1.25rem;">
+    <div class="stat-box"><div class="stat-label">Live WPM</div><div class="stat-value" id="lesson-wpm">0</div></div>
+    <div class="stat-box"><div class="stat-label">Accuracy</div><div class="stat-value" id="lesson-acc">100%</div></div>
+    <div class="stat-box"><div class="stat-label">Errors</div><div class="stat-value" id="lesson-err" style="color:var(--danger);">0</div></div>
+  </div>
+
+  <div id="lesson-box" class="typing-container focus-ring" style="min-height:150px; max-height:220px; margin-bottom:1.25rem;">
+    <div id="lesson-caret" class="caret caret-smooth"></div>
+    <div id="lesson-text" class="typing-text-display"></div>
+  </div>
+
+  <input type="text" id="lesson-input" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Type the exercise above to begin..." style="width:100%; padding:0.85rem; background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--radius-sm); color:var(--text-primary); font-family:var(--font-mono); font-size:1.1rem; outline:none;">
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const targetMaterial = {{ stage.practice_material|tojson }};
+const stageId = {{ stage.id }};
+const minWpm = {{ stage.min_wpm_to_pass }};
+const minAcc = {{ stage.min_accuracy_to_pass }};
+
+let startTime = null;
+let currentIdx = 0;
+
+document.addEventListener('DOMContentLoaded', () => {
+  renderLessonText();
+  const input = document.getElementById('lesson-input');
+  input.focus();
+
+  input.addEventListener('input', () => {
+    if (!startTime) startTime = performance.now();
+    const val = input.value;
+    const spans = document.querySelectorAll('#lesson-text .char');
+    currentIdx = Math.min(val.length, targetMaterial.length);
+
+    let errors = 0;
+    for (let i = 0; i < spans.length; i++) {
+      if (i < val.length) {
+        if (val[i] === targetMaterial[i]) {
+          spans[i].className = 'char correct';
+        } else {
+          spans[i].className = 'char incorrect';
+          errors++;
+        }
+      } else {
+        spans[i].className = 'char';
+      }
+    }
+
+    // Caret Position
+    const caret = document.getElementById('lesson-caret');
+    if (currentIdx < spans.length) {
+      caret.style.left = `${spans[currentIdx].offsetLeft}px`;
+      caret.style.top = `${spans[currentIdx].offsetTop + 4}px`;
+    }
+
+    // Telemetry
+    const elapsedMinutes = (performance.now() - startTime) / 60000;
+    const netWords = Math.max(0, (currentIdx - errors) / 5.0);
+    const wpm = elapsedMinutes > 0 ? Math.round(netWords / elapsedMinutes) : 0;
+    const acc = currentIdx > 0 ? Math.round(((currentIdx - errors) / currentIdx) * 100) : 100;
+
+    document.getElementById('lesson-wpm').textContent = wpm;
+    document.getElementById('lesson-acc').textContent = `${acc}%`;
+    document.getElementById('lesson-err').textContent = errors;
+
+    if (val === targetMaterial) {
+      input.disabled = true;
+      submitCompletion(wpm, acc);
+    }
+  });
+});
+
+function renderLessonText() {
+  const container = document.getElementById('lesson-text');
+  container.innerHTML = '';
+  for (let i = 0; i < targetMaterial.length; i++) {
+    const s = document.createElement('span');
+    s.className = 'char';
+    s.textContent = targetMaterial[i];
+    container.appendChild(s);
+  }
+}
+
+async function submitCompletion(wpm, acc) {
+  const passed = (wpm >= minWpm && acc >= minAcc);
+  try {
+    await fetch('/learn/api/complete-stage', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ stage_id: stageId, wpm: wpm, accuracy: acc })
+    });
+  } catch {}
+
+  alert(passed 
+    ? `🎉 Stage Passed! Speed: ${wpm} WPM | Accuracy: ${acc}%. Progression updated!`
+    : `Stage Incomplete. Score: ${wpm} WPM (Target: ${minWpm}) & ${acc}% Acc. Try again!`);
+  window.location.href = "{{ url_for('learn.index') }}";
+}
+</script>
+{% endblock %}

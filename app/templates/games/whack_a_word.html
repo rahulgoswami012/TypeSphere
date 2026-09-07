@@ -1,0 +1,102 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="card" style="max-width:820px; margin:0 auto; text-align:center;">
+  <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:1rem; margin-bottom:1.5rem;">
+    <h2 style="font-size:1.4rem; font-weight:800; margin:0;">🔨 Whack-A-Word Grid</h2>
+    <div style="display:flex; gap:1.2rem; align-items:center;">
+      <span>Whacked: <strong id="mole-score" style="color:var(--accent); font-size:1.25rem;">0</strong></span>
+      <span>Time: <strong id="mole-time" style="color:var(--warning); font-size:1.25rem;">45s</strong></span>
+      <a href="{{ url_for('games.index') }}" class="btn btn-sm">&times; Exit</a>
+    </div>
+  </div>
+
+  <!-- 3x3 Mole Grid -->
+  <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:1rem; max-width:600px; margin:0 auto 1.5rem;">
+    {% for i in range(9) %}
+    <div id="hole-{{ i }}" style="height:100px; background:var(--bg-secondary); border:2px solid var(--border-color); border-radius:var(--radius); display:flex; align-items:center; justify-content:center; font-family:var(--font-mono); font-weight:800; font-size:1.15rem; color:var(--text-muted);">
+      <!-- Word pops here -->
+    </div>
+    {% endfor %}
+  </div>
+
+  <div style="font-size:0.85rem; color:var(--text-muted);">
+    Type the active illuminated word immediately to strike the mole.
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const MOLE_WORDS = ["swift", "strike", "smash", "rapid", "flash", "clack", "click", "punch", "quick", "whack", "power", "turbo"];
+let mScore = 0;
+let mTime = 45;
+let currentActiveWord = "";
+let currentActiveHole = null;
+let moleTimer = null;
+let clockTimer = null;
+let typedBuffer = "";
+
+document.addEventListener('DOMContentLoaded', () => {
+  clockTimer = setInterval(() => {
+    mTime--;
+    document.getElementById('mole-time').textContent = `${mTime}s`;
+    if (mTime <= 0) {
+      clearInterval(clockTimer);
+      clearInterval(moleTimer);
+      alert(`Time up! You struck ${mScore} moles.`);
+      window.location.href = "{{ url_for('games.index') }}";
+    }
+  }, 1000);
+
+  spawnMole();
+
+  window.addEventListener('keydown', (e) => {
+    if (mTime <= 0 || !currentActiveWord) return;
+    if (e.key.length !== 1 || e.ctrlKey || e.metaKey || e.altKey) return;
+
+    const char = e.key.toLowerCase();
+    if (currentActiveWord.startsWith(typedBuffer + char)) {
+      typedBuffer += char;
+      const hole = document.getElementById(`hole-${currentActiveHole}`);
+      hole.innerHTML = `<span style="color:var(--success); text-decoration:underline;">${typedBuffer}</span>${currentActiveWord.slice(typedBuffer.length)}`;
+
+      if (typedBuffer === currentActiveWord) {
+        mScore++;
+        document.getElementById('mole-score').textContent = mScore;
+        hole.style.background = 'var(--success-bg)';
+        hole.style.borderColor = 'var(--success)';
+        if (window.soundEngine) window.soundEngine.playKey(false);
+        spawnMole();
+      }
+    } else {
+      if (window.soundEngine) window.soundEngine.playKey(true);
+    }
+  });
+});
+
+function spawnMole() {
+  clearTimeout(moleTimer);
+  typedBuffer = "";
+
+  // Reset previous hole
+  if (currentActiveHole !== null) {
+    const prev = document.getElementById(`hole-${currentActiveHole}`);
+    prev.textContent = '';
+    prev.style.background = 'var(--bg-secondary)';
+    prev.style.borderColor = 'var(--border-color)';
+  }
+
+  currentActiveHole = Math.floor(Math.random() * 9);
+  currentActiveWord = MOLE_WORDS[Math.floor(Math.random() * MOLE_WORDS.length)];
+
+  const hole = document.getElementById(`hole-${currentActiveHole}`);
+  hole.textContent = currentActiveWord;
+  hole.style.background = 'var(--bg-card)';
+  hole.style.borderColor = 'var(--accent)';
+  hole.style.color = 'var(--text-primary)';
+
+  moleTimer = setTimeout(spawnMole, 2400); // 2.4s window to whack
+}
+</script>
+{% endblock %}

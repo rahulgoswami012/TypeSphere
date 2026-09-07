@@ -1,0 +1,132 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="card" style="max-width:880px; margin:0 auto; text-align:center;">
+  <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:1rem; margin-bottom:1.25rem;">
+    <h2 style="font-size:1.4rem; font-weight:800; margin:0;">🏎️ Speed Racer Time Trial</h2>
+    <div style="display:flex; gap:1.2rem; align-items:center;">
+      <span>Speed: <strong id="racer-speed" style="color:var(--accent); font-size:1.2rem;">0 WPM</strong></span>
+      <span>Progress: <strong id="racer-pct" style="color:var(--success); font-size:1.2rem;">0%</strong></span>
+      <a href="{{ url_for('games.index') }}" class="btn btn-sm">&times; Exit</a>
+    </div>
+  </div>
+
+  <!-- Race Track View -->
+  <div style="background:var(--bg-secondary); border:2px solid var(--border-color); border-radius:var(--radius); padding:1.5rem; margin-bottom:1.5rem;">
+    <div style="margin-bottom:1rem;">
+      <div style="display:flex; justify-content:space-between; font-size:0.85rem; margin-bottom:0.3rem;">
+        <span>🏁 Your Car</span>
+        <span id="player-track-stat">0m / 500m</span>
+      </div>
+      <div style="background:var(--bg-card); height:16px; border-radius:8px; overflow:hidden; border:1px solid var(--border-color);">
+        <div id="player-car-bar" style="width:0%; height:100%; background:var(--accent); transition:width 0.15s ease;"></div>
+      </div>
+    </div>
+
+    <div>
+      <div style="display:flex; justify-content:space-between; font-size:0.85rem; margin-bottom:0.3rem;">
+        <span>🤖 Pace Car (65 WPM)</span>
+        <span id="bot-track-stat">0m / 500m</span>
+      </div>
+      <div style="background:var(--bg-card); height:16px; border-radius:8px; overflow:hidden; border:1px solid var(--border-color);">
+        <div id="bot-car-bar" style="width:0%; height:100%; background:var(--warning); transition:width 0.2s ease;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Word Display & Input -->
+  <div id="racer-passage-display" class="typing-container" style="min-height:130px; margin-bottom:1.25rem; font-family:var(--font-mono); font-size:1.35rem; line-height:2.2;">
+    <!-- Rendered Words -->
+  </div>
+
+  <input type="text" id="racer-input" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Start typing the passage to throttle forward..." style="width:100%; max-width:520px; padding:0.85rem 1.15rem; background:var(--bg-card); border:2px solid var(--border-color); border-radius:var(--radius-sm); color:var(--text-primary); font-family:var(--font-mono); font-size:1.1rem; outline:none;">
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const RACE_PASSAGE = "The open highway stretched across the desert floor under a wide expanse of pale morning sky. High velocity demands relaxed control and steady breathing. When the throttle opens every second compounds into pure forward momentum.";
+let currentIdx = 0;
+let startTime = null;
+let botProgress = 0;
+let botInterval = null;
+let raceEnded = false;
+
+document.addEventListener('DOMContentLoaded', () => {
+  renderPassage();
+  const input = document.getElementById('racer-input');
+  input.focus();
+
+  // Bot paces at steady 65 WPM
+  botInterval = setInterval(() => {
+    if (!startTime || raceEnded) return;
+    botProgress += 0.8;
+    const pct = Math.min(100, Math.round(botProgress));
+    document.getElementById('bot-car-bar').style.width = `${pct}%`;
+    document.getElementById('bot-track-stat').textContent = `${Math.round(pct * 5)}m / 500m`;
+    if (pct >= 100) {
+      clearInterval(botInterval);
+      if (!raceEnded) {
+        raceEnded = true;
+        alert("Pace car crossed the finish line first! Keep training your velocity.");
+        finishRacerGame();
+      }
+    }
+  }, 200);
+
+  input.addEventListener('input', () => {
+    if (raceEnded) return;
+    if (!startTime) startTime = performance.now();
+
+    const val = input.value;
+    const spans = document.querySelectorAll('#racer-passage-display .char');
+    currentIdx = Math.min(val.length, RACE_PASSAGE.length);
+
+    let errors = 0;
+    for (let i = 0; i < spans.length; i++) {
+      if (i < val.length) {
+        if (val[i] === RACE_PASSAGE[i]) {
+          spans[i].className = 'char correct';
+        } else {
+          spans[i].className = 'char incorrect';
+          errors++;
+        }
+      } else {
+        spans[i].className = 'char';
+      }
+    }
+
+    const pct = Math.min(100, Math.round((currentIdx / RACE_PASSAGE.length) * 100));
+    const elapsedMinutes = (performance.now() - startTime) / 60000;
+    const wpm = elapsedMinutes > 0 ? Math.round(((currentIdx - errors) / 5) / elapsedMinutes) : 0;
+
+    document.getElementById('player-car-bar').style.width = `${pct}%`;
+    document.getElementById('player-track-stat').textContent = `${Math.round(pct * 5)}m / 500m`;
+    document.getElementById('racer-speed').textContent = `${wpm} WPM`;
+    document.getElementById('racer-pct').textContent = `${pct}%`;
+
+    if (val === RACE_PASSAGE) {
+      raceEnded = true;
+      clearInterval(botInterval);
+      alert(`🏁 Finish Line Reached! You defeated the pace car with ${wpm} WPM!`);
+      finishRacerGame();
+    }
+  });
+});
+
+function renderPassage() {
+  const container = document.getElementById('racer-passage-display');
+  container.innerHTML = '';
+  for (let i = 0; i < RACE_PASSAGE.length; i++) {
+    const s = document.createElement('span');
+    s.className = 'char';
+    s.textContent = RACE_PASSAGE[i];
+    container.appendChild(s);
+  }
+}
+
+function finishRacerGame() {
+  window.location.href = "{{ url_for('games.index') }}";
+}
+</script>
+{% endblock %}

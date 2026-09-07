@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="card" style="max-width:760px; margin:0 auto; text-align:center;">
+  <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:1rem; margin-bottom:1.5rem;">
+    <h2 style="font-size:1.4rem; font-weight:800; margin:0;">⚡ 60-Second Word Blitz</h2>
+    <div style="display:flex; gap:1.2rem; align-items:center;">
+      <span>Words: <strong id="blitz-words" style="color:var(--accent); font-size:1.25rem;">0</strong></span>
+      <span>Multiplier: <strong id="blitz-mult" style="color:var(--warning); font-size:1.25rem;">1x</strong></span>
+      <span>Time: <strong id="blitz-clock" style="color:var(--danger); font-size:1.25rem;">60s</strong></span>
+    </div>
+  </div>
+
+  <!-- Big Central Word Prompt -->
+  <div id="blitz-prompt-card" style="background:var(--bg-secondary); border:2px solid var(--accent); border-radius:var(--radius); padding:2.5rem; margin-bottom:1.5rem;">
+    <div id="blitz-word" style="font-family:var(--font-mono); font-size:2.8rem; font-weight:900; color:var(--text-primary); letter-spacing:0.05em;">
+      READY
+    </div>
+  </div>
+
+  <input type="text" id="blitz-input" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Type the flashing word here..." style="width:100%; max-width:440px; padding:0.85rem; background:var(--bg-card); border:2px solid var(--border-color); border-radius:var(--radius-sm); color:var(--text-primary); font-family:var(--font-mono); font-size:1.3rem; text-align:center; outline:none;">
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const BLITZ_CORPUS = ["energy", "fusion", "voltage", "current", "matrix", "stream", "spark", "motion", "dynamo", "thrust", "ignite", "reactor", "hyper", "velocity", "signal", "photon", "laser"];
+let bWordsTyped = 0;
+let bMultiplier = 1;
+let bStreak = 0;
+let bTimeRemaining = 60;
+let currentBlitzWord = "blitz";
+let bStarted = false;
+let bInterval = null;
+
+document.addEventListener('DOMContentLoaded', () => {
+  const input = document.getElementById('blitz-input');
+  input.focus();
+  setNewBlitzWord();
+
+  input.addEventListener('input', () => {
+    if (!bStarted) {
+      bStarted = true;
+      startBlitzTimer();
+    }
+
+    const val = input.value.trim().toLowerCase();
+    if (val === currentBlitzWord) {
+      bWordsTyped++;
+      bStreak++;
+      if (bStreak % 5 === 0 && bMultiplier < 4) bMultiplier++;
+
+      document.getElementById('blitz-words').textContent = bWordsTyped;
+      document.getElementById('blitz-mult').textContent = `${bMultiplier}x`;
+      input.value = '';
+      if (window.soundEngine) window.soundEngine.playKey(false);
+      setNewBlitzWord();
+    }
+  });
+});
+
+function setNewBlitzWord() {
+  currentBlitzWord = BLITZ_CORPUS[Math.floor(Math.random() * BLITZ_CORPUS.length)];
+  document.getElementById('blitz-word').textContent = currentBlitzWord.toUpperCase();
+}
+
+function startBlitzTimer() {
+  bInterval = setInterval(() => {
+    bTimeRemaining--;
+    document.getElementById('blitz-clock').textContent = `${bTimeRemaining}s`;
+    if (bTimeRemaining <= 0) {
+      clearInterval(bInterval);
+      alert(`Time's up! You completed ${bWordsTyped} blitz words with a peak multiplier of ${bMultiplier}x!`);
+      window.location.href = "{{ url_for('games.index') }}";
+    }
+  }, 1000);
+}
+</script>
+{% endblock %}

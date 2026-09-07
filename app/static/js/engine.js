@@ -1,10 +1,6 @@
 /**
- * TypeSphere Core Engine (v2.3 Evolution)
- * - Infinite text streaming: tests never terminate because text ran out
- * - No Time Limit mode support
- * - Blind Mode: ON by default
- * - Ghost Mode: OFF by default
- * - Keyboard visible by default
+ * TypeSphere Core Engine
+ * Fixed: parseUrlParameters called on startup, Zero-Error Gauntlet abort execution.
  */
 class TypingEngine {
   constructor() {
@@ -16,13 +12,12 @@ class TypingEngine {
     this.startTime = null;
     this.timerInterval = null;
     
-    // Default Test Parameters
-    this.durationLimit = 60; // 15s to 1200s, or 0 (No Time Limit)
-    this.contentType = 'speed'; // speed, practice, full_passage, quote, story, article, numbers, numbers_text, punctuation, data_entry, professional, coding, custom
-    this.level = 'moderate'; // easy, moderate, hard, expert
+    this.durationLimit = 60;
+    this.contentType = 'speed';
+    this.level = 'moderate';
     this.codeLanguage = 'python';
+    this.mode = 'timed'; // 'timed', 'accuracy', 'survival', etc.
 
-    // Defaults: Blind Mode ON, Ghost Mode OFF
     this.blindModeActive = true;
     this.ghostEnabled = false;
     this.ghostWpm = 70;
@@ -49,21 +44,43 @@ class TypingEngine {
     this.pauseModal = document.getElementById('pause-modal');
     this.mobileProxy = document.getElementById('mobile-text-proxy');
     this.keyboardContainer = document.getElementById('keyboard-container');
+    this.gauntletBanner = document.getElementById('gauntlet-active-banner');
 
-    // Guarantee keyboard visibility on startup
     if (this.keyboardContainer) {
       this.keyboardContainer.style.display = 'flex';
     }
 
     this.bindEvents();
+    // Parse URL parameter immediately on startup
+    this.parseUrlParameters();
     this.loadUserSessionPreferences();
+  }
+
+  parseUrlParameters() {
+    const params = new URLSearchParams(window.location.search);
+    const modeParam = params.get('mode');
+    if (modeParam) {
+      this.mode = modeParam;
+      if (this.mode === 'accuracy' && this.gauntletBanner) {
+        this.gauntletBanner.style.display = 'block';
+      }
+    }
+
+    const durationParam = params.get('duration');
+    if (durationParam) {
+      this.durationLimit = parseInt(durationParam, 10);
+    }
   }
 
   loadUserSessionPreferences() {
     const prefs = window.settingsManager ? window.settingsManager.current : null;
     if (prefs) {
-      if (prefs.default_duration !== undefined) this.durationLimit = prefs.default_duration;
-      if (prefs.default_content) this.contentType = prefs.default_content;
+      if (prefs.default_duration !== undefined && !window.location.search.includes('duration=')) {
+        this.durationLimit = prefs.default_duration;
+      }
+      if (prefs.default_content && !window.location.search.includes('test_type=')) {
+        this.contentType = prefs.default_content;
+      }
       if (prefs.default_level) this.level = prefs.default_level;
       if (prefs.blind_mode !== undefined) this.blindModeActive = prefs.blind_mode;
       if (prefs.ghost_mode !== undefined) this.ghostEnabled = prefs.ghost_mode;
@@ -93,20 +110,6 @@ class TypingEngine {
   }
 
   async loadPrompt(append = false) {
-    if (this.contentType === 'custom') {
-      const stored = sessionStorage.getItem('typesphere_custom_text');
-      if (stored && stored.trim().length > 0) {
-        if (append) {
-          this.targetText += " " + stored.trim();
-        } else {
-          this.targetText = stored.trim();
-        }
-        this.renderText(append);
-        if (!append) this.reset();
-        return;
-      }
-    }
-
     try {
       const url = `/typing/api/text?test_type=${encodeURIComponent(this.contentType)}&level=${encodeURIComponent(this.level)}&code_lang=${encodeURIComponent(this.codeLanguage)}`;
       const res = await fetch(url);
@@ -122,7 +125,7 @@ class TypingEngine {
         this.reset();
       }
     } catch {
-      const fallback = "Speed and precision compound into true keyboard mastery. Consistent cadence and deliberate finger movement build enduring velocity.";
+      const fallback = "Speed and precision compound into true keyboard mastery. Maintain cadence and relaxed posture.";
       if (append) {
         this.targetText += " " + fallback;
         this.renderText(true);
@@ -175,7 +178,8 @@ class TypingEngine {
     this.ghostProgress = 0;
 
     if (this.pauseModal) this.pauseModal.style.display = 'none';
-    if (this.display) this.display.style.filter = 'none';
+    const abortModal = document.getElementById('gauntlet-abort-modal');
+    if (abortModal) abortModal.style.display = 'none';
 
     this.hudWpm.textContent = '0';
     this.hudAcc.textContent = '100%';
@@ -264,8 +268,6 @@ class TypingEngine {
     this.pausedAt = performance.now() / 1000.0;
     clearInterval(this.timerInterval);
     clearInterval(this.ghostInterval);
-
-    if (this.display) this.display.style.filter = 'blur(4px)';
     if (this.pauseModal) this.pauseModal.style.display = 'flex';
   }
 
@@ -274,13 +276,9 @@ class TypingEngine {
     const now = performance.now() / 1000.0;
     this.totalPausedDuration += (now - this.pausedAt);
     this.isPaused = false;
-
-    if (this.display) this.display.style.filter = 'none';
     if (this.pauseModal) this.pauseModal.style.display = 'none';
-
     this.startTick(true);
     if (this.ghostEnabled) this.startGhostRacer();
-    if (this.mobileProxy) this.mobileProxy.focus();
   }
 
   handleKeystroke(key, originalEvent) {
@@ -300,10 +298,10 @@ class TypingEngine {
 
     const expectedChar = this.targetText[this.currentIndex];
 
-    // Backspace: In Blind Mode (default ON), Backspace is disabled
+    // Backspace handling
     if (key === 'Backspace') {
       if (originalEvent) originalEvent.preventDefault();
-      if (this.blindModeActive) return;
+      if (this.blindModeActive) return; // Disables Backspace in Blind Mode
 
       if (this.currentIndex > 0) {
         this.currentIndex--;
@@ -327,6 +325,12 @@ class TypingEngine {
       this.streak = 0;
       this.errors++;
       if (window.soundEngine) window.soundEngine.playKey(true);
+
+      // ZERO-ERROR GAUNTLET: Immediately abort on a single mistake
+      if (this.mode === 'accuracy') {
+        this.triggerGauntletAbort(expectedChar, key);
+        return;
+      }
     }
 
     this.events.push({
@@ -346,13 +350,28 @@ class TypingEngine {
     this.updateCaretPosition();
     this.updateLiveStats(now);
 
-    // Continuous Infinite Text Streaming: Load subsequent passages before reaching the boundary
     if (this.currentIndex >= spans.length - 25) {
       this.loadPrompt(true);
     }
 
     if (window.virtualKeyboard && this.currentIndex < this.targetText.length) {
       window.virtualKeyboard.updateCurrentExpectedKey(this.targetText[this.currentIndex]);
+    }
+  }
+
+  triggerGauntletAbort(expected, got) {
+    this.isFinished = true;
+    clearInterval(this.timerInterval);
+    clearInterval(this.ghostInterval);
+
+    const abortModal = document.getElementById('gauntlet-abort-modal');
+    if (abortModal) {
+      document.getElementById('gauntlet-detail-text').innerHTML = 
+        `Mistake detected at character <strong>#${this.currentIndex + 1}</strong>.<br>Expected '<strong>${expected}</strong>', but typed '<span style="color:var(--danger); font-weight:800;">${got}</span>'. Zero-Error Gauntlet terminated.`;
+      abortModal.style.display = 'flex';
+    } else {
+      alert(`Gauntlet Aborted! Mistake on '${expected}'. Accuracy challenge requires 100% precision.`);
+      this.reset();
     }
   }
 

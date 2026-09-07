@@ -1,220 +1,86 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<!-- Fallback Mobile Copy Modal -->
-<div id="copy-fallback-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 2000; align-items: center; justify-content: center; backdrop-filter: blur(6px); padding: 1rem;">
-  <div class="card" style="width: 100%; max-width: 440px; border-color: var(--accent);">
-    <h3 style="font-size: 1.15rem; color: var(--accent); margin-bottom: 0.5rem;">Copy Your Result Badge</h3>
-    <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1rem;">
-      Your browser restricted direct clipboard writing over HTTP. Long-press or tap below to copy:
-    </p>
-    <textarea id="copy-fallback-textarea" rows="4" readonly style="width: 100%; padding: 0.75rem; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius); color: var(--text-primary); font-family: var(--font-mono); font-size: 0.85rem; margin-bottom: 1rem;"></textarea>
-    <div style="display: flex; justify-content: flex-end; gap: 0.5rem;">
-      <button onclick="document.getElementById('copy-fallback-modal').style.display='none'" class="btn">Close</button>
-      <button onclick="selectAndCopyFallback()" class="btn btn-primary">Select & Copy</button>
-    </div>
-  </div>
-</div>
-
-<div class="card">
-  <!-- Header with Actions -->
-  <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 1.25rem; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+<div class="card" style="max-width:980px; margin:0 auto;">
+  <!-- Header Banner -->
+  <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:1.25rem; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
     <div>
-      <div style="display: flex; align-items: center; gap: 0.75rem;">
-        <h1 style="font-size: 1.8rem; font-weight: 700; margin: 0;">Performance Breakdown</h1>
-        <span style="background: {{ tier_color }}; color: #000; font-weight: 800; font-size: 0.75rem; padding: 0.25rem 0.6rem; border-radius: 4px; text-transform: uppercase;" data-tooltip="Standard typist skill rank classification" data-tooltip-title="RANK TIER">
+      <div style="display:flex; align-items:center; gap:0.6rem;">
+        <h1 style="font-size:1.8rem; font-weight:800; margin:0;">Performance Summary</h1>
+        <span style="background:{{ tier_color }}; color:#04101e; font-weight:800; font-size:0.75rem; padding:0.2rem 0.55rem; border-radius:4px; text-transform:uppercase;">
           {{ skill_tier }}
         </span>
-        {% if test.suspicious %}
-          <span style="font-size: 0.75rem; background: rgba(248, 81, 73, 0.2); color: var(--danger); padding: 0.2rem 0.6rem; border-radius: 4px; border: 1px solid var(--danger);">Unverified</span>
-        {% endif %}
       </div>
-      <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.35rem;">
-        Test #{{ test.id }} &bull; Mode: <strong>{{ test.mode|capitalize }}</strong> &bull; Completed {{ test.completed_at.strftime('%b %d, %Y at %H:%M') }}
+      <p style="color:var(--text-secondary); font-size:0.85rem; margin-top:0.25rem;">
+        Test #{{ test.id }} &bull; Completed {{ test.completed_at.strftime('%b %d, %Y at %H:%M') }}
       </p>
     </div>
-    
-    <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center;">
-      <a href="{{ url_for('typing.test_page') }}?retry_test_id={{ test.id }}" class="btn" style="border-color: var(--warning); color: var(--warning); font-weight: 700;" data-tooltip="Practice on this identical text again" data-tooltip-title="RETRY PASSAGE">
-        🔁 Retry Same Text
-      </a>
-      <button onclick="exportJsonTelemetry()" class="btn" data-tooltip="Download complete raw keystroke JSON telemetry file" data-tooltip-title="EXPORT JSON">
-        💾 Export JSON
-      </button>
-      <button onclick="exportCsvSummary()" class="btn" data-tooltip="Download tabular CSV summary of this session" data-tooltip-title="EXPORT CSV">
-        📊 Export CSV
-      </button>
-      <button onclick="copyShareCard()" id="share-card-btn" class="btn" style="border-color: var(--accent); color: var(--accent);" data-tooltip="Share result via WhatsApp, Discord, X, or copy" data-tooltip-title="SHARE SCORE">
-        📋 Copy / Share
-      </button>
-      <a href="{{ url_for('typing.certificate_page', test_id=test.id) }}" class="btn btn-primary" style="background: #f59e0b; border-color: #f59e0b; color: #000; font-weight: 700;" data-tooltip="View or print official verified certificate" data-tooltip-title="OFFICIAL CERTIFICATE">
-        🏆 Certificate
-      </a>
-      <a href="{{ url_for('typing.test_page') }}?ghost_race={{ test.id }}" class="btn" style="border-color: #a371f7; color: #a371f7;" data-tooltip="Race directly alongside your past run pacing" data-tooltip-title="GHOST REPLAY">
-        👻 Race Ghost
-      </a>
-      <a href="{{ url_for('typing.test_page') }}" class="btn" data-tooltip="Start a fresh benchmark test track" data-tooltip-title="NEW TEST">&larr; New Test</a>
+
+    <!-- Actions -->
+    <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+      <a href="{{ url_for('typing.test_page') }}" class="btn btn-primary">&larr; New Test (Tab)</a>
+      <a href="{{ url_for('typing.test_page') }}?retry_test_id={{ test.id }}" class="btn">🔁 Retry Text</a>
+      <a href="{{ url_for('typing.certificate_page', test_id=test.id) }}" class="btn" style="border-color:var(--warning); color:var(--warning);">🏆 Certificate</a>
     </div>
   </div>
 
-  <!-- Primary Score Banner -->
-  <div class="stats-hud" style="grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));">
-    <div class="stat-box" data-tooltip="Net Words Per Minute" data-tooltip-title="NET SPEED">
+  <!-- Primary Results Card: High-Impact Essential Data First -->
+  <div class="stats-hud" style="grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); margin-bottom:2rem;">
+    <div class="stat-box">
       <div class="stat-label">Net Speed</div>
-      <div class="stat-value" style="color: var(--accent);">{{ test.wpm }} <span style="font-size: 0.8rem; color: var(--text-muted);">WPM</span></div>
+      <div class="stat-value" style="font-size:2.2rem; color:var(--accent);">{{ test.wpm }} <span style="font-size:0.9rem; color:var(--text-muted);">WPM</span></div>
     </div>
-    <div class="stat-box" data-tooltip="Percentage of accurate keystrokes" data-tooltip-title="PRECISION">
+    <div class="stat-box">
       <div class="stat-label">Accuracy</div>
-      <div class="stat-value" style="color: {{ 'var(--success)' if test.accuracy >= 95 else 'var(--warning)' }}">{{ test.accuracy }}%</div>
+      <div class="stat-value" style="font-size:2.2rem; color:{{ 'var(--success)' if test.accuracy >= 95 else 'var(--warning)' }};">{{ test.accuracy }}%</div>
     </div>
-    <div class="stat-box" data-tooltip="Regularity of key intervals" data-tooltip-title="CONSISTENCY">
+    <div class="stat-box">
       <div class="stat-label">Consistency</div>
-      <div class="stat-value">{{ test.consistency }}%</div>
+      <div class="stat-value" style="font-size:2.2rem;">{{ test.consistency }}%</div>
     </div>
-    <div class="stat-box" data-tooltip="Cadence stability index" data-tooltip-title="RHYTHM SCORE">
-      <div class="stat-label">Rhythm Score</div>
-      <div class="stat-value">{{ test.rhythm_score }} <span style="font-size: 0.8rem; color: var(--text-muted);">/100</span></div>
-    </div>
-    <div class="stat-box" data-tooltip="Experience points credited" data-tooltip-title="XP EARNED">
-      <div class="stat-label">XP Earned</div>
-      <div class="stat-value" style="color: #f59e0b;">+{{ xp_earned }} <span style="font-size: 0.8rem; color: var(--text-muted);">XP</span></div>
+    <div class="stat-box">
+      <div class="stat-label">Errors Logged</div>
+      <div class="stat-value" style="font-size:2.2rem; color:var(--danger);">{{ test.errors }}</div>
     </div>
   </div>
 
-  <!-- Keystroke Playback Studio -->
-  <div class="card" style="background: var(--bg-card); border-color: var(--accent); margin: 2rem 0;">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.75rem;">
-      <div>
-        <h3 style="font-size: 1.15rem; color: var(--accent); margin: 0;">🎬 Interactive Keystroke Replay Studio</h3>
-        <p style="color: var(--text-muted); font-size: 0.8rem; margin-top: 0.2rem;">
-          Stroke-by-stroke biometric playback with error tracking, real-time cadence, and scrubber controls.
-        </p>
-      </div>
-
-      <div style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
-        <button onclick="toggleReplayPlayback()" id="replay-play-btn" class="btn btn-primary" style="padding: 0.35rem 0.85rem; font-size: 0.85rem;">
-          ▶ Play Replay
-        </button>
-        <button onclick="restartReplayPlayback()" class="btn" style="padding: 0.35rem 0.65rem; font-size: 0.85rem;">
-          ⏮ Reset
-        </button>
-        
-        <div style="display: flex; gap: 0.25rem;">
-          <button onclick="setReplaySpeed(0.5, this)" class="btn" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">0.5x</button>
-          <button onclick="setReplaySpeed(1.0, this)" class="btn active-choice" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">1.0x</button>
-          <button onclick="setReplaySpeed(1.5, this)" class="btn" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">1.5x</button>
-          <button onclick="setReplaySpeed(2.0, this)" class="btn" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">2.0x</button>
-        </div>
-
-        <span style="font-family: var(--font-mono); font-size: 0.85rem; color: var(--accent); margin-left: 0.5rem;">
-          <strong id="replay-wpm-readout">0</strong> WPM &bull; <span id="replay-time-readout">0.0s</span>
-        </span>
-      </div>
-    </div>
-
-    <div style="margin-bottom: 1rem;">
-      <input type="range" id="replay-scrubber" min="0" max="100" value="0" step="0.1" oninput="scrubReplay(this.value)" style="width: 100%; cursor: pointer;">
-    </div>
-
-    <div style="position: relative; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 1.5rem; min-height: 120px; font-family: var(--font-mono); font-size: 1.15rem; line-height: 2; word-break: break-word;">
-      <div id="replay-caret" class="caret" style="display: inline-block; position: relative; margin-left: -2px;"></div>
-      <div id="replay-text-container"></div>
-    </div>
+  <!-- WPM Velocity Trajectory Chart -->
+  <div style="margin-bottom:2rem;">
+    <h3 style="font-size:1.15rem; font-weight:700; margin-bottom:0.75rem;">Velocity Trajectory</h3>
+    <div id="chart-timeline" style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--radius-sm); padding:1rem; min-height:220px;"></div>
   </div>
 
-  <!-- Real-time Velocity Timeline Graph -->
-  <div style="margin: 2rem 0;">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
-      <h3 style="font-size: 1.1rem;">Keystroke Velocity Timeline</h3>
-      <span style="font-size: 0.8rem; color: var(--text-muted);">Speed progression curve</span>
+  <!-- Progressive Disclosure: Detailed Biometric Diagnostics -->
+  <div style="border-top:1px solid var(--border-color); padding-top:1.5rem;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+      <h3 style="font-size:1.15rem; font-weight:700; margin:0;">Biometric Breakdown & Recommendations</h3>
+      <button onclick="toggleDetails()" id="btn-toggle-details" class="btn btn-sm">
+        Hide Detailed Diagnostics
+      </button>
     </div>
-    <div id="chart-timeline" style="background: var(--bg-card); border-radius: var(--radius); padding: 1.25rem; min-height: 240px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border-color);">
-      <span style="color: var(--text-muted); font-size: 0.9rem;">Plotting trajectory...</span>
-    </div>
-  </div>
 
-  <!-- Diagnostic Columns -->
-  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-bottom: 1.5rem;">
-    <!-- Precision Audit -->
-    <div class="card" style="margin-bottom: 0; background: var(--bg-card);">
-      <h3 style="margin-bottom: 1rem; font-size: 1.1rem;">Keystroke Precision Audit</h3>
-      <div style="display: flex; flex-direction: column; gap: 0.6rem; font-size: 0.95rem;">
-        <div style="display: flex; justify-content: space-between;">
-          <span style="color: var(--text-muted);">Correct Characters:</span>
-          <strong style="color: var(--success);">{{ test.correct_chars }}</strong>
-        </div>
-        <div style="display: flex; justify-content: space-between;">
-          <span style="color: var(--text-muted);">Mistakes Logged:</span>
-          <strong style="color: var(--danger);">{{ test.errors }}</strong>
-        </div>
-        <div style="display: flex; justify-content: space-between;">
-          <span style="color: var(--text-muted);">Duration:</span>
-          <strong>{{ test.duration }}s</strong>
-        </div>
-        <div style="display: flex; justify-content: space-between;">
-          <span style="color: var(--text-muted);">Key Interval Regularity:</span>
-          <strong>{{ test.consistency }}%</strong>
+    <div id="detailed-diagnostics-panel" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:1.25rem;">
+      <div class="card" style="background:var(--bg-card); margin-bottom:0;">
+        <h4 style="font-size:0.95rem; margin-bottom:0.75rem;">Character Distribution</h4>
+        <div style="font-size:0.88rem; display:flex; flex-direction:column; gap:0.45rem;">
+          <div style="display:flex; justify-content:space-between;"><span style="color:var(--text-muted);">Correct Characters:</span><strong>{{ test.correct_chars }}</strong></div>
+          <div style="display:flex; justify-content:space-between;"><span style="color:var(--text-muted);">Incorrect Characters:</span><strong style="color:var(--danger);">{{ test.incorrect_chars }}</strong></div>
+          <div style="display:flex; justify-content:space-between;"><span style="color:var(--text-muted);">Raw Uncorrected Speed:</span><strong>{{ test.raw_wpm }} WPM</strong></div>
         </div>
       </div>
-    </div>
 
-    <!-- Personal Comparisons -->
-    <div class="card" style="margin-bottom: 0; background: var(--bg-card);">
-      <h3 style="margin-bottom: 1rem; font-size: 1.1rem;">Personal Comparisons</h3>
-      <div style="display: flex; flex-direction: column; gap: 0.6rem; font-size: 0.95rem;">
-        <div style="display: flex; justify-content: space-between;">
-          <span style="color: var(--text-muted);">Personal Best:</span>
-          <strong>{{ pb_wpm }} WPM</strong>
-        </div>
-        <div style="display: flex; justify-content: space-between;">
-          <span style="color: var(--text-muted);">Account Average:</span>
-          <strong>{{ avg_wpm }} WPM</strong>
-        </div>
-        <div style="display: flex; justify-content: space-between;">
-          <span style="color: var(--text-muted);">Pace Differential:</span>
-          {% if avg_wpm > 0 %}
-            <strong style="color: {{ 'var(--success)' if test.wpm >= avg_wpm else 'var(--danger)' }};">
-              {{ '+' if test.wpm >= avg_wpm else '' }}{{ (test.wpm - avg_wpm)|round(1) }} WPM
-            </strong>
+      <div class="card" style="background:var(--bg-card); margin-bottom:0;">
+        <h4 style="font-size:0.95rem; margin-bottom:0.75rem;">Error Keys in this Run</h4>
+        <div style="font-size:0.88rem; display:flex; flex-direction:column; gap:0.4rem;">
+          {% for k, cnt in difficult_keys %}
+            <div style="display:flex; justify-content:space-between; background:var(--bg-secondary); padding:0.35rem 0.65rem; border-radius:4px;">
+              <span>Key '<strong>{{ k }}</strong>'</span>
+              <span style="color:var(--danger); font-weight:700;">{{ cnt }} mistake{{ 's' if cnt > 1 else '' }}</span>
+            </div>
           {% else %}
-            <strong style="color: var(--text-muted);">Baseline Benchmark</strong>
-          {% endif %}
+            <span style="color:var(--success);">Zero character errors detected!</span>
+          {% endfor %}
         </div>
-        <div style="display: flex; justify-content: space-between;">
-          <span style="color: var(--text-muted);">Biometric Typing DNA:</span>
-          <a href="{{ url_for('dashboard.dna_profile') }}" style="color: var(--accent); text-decoration: none; font-weight: 600;">Inspect Profile &rarr;</a>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Session-Specific Diagnostic Breakdown -->
-  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
-    <div class="card" style="margin-bottom: 0; background: var(--bg-card);">
-      <h3 style="margin-bottom: 0.75rem; font-size: 1.1rem; color: var(--danger);">Keys With Errors (This Run)</h3>
-      <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-        {% for key, count in difficult_keys %}
-        <div style="display: flex; justify-content: space-between; align-items: center; background: var(--bg-secondary); padding: 0.5rem 0.75rem; border-radius: 4px;">
-          <span>Key <strong>'{{ key }}'</strong></span>
-          <span style="color: var(--danger); font-weight: 700; font-family: var(--font-mono);">{{ count }} error{{ 's' if count > 1 else '' }}</span>
-        </div>
-        {% else %}
-        <p style="color: var(--success); font-size: 0.9rem; padding: 0.5rem 0;">Flawless run. No character errors logged in this session!</p>
-        {% endfor %}
-      </div>
-    </div>
-
-    <div class="card" style="margin-bottom: 0; background: var(--bg-card);">
-      <h3 style="margin-bottom: 0.75rem; font-size: 1.1rem; color: var(--warning);">Hesitation Telemetry (Delays > 450ms)</h3>
-      <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-        {% for h in hesitations %}
-        <div style="display: flex; justify-content: space-between; align-items: center; background: var(--bg-secondary); padding: 0.5rem 0.75rem; border-radius: 4px;">
-          <span>Hesitated before <strong>'{{ h.char }}'</strong></span>
-          <span style="color: var(--warning); font-weight: 700; font-family: var(--font-mono);">{{ h.delay_ms }} ms</span>
-        </div>
-        {% else %}
-        <p style="color: var(--text-muted); font-size: 0.9rem; padding: 0.5rem 0;">Smooth continuous cadence. Zero prolonged hesitation pauses detected.</p>
-        {% endfor %}
       </div>
     </div>
   </div>
@@ -223,291 +89,26 @@
 
 {% block scripts %}
 <script>
-const replayEvents = {{ events_json|safe if events_json else '[]' }};
-const replayTargetText = {{ target_text|tojson|safe if target_text else '""' }};
-const testTotalDuration = parseFloat("{{ test.duration }}") || 1.0;
-
-let replayCurrentIdx = 0;
-let replayIsPlaying = false;
-let replaySpeedMultiplier = 1.0;
-let replayTimer = null;
-
-function initReplayStudio() {
-  const container = document.getElementById('replay-text-container');
-  container.innerHTML = '';
-
-  if (!replayEvents || replayEvents.length === 0) {
-    container.innerHTML = '<span style="color: var(--text-muted);">No keystroke telemetry available for this run.</span>';
-    return;
-  }
-
-  for (let i = 0; i < replayTargetText.length; i++) {
-    const span = document.createElement('span');
-    span.id = `rk-${i}`;
-    span.className = 'char';
-    span.textContent = replayTargetText[i];
-    span.style.color = 'var(--text-muted)';
-    container.appendChild(span);
-  }
-
-  updateReplayHUD(0, 0);
-}
-
-function updateReplayHUD(timeSec, wpm) {
-  document.getElementById('replay-time-readout').textContent = `${timeSec.toFixed(1)}s`;
-  document.getElementById('replay-wpm-readout').textContent = Math.round(wpm);
-  const pct = Math.min(100, (replayCurrentIdx / (replayEvents.length || 1)) * 100);
-  document.getElementById('replay-scrubber').value = pct;
-}
-
-function toggleReplayPlayback() {
-  if (replayIsPlaying) {
-    pauseReplayPlayback();
-  } else {
-    startReplayPlayback();
-  }
-}
-
-function startReplayPlayback() {
-  if (replayCurrentIdx >= replayEvents.length) {
-    restartReplayPlayback();
-  }
-
-  replayIsPlaying = true;
-  document.getElementById('replay-play-btn').textContent = '⏸ Pause';
-  playNextReplayStep();
-}
-
-function pauseReplayPlayback() {
-  replayIsPlaying = false;
-  clearTimeout(replayTimer);
-  document.getElementById('replay-play-btn').textContent = '▶ Play Replay';
-}
-
-function restartReplayPlayback() {
-  pauseReplayPlayback();
-  replayCurrentIdx = 0;
-  
-  const spans = document.querySelectorAll('#replay-text-container .char');
-  spans.forEach(s => {
-    s.className = 'char';
-    s.style.color = 'var(--text-muted)';
-  });
-
-  updateReplayHUD(0, 0);
-}
-
-function setReplaySpeed(multiplier, btn) {
-  replaySpeedMultiplier = multiplier;
-  document.querySelectorAll('[onclick^="setReplaySpeed"]').forEach(b => b.classList.remove('active-choice'));
-  btn.classList.add('active-choice');
-}
-
-function playNextReplayStep() {
-  if (!replayIsPlaying) return;
-
-  if (replayCurrentIdx >= replayEvents.length) {
-    pauseReplayPlayback();
-    document.getElementById('replay-scrubber').value = 100;
-    return;
-  }
-
-  const ev = replayEvents[replayCurrentIdx];
-  const charSpan = document.getElementById(`rk-${ev.char_index}`);
-
-  if (charSpan) {
-    if (ev.correct) {
-      charSpan.className = 'char correct';
-      charSpan.style.color = 'var(--text-primary)';
-    } else {
-      charSpan.className = 'char incorrect';
-      charSpan.style.color = 'var(--danger)';
-    }
-  }
-
-  const timeOffset = ev.timestamp - (replayEvents[0]?.timestamp || 0);
-  const elapsedMin = Math.max(0.01, timeOffset / 60.0);
-  const currentWpm = (replayCurrentIdx / 5.0) / elapsedMin;
-  updateReplayHUD(timeOffset, currentWpm);
-
-  replayCurrentIdx++;
-
-  if (replayCurrentIdx < replayEvents.length) {
-    const nextEv = replayEvents[replayCurrentIdx];
-    const delay = Math.max(15, (nextEv.timestamp - ev.timestamp) * 1000);
-    const adjustedDelay = delay / replaySpeedMultiplier;
-    replayTimer = setTimeout(playNextReplayStep, Math.min(1500, adjustedDelay));
-  } else {
-    pauseReplayPlayback();
-  }
-}
-
-function scrubReplay(val) {
-  pauseReplayPlayback();
-  const targetIdx = Math.floor((val / 100) * replayEvents.length);
-  
-  restartReplayPlayback();
-  for (let i = 0; i < targetIdx; i++) {
-    const ev = replayEvents[i];
-    const span = document.getElementById(`rk-${ev.char_index}`);
-    if (span) {
-      span.className = ev.correct ? 'char correct' : 'char incorrect';
-      span.style.color = ev.correct ? 'var(--text-primary)' : 'var(--danger)';
-    }
-  }
-  replayCurrentIdx = targetIdx;
-  const currentEv = replayEvents[targetIdx - 1];
-  const timeSec = currentEv ? currentEv.timestamp - (replayEvents[0]?.timestamp || 0) : 0;
-  updateReplayHUD(timeSec, "{{ test.wpm }}");
-}
-
-// Export Raw Telemetry JSON
-function exportJsonTelemetry() {
-  const data = {
-    test_id: {{ test.id }},
-    mode: "{{ test.mode }}",
-    wpm: {{ test.wpm }},
-    raw_wpm: {{ test.raw_wpm }},
-    accuracy: {{ test.accuracy }},
-    consistency: {{ test.consistency }},
-    duration_seconds: {{ test.duration }},
-    completed_at: "{{ test.completed_at.isoformat() }}",
-    events: replayEvents,
-    timeline: {{ test.timeline_data|tojson|safe if test.timeline_data else '[]' }}
-  };
-
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `typesphere_test_${data.test_id}_telemetry.json`;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
-// Export Tabular Summary CSV
-function exportCsvSummary() {
-  const headers = ["TestID", "Mode", "NetWPM", "RawWPM", "AccuracyPct", "ConsistencyPct", "Errors", "DurationSec", "CompletedAt"];
-  const row = [
-    {{ test.id }},
-    "{{ test.mode }}",
-    {{ test.wpm }},
-    {{ test.raw_wpm }},
-    {{ test.accuracy }},
-    {{ test.consistency }},
-    {{ test.errors }},
-    {{ test.duration }},
-    "{{ test.completed_at.strftime('%Y-%m-%d %H:%M:%S') }}"
-  ];
-
-  const csvContent = "data:text/csv;charset=utf-8," + headers.join(",") + "\n" + row.join(",");
-  const encodedUri = encodeURI(csvContent);
-  const a = document.createElement('a');
-  a.href = encodedUri;
-  a.download = `typesphere_test_{{ test.id }}_summary.csv`;
-  a.click();
-}
-
 document.addEventListener('DOMContentLoaded', () => {
-  initReplayStudio();
-
   try {
     const rawData = {{ test.timeline_data|tojson|safe if test.timeline_data else '[]' }};
     const timelineData = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
-
     if (Array.isArray(timelineData) && timelineData.length > 1) {
-      SvgLineChart.render('chart-timeline', timelineData, '#58a6ff');
-    } else {
-      document.getElementById('chart-timeline').innerHTML = 
-        '<div style="text-align: center; color: var(--text-muted);">Test duration was too short for a multi-point graph curve. Complete longer tests for detailed velocity plots.</div>';
+      SvgLineChart.render('chart-timeline', timelineData, '#38bdf8');
     }
-  } catch(e) {
-    console.warn("Timeline chart note:", e);
-    document.getElementById('chart-timeline').innerHTML = 
-      '<div style="text-align: center; color: var(--text-muted);">Velocity timeline graph recorded.</div>';
-  }
+  } catch {}
 });
 
-async function copyShareCard() {
-  const shareText = `⚡ TypeSphere Verified Typing Benchmark\n` +
-    `🚀 Net Speed: {{ test.wpm }} WPM | 🎯 Accuracy: {{ test.accuracy }}%\n` +
-    `🏆 Rank Tier: {{ skill_tier }} | 📈 Consistency: {{ test.consistency }}%\n` +
-    `🔗 Certificate Verification: ${window.location.origin}{{ url_for('typing.certificate_page', test_id=test.id) }}`;
-
-  if (navigator.share && /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)) {
-    try {
-      await navigator.share({
-        title: 'TypeSphere Typing Result',
-        text: shareText
-      });
-      showCopySuccess();
-      return;
-    } catch (err) {
-      if (err.name === 'AbortError') return;
-    }
+function toggleDetails() {
+  const panel = document.getElementById('detailed-diagnostics-panel');
+  const btn = document.getElementById('btn-toggle-details');
+  if (panel.style.display === 'none') {
+    panel.style.display = 'grid';
+    btn.textContent = 'Hide Detailed Diagnostics';
+  } else {
+    panel.style.display = 'none';
+    btn.textContent = 'View Detailed Diagnostics';
   }
-
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    try {
-      await navigator.clipboard.writeText(shareText);
-      showCopySuccess();
-      return;
-    } catch (err) {
-      console.warn("Standard clipboard note:", err);
-    }
-  }
-
-  try {
-    const tempTextArea = document.createElement('textarea');
-    tempTextArea.value = shareText;
-    tempTextArea.style.position = 'fixed';
-    tempTextArea.style.left = '-9999px';
-    tempTextArea.style.top = '0';
-    tempTextArea.setAttribute('readonly', '');
-    document.body.appendChild(tempTextArea);
-    tempTextArea.focus();
-    tempTextArea.select();
-    tempTextArea.setSelectionRange(0, 99999);
-    const successful = document.execCommand('copy');
-    document.body.removeChild(tempTextArea);
-    if (successful) {
-      showCopySuccess();
-      return;
-    }
-  } catch (err) {}
-
-  const modal = document.getElementById('copy-fallback-modal');
-  const textarea = document.getElementById('copy-fallback-textarea');
-  textarea.value = shareText;
-  modal.style.display = 'flex';
-  textarea.focus();
-  textarea.select();
-}
-
-function selectAndCopyFallback() {
-  const textarea = document.getElementById('copy-fallback-textarea');
-  textarea.focus();
-  textarea.select();
-  textarea.setSelectionRange(0, 99999);
-  try {
-    document.execCommand('copy');
-    alert('Copied to clipboard!');
-    document.getElementById('copy-fallback-modal').style.display = 'none';
-  } catch(e) {
-    alert('Please hold down your finger on the text and select Copy.');
-  }
-}
-
-function showCopySuccess() {
-  const btn = document.getElementById('share-card-btn');
-  btn.textContent = 'Copied to Clipboard! ✓';
-  btn.style.borderColor = 'var(--success)';
-  btn.style.color = 'var(--success)';
-  setTimeout(() => {
-    btn.textContent = '📋 Copy / Share';
-    btn.style.borderColor = 'var(--accent)';
-    btn.style.color = 'var(--accent)';
-  }, 2200);
 }
 </script>
 {% endblock %}

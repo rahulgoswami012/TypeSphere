@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="card" style="max-width:820px; margin:0 auto; text-align:center;">
+  <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:1rem; margin-bottom:1.5rem;">
+    <h2 style="font-size:1.4rem; font-weight:800; margin:0; color:#10b981;">💻 Cipher Terminal Intrusion</h2>
+    <div style="display:flex; gap:1.2rem; align-items:center;">
+      <span>Decrypted: <strong id="cipher-count" style="color:var(--accent); font-size:1.25rem;">0</strong></span>
+      <span>Lockdown: <strong id="cipher-countdown" style="color:var(--danger); font-size:1.25rem;">30s</strong></span>
+      <a href="{{ url_for('games.index') }}" class="btn btn-sm">&times; Abort</a>
+    </div>
+  </div>
+
+  <!-- Terminal Screen -->
+  <div style="background:#05050d; border:2px solid #10b981; border-radius:var(--radius); padding:2rem; margin-bottom:1.5rem; text-align:left; font-family:var(--font-mono); box-shadow:0 0 20px rgba(16, 185, 129, 0.2);">
+    <div style="color:#64748b; font-size:0.85rem; margin-bottom:0.75rem;">// SECURE SYSTEM DECRYPTION ACTIVE:</div>
+    <div id="cipher-hash-display" style="font-size:1.8rem; font-weight:800; color:#10b981; word-break:break-all; margin-bottom:0.5rem;">
+      0x7FA9B2
+    </div>
+  </div>
+
+  <input type="text" id="cipher-input" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Enter exact decryption sequence..." style="width:100%; max-width:480px; padding:0.85rem; background:var(--bg-card); border:2px solid #10b981; border-radius:var(--radius-sm); color:#10b981; font-family:var(--font-mono); font-size:1.2rem; text-align:center; outline:none;">
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const HASHES = ["0x8FA1", "0xDE4B", "0x91C0", "SHA256", "0xAA12", "PORT:443", "0xFF00", "AES-256", "0x00A1", "KEY:994"];
+let cDecrypted = 0;
+let cTime = 30;
+let currentHash = "0x8FA1";
+let cTimer = null;
+
+document.addEventListener('DOMContentLoaded', () => {
+  const input = document.getElementById('cipher-input');
+  input.focus();
+  loadNewHash();
+
+  cTimer = setInterval(() => {
+    cTime--;
+    document.getElementById('cipher-countdown').textContent = `${cTime}s`;
+    if (cTime <= 0) {
+      clearInterval(cTimer);
+      alert(`Access denied! Security firewall triggered. Hashes cracked: ${cDecrypted}.`);
+      window.location.href = "{{ url_for('games.index') }}";
+    }
+  }, 1000);
+
+  input.addEventListener('input', () => {
+    if (input.value === currentHash) {
+      cDecrypted++;
+      cTime = Math.min(45, cTime + 4); // Bonus seconds
+      document.getElementById('cipher-count').textContent = cDecrypted;
+      input.value = '';
+      if (window.soundEngine) window.soundEngine.playKey(false);
+      loadNewHash();
+    }
+  });
+});
+
+function loadNewHash() {
+  currentHash = HASHES[Math.floor(Math.random() * HASHES.length)];
+  document.getElementById('cipher-hash-display').textContent = currentHash;
+}
+</script>
+{% endblock %}

@@ -1,0 +1,122 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="card" style="max-width:880px; margin:0 auto; text-align:center;">
+  <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:1rem; margin-bottom:1.25rem;">
+    <h2 style="font-size:1.4rem; font-weight:800; margin:0;">🫧 Bubble Pop Arena</h2>
+    <div style="display:flex; gap:1.2rem; align-items:center;">
+      <span>Score: <strong id="bubble-score" style="color:var(--accent); font-size:1.25rem;">0</strong></span>
+      <span>Lives: <strong id="bubble-lives" style="color:var(--danger); font-size:1.25rem;">❤️❤️❤️</strong></span>
+      <a href="{{ url_for('games.index') }}" class="btn btn-sm">&times; Exit</a>
+    </div>
+  </div>
+
+  <div id="bubble-stage" style="position:relative; width:100%; height:400px; background:var(--bg-secondary); border:2px solid var(--border-color); border-radius:var(--radius); overflow:hidden; outline:none;">
+    <div style="position:absolute; top:30px; left:0; right:0; height:2px; background:var(--danger); opacity:0.5;"></div>
+  </div>
+
+  <div style="margin-top:0.75rem; font-size:0.85rem; color:var(--text-muted);">
+    Type the word inside any bubble to pop it before it hits the top ceiling.
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const BUBBLE_WORDS = ["pop", "float", "drift", "breeze", "light", "wave", "glide", "swift", "clear", "spark", "fresh", "shine", "glow", "soar"];
+let bScore = 0;
+let bLives = 3;
+let bubbles = [];
+let spawnTimer = null;
+let floatTimer = null;
+
+document.addEventListener('DOMContentLoaded', () => {
+  spawnTimer = setInterval(createBubble, 1900);
+  floatTimer = setInterval(floatBubbles, 40);
+
+  window.addEventListener('keydown', (e) => {
+    if (bLives <= 0) return;
+    if (e.key.length !== 1 || e.ctrlKey || e.metaKey || e.altKey) return;
+
+    const char = e.key.toLowerCase();
+    const candidate = bubbles.find(b => b.text.startsWith(b.typed + char));
+    if (candidate) {
+      candidate.typed += char;
+      candidate.el.innerHTML = `<span style="color:var(--success); text-decoration:underline;">${candidate.typed}</span>${candidate.text.slice(candidate.typed.length)}`;
+
+      if (candidate.typed === candidate.text) {
+        popBubble(candidate);
+      }
+      if (window.soundEngine) window.soundEngine.playKey(false);
+    } else {
+      if (window.soundEngine) window.soundEngine.playKey(true);
+    }
+  });
+});
+
+function createBubble() {
+  const stage = document.getElementById('bubble-stage');
+  if (!stage || bLives <= 0) return;
+
+  const text = BUBBLE_WORDS[Math.floor(Math.random() * BUBBLE_WORDS.length)];
+  const el = document.createElement('div');
+  el.textContent = text;
+  el.style.position = 'absolute';
+  el.style.left = `${Math.random() * (stage.clientWidth - 100) + 15}px`;
+  el.style.bottom = '0px';
+  el.style.padding = '0.75rem 1rem';
+  el.style.borderRadius = '50px';
+  el.style.background = 'rgba(56, 189, 248, 0.2)';
+  el.style.border = '2px solid var(--accent)';
+  el.style.color = 'var(--text-primary)';
+  el.style.fontFamily = 'var(--font-mono)';
+  el.style.fontWeight = '700';
+  el.style.boxShadow = '0 0 15px var(--accent-glow)';
+  stage.appendChild(el);
+
+  bubbles.push({ el, text, typed: '', y: 0, speed: 1.2 + Math.random() });
+}
+
+function floatBubbles() {
+  const stage = document.getElementById('bubble-stage');
+  if (!stage || bLives <= 0) return;
+
+  for (let i = bubbles.length - 1; i >= 0; i--) {
+    const b = bubbles[i];
+    b.y += b.speed;
+    b.el.style.bottom = `${b.y}px`;
+
+    // Reached top ceiling
+    if (b.y >= stage.clientHeight - 60) {
+      b.el.remove();
+      bubbles.splice(i, 1);
+      bLives--;
+      updateBubbleLives();
+      if (window.soundEngine) window.soundEngine.playKey(true);
+
+      if (bLives <= 0) {
+        clearInterval(spawnTimer);
+        clearInterval(floatTimer);
+        alert(`Bubbles burst! Final Score: ${bScore} points.`);
+        window.location.href = "{{ url_for('games.index') }}";
+        break;
+      }
+    }
+  }
+}
+
+function popBubble(b) {
+  b.el.remove();
+  const idx = bubbles.indexOf(b);
+  if (idx !== -1) bubbles.splice(idx, 1);
+  bScore += (b.text.length * 15);
+  document.getElementById('bubble-score').textContent = bScore;
+}
+
+function updateBubbleLives() {
+  let h = '';
+  for (let i = 0; i < bLives; i++) h += '❤️';
+  document.getElementById('bubble-lives').textContent = h || '☠️';
+}
+</script>
+{% endblock %}

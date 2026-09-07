@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="card" style="max-width:1080px; margin:0 auto;">
+  <div style="border-bottom:1px solid var(--border-color); padding-bottom:1.25rem; margin-bottom:1.75rem;">
+    <h1 style="font-size:1.8rem; font-weight:800; margin:0 0 0.25rem 0;">TypeSphere Arcade</h1>
+    <p style="color:var(--text-secondary); font-size:0.88rem; margin:0;">
+      7 distinct training games designed to build instinctive peripheral vision, split-second reaction speed, and pressure resistance.
+    </p>
+  </div>
+
+  <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:1.25rem; margin-bottom:2rem;">
+    <!-- 1. Falling Words -->
+    <div class="card" style="background:var(--bg-card); margin-bottom:0; display:flex; flex-direction:column; justify-content:space-between;">
+      <div>
+        <div style="font-size:2.2rem; margin-bottom:0.4rem;">☄️</div>
+        <h3 style="font-size:1.2rem; font-weight:700; margin-bottom:0.3rem;">Falling Words</h3>
+        <p style="color:var(--text-secondary); font-size:0.85rem; line-height:1.5; margin-bottom:1rem;">
+          Words descend at escalating velocity. Type them directly to eliminate them before they cross the defense laser.
+        </p>
+      </div>
+      <a href="{{ url_for('games.falling_words') }}" class="btn btn-primary" style="justify-content:center;">Play Falling Words &rarr;</a>
+    </div>
+
+    <!-- 2. Speed Racer -->
+    <div class="card" style="background:var(--bg-card); margin-bottom:0; display:flex; flex-direction:column; justify-content:space-between;">
+      <div>
+        <div style="font-size:2.2rem; margin-bottom:0.4rem;">🏎️</div>
+        <h3 style="font-size:1.2rem; font-weight:700; margin-bottom:0.3rem;">Speed Racer</h3>
+        <p style="color:var(--text-secondary); font-size:0.85rem; line-height:1.5; margin-bottom:1rem;">
+          Race against a ghost pace car on an animated 2D circuit. Rapid typing boosts your throttle and unlocks turbo.
+        </p>
+      </div>
+      <a href="{{ url_for('games.speed_racer') }}" class="btn btn-primary" style="justify-content:center;">Play Speed Racer &rarr;</a>
+    </div>
+
+    <!-- 3. Bubble Pop -->
+    <div class="card" style="background:var(--bg-card); margin-bottom:0; display:flex; flex-direction:column; justify-content:space-between;">
+      <div>
+        <div style="font-size:2.2rem; margin-bottom:0.4rem;">🫧</div>
+        <h3 style="font-size:1.2rem; font-weight:700; margin-bottom:0.3rem;">Bubble Pop</h3>
+        <p style="color:var(--text-secondary); font-size:0.85rem; line-height:1.5; margin-bottom:1rem;">
+          Bubbles float upward containing words. Type to pop them with audio feedback before they hit the ceiling.
+        </p>
+      </div>
+      <a href="{{ url_for('games.bubble_pop') }}" class="btn btn-primary" style="justify-content:center;">Play Bubble Pop &rarr;</a>
+    </div>
+
+    <!-- 4. Whack-A-Word -->
+    <div class="card" style="background:var(--bg-card); margin-bottom:0; display:flex; flex-direction:column; justify-content:space-between;">
+      <div>
+        <div style="font-size:2.2rem; margin-bottom:0.4rem;">🔨</div>
+        <h3 style="font-size:1.2rem; font-weight:700; margin-bottom:0.3rem;">Whack-A-Word</h3>
+        <p style="color:var(--text-secondary); font-size:0.85rem; line-height:1.5; margin-bottom:1rem;">
+          Target words pop up across a 3x3 grid for only 2 seconds. Type the active target word to strike it down.
+        </p>
+      </div>
+      <a href="{{ url_for('games.whack_a_word') }}" class="btn btn-primary" style="justify-content:center;">Play Whack-A-Word &rarr;</a>
+    </div>
+
+    <!-- 5. Zombie Outbreak -->
+    <div class="card" style="background:var(--bg-card); margin-bottom:0; display:flex; flex-direction:column; justify-content:space-between;">
+      <div>
+        <div style="font-size:2.2rem; margin-bottom:0.4rem;">🧟</div>
+        <h3 style="font-size:1.2rem; font-weight:700; margin-bottom:0.3rem;">Zombie Defense</h3>
+        <p style="color:var(--text-secondary); font-size:0.85rem; line-height:1.5; margin-bottom:1rem;">
+          Hordes of invaders march toward your perimeter. Type the words above their heads to fire laser projectiles.
+        </p>
+      </div>
+      <a href="{{ url_for('games.zombie_outbreak') }}" class="btn btn-primary" style="justify-content:center;">Play Zombie Defense &rarr;</a>
+    </div>
+
+    <!-- 6. Word Blitz -->
+    <div class="card" style="background:var(--bg-card); margin-bottom:0; display:flex; flex-direction:column; justify-content:space-between;">
+      <div>
+        <div style="font-size:2.2rem; margin-bottom:0.4rem;">⚡</div>
+        <h3 style="font-size:1.2rem; font-weight:700; margin-bottom:0.3rem;">60s Word Blitz</h3>
+        <p style="color:var(--text-secondary); font-size:0.85rem; line-height:1.5; margin-bottom:1rem;">
+          A 60-second rapid-fire sprint. Words flash one by one. Maintain your combo streak to achieve maximum multipliers.
+        </p>
+      </div>
+      <a href="{{ url_for('games.word_blitz') }}" class="btn btn-primary" style="justify-content:center;">Play Word Blitz &rarr;</a>
+    </div>
+
+    <!-- 7. Cipher Hacker -->
+    <div class="card" style="background:var(--bg-card); margin-bottom:0; display:flex; flex-direction:column; justify-content:space-between;">
+      <div>
+        <div style="font-size:2.2rem; margin-bottom:0.4rem;">💻</div>
+        <h3 style="font-size:1.2rem; font-weight:700; margin-bottom:0.3rem;">Cipher Hacker</h3>
+        <p style="color:var(--text-secondary); font-size:0.85rem; line-height:1.5; margin-bottom:1rem;">
+          Terminal intrusion simulator. Decode encrypted hex and alphanumeric hashes before cybersecurity security locks you out.
+        </p>
+      </div>
+      <a href="{{ url_for('games.cipher_hacker') }}" class="btn btn-primary" style="justify-content:center;">Play Cipher Hacker &rarr;</a>
+    </div>
+  </div>
+</div>
+{% endblock %}
