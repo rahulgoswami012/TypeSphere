@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>{% block title %}TypeSphere | Next-Generation Typing Intelligence{% endblock %}</title>
 
-  <!-- Google Fonts: JetBrains Mono, Fira Code, Source Code Pro, Courier Prime -->
+  <!-- Google Fonts CDN -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&family=Fira+Code:wght@400;600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700;800&family=Source+Code+Pro:wght@400;600;700&display=swap" rel="stylesheet">
@@ -18,7 +18,7 @@
 <body>
   <!-- Top Navigation -->
   <nav class="navbar">
-    <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; max-width: 1200px; margin: 0 auto;">
+    <div class="nav-header-row">
       <a href="{{ url_for('typing.test_page') }}" class="brand" data-tooltip="Navigate to primary typing test track" data-tooltip-title="TYPESPHERE HOME">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <circle cx="12" cy="12" r="10"></circle>
@@ -27,7 +27,7 @@
         TypeSphere
       </a>
 
-      <!-- Mobile Hamburger Toggle -->
+      <!-- Mobile Hamburger Button -->
       <button class="mobile-nav-toggle" onclick="toggleMobileNav()" aria-label="Toggle navigation">
         ☰
       </button>
@@ -35,22 +35,23 @@
 
     <!-- Navigation Links -->
     <ul class="nav-links" id="main-nav-links">
-      <li><a href="{{ url_for('typing.test_page') }}" class="nav-link" data-tooltip="Open speed typing test track" data-tooltip-title="TEST TRACK">Test</a></li>
-      <li><a href="{{ url_for('typing.custom_text_page') }}" class="nav-link" data-tooltip="Paste your own articles, study notes, or code" data-tooltip-title="CUSTOM STUDIO">Custom Text</a></li>
-      <li><a href="{{ url_for('challenges.index') }}" class="nav-link" data-tooltip="Compete in Survival, Accuracy, and Daily Challenge modes" data-tooltip-title="CHALLENGES">Challenges</a></li>
+      <li><a href="{{ url_for('typing.test_page') }}" class="nav-link" data-tooltip="Speed typing test track" data-tooltip-title="TEST TRACK">Test</a></li>
+      <li><a href="{{ url_for('typing.practice_page') }}" class="nav-link" data-tooltip="TypeSphere Academy & touch-typing curriculum" data-tooltip-title="ACADEMY">Practice</a></li>
+      <li><a href="{{ url_for('typing.custom_text_page') }}" class="nav-link" data-tooltip="Paste your own articles or code" data-tooltip-title="CUSTOM STUDIO">Custom Text</a></li>
+      <li><a href="{{ url_for('challenges.index') }}" class="nav-link" data-tooltip="Survival, Accuracy, and Daily Challenge modes" data-tooltip-title="CHALLENGES">Challenges</a></li>
       <li><a href="{{ url_for('leaderboard.index') }}" class="nav-link" data-tooltip="View global verified rankings" data-tooltip-title="LEADERBOARD">Leaderboard</a></li>
-      <li><a href="{{ url_for('multiplayer.index') }}" class="nav-link" data-tooltip="Join real-time synchronized typing races" data-tooltip-title="MULTIPLAYER">Multiplayer</a></li>
-      <li><a href="{{ url_for('settings.index') }}" class="nav-link" data-tooltip="Customize themes, mechanical sounds, carets, and typography" data-tooltip-title="SETTINGS">Settings</a></li>
+      <li><a href="{{ url_for('multiplayer.index') }}" class="nav-link" data-tooltip="Real-time multi-device typing races" data-tooltip-title="MULTIPLAYER">Multiplayer</a></li>
+      <li><a href="{{ url_for('settings.index') }}" class="nav-link" data-tooltip="Themes, sounds, carets, and typography" data-tooltip-title="SETTINGS">Settings</a></li>
       {% if current_user.is_authenticated %}
         <li><a href="{{ url_for('dashboard.index') }}" class="nav-link" data-tooltip="View personal records and streaks" data-tooltip-title="DASHBOARD">Dashboard</a></li>
-        <li><a href="{{ url_for('dashboard.dna_profile') }}" class="nav-link" data-tooltip="Inspect left vs right hand balance" data-tooltip-title="TYPING DNA">Typing DNA</a></li>
+        <li><a href="{{ url_for('dashboard.dna_profile') }}" class="nav-link" data-tooltip="Left vs right hand balance and weakness telemetry" data-tooltip-title="TYPING DNA">Typing DNA</a></li>
         {% if current_user.is_admin %}
           <li><a href="{{ url_for('admin.index') }}" class="nav-link" style="color: var(--warning);" data-tooltip="Manage prompts and anti-cheat" data-tooltip-title="ADMIN PANEL">Admin</a></li>
         {% endif %}
-        <li><a href="{{ url_for('auth.logout') }}" class="btn" data-tooltip="Securely end current session" data-tooltip-title="LOGOUT">Logout ({{ current_user.username }})</a></li>
+        <li><a href="{{ url_for('auth.logout') }}" class="btn btn-sm" data-tooltip="Sign out of current account" data-tooltip-title="LOGOUT">Logout ({{ current_user.username }})</a></li>
       {% else %}
         <li><a href="{{ url_for('auth.login') }}" class="nav-link" data-tooltip="Sign in to save scores" data-tooltip-title="SIGN IN">Sign In</a></li>
-        <li><a href="{{ url_for('auth.register') }}" class="btn btn-primary" data-tooltip="Create a free account" data-tooltip-title="JOIN SPHERE">Join Sphere</a></li>
+        <li><a href="{{ url_for('auth.register') }}" class="btn btn-primary btn-sm" data-tooltip="Create a free pilot account" data-tooltip-title="JOIN SPHERE">Join Sphere</a></li>
       {% endif %}
     </ul>
   </nav>
@@ -90,7 +91,7 @@
           </p>
           <div class="footer-status-pill">
             <span class="status-dot"></span>
-            <span>All Systems Operational &bull; Version 1.0.0 Production</span>
+            <span>All Systems Operational &bull; Version 2.2 Production</span>
           </div>
         </div>
 
@@ -98,6 +99,7 @@
           <h4>Platform</h4>
           <ul>
             <li><a href="{{ url_for('typing.test_page') }}">Speed Benchmark</a></li>
+            <li><a href="{{ url_for('typing.practice_page') }}">Academy & Practice</a></li>
             <li><a href="{{ url_for('typing.custom_text_page') }}">Custom Studio</a></li>
             <li><a href="{{ url_for('challenges.index') }}">Challenge Arenas</a></li>
             <li><a href="{{ url_for('multiplayer.index') }}">Multiplayer Grid</a></li>

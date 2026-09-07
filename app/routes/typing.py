@@ -6,7 +6,7 @@ import traceback
 import hashlib
 from datetime import date, datetime
 from app import db
-from app.models.typing import TypingTest, TypingText
+from app.models.typing import TypingTest, TypingText, TypingDNA
 from app.models.challenge import DailyChallenge
 from app.services.typing_analyzer import TypingAnalyzer
 from app.services.anti_cheat import AntiCheatSystem
@@ -26,35 +26,29 @@ LANGUAGE_WORD_BANKS = {
     'spanish': [
         "de", "la", "que", "el", "en", "y", "a", "los", "se", "del", "las", "un", "por", "con", "no", "una",
         "su", "para", "es", "al", "lo", "como", "mas", "pero", "sus", "le", "ya", "o", "fue", "este", "ha",
-        "si", "porque", "esta", "son", "entre", "cuando", "muy", "sin", "sobre", "ser", "tiene", "tambien",
-        "me", "hasta", "hay", "donde", "quien", "desde", "todo", "nos", "durante", "todos", "uno", "les", "ni"
+        "si", "porque", "esta", "son", "entre", "cuando", "muy", "sin", "sobre", "ser", "tiene", "tambien"
     ],
     'french': [
         "de", "la", "le", "et", "les", "des", "en", "un", "du", "une", "que", "est", "pour", "qui", "dans", "a",
         "par", "sur", "pas", "plus", "au", "avec", "ce", "ne", "on", "se", "sont", "comme", "mais", "ou",
-        "nous", "sa", "fait", "ses", "tout", "faire", "leur", "aussi", "ces", "deux", "bien", "elle", "si",
-        "sans", "peut", "encore", "temps", "tres", "meme", "autre", "apres", "mon", "leur", "sous", "notre"
+        "nous", "sa", "fait", "ses", "tout", "faire", "leur", "aussi", "ces", "deux", "bien", "elle", "si"
     ],
     'german': [
         "der", "die", "und", "in", "den", "von", "zu", "das", "mit", "sich", "des", "auf", "fur", "ist", "im",
         "dem", "nicht", "ein", "eine", "als", "auch", "es", "an", "werden", "aus", "er", "hat", "dass", "sie",
-        "nach", "wird", "bei", "einer", "um", "am", "sind", "noch", "wie", "einem", "uber", "einen", "so",
-        "sie", "zum", "war", "haben", "nur", "oder", "aber", "vor", "zur", "bis", "mehr", "durch", "man", "sein"
+        "nach", "wird", "bei", "einer", "um", "am", "sind", "noch", "wie", "einem", "uber", "einen", "so"
     ],
     'italian': [
         "di", "e", "il", "che", "la", "a", "in", "un", "per", "del", "non", "i", "si", "da", "le", "della",
-        "con", "sono", "una", "dei", "delle", "come", "al", "ha", "su", "nel", "anche", "piu", "ma", "questo",
-        "ed", "dalla", "gli", "nel", "questa", "se", "tutto", "uno", "dopo", "loro", "senza", "quando", "molto"
+        "con", "sono", "una", "dei", "delle", "come", "al", "ha", "su", "nel", "anche", "piu", "ma", "questo"
     ],
     'portuguese': [
         "de", "a", "o", "que", "e", "do", "da", "em", "um", "para", "com", "nao", "uma", "os", "no", "se",
-        "na", "por", "mais", "as", "dos", "como", "mas", "foi", "ao", "ele", "das", "tem", "a", "seu", "sua",
-        "ou", "ser", "quando", "muito", "ha", "nos", "ja", "estao", "eu", "tambem", "so", "pelo", "pela", "ate"
+        "na", "por", "mais", "as", "dos", "como", "mas", "foi", "ao", "ele", "das", "tem", "a", "seu", "sua"
     ],
     'japanese': [
         "kono", "sono", "ano", "hito", "koto", "toki", "sekai", "kokoro", "hikari", "kaze", "michi", "yume",
-        "mirai", "chikara", "shinjitsu", "kotoba", "shizukesa", "hoshi", "sora", "umi", "hana", "tsuki",
-        "jibun", "anata", "watashi", "ima", "kinou", "ashita", "tsuyoi", "yasashii", "utsukushii", "subete"
+        "mirai", "chikara", "shinjitsu", "kotoba", "shizukesa", "hoshi", "sora", "umi", "hana", "tsuki"
     ]
 }
 
@@ -67,6 +61,45 @@ CODE_SNIPPETS = {
     'java': "public class BinarySearchTree {\n    private Node root;\n    public boolean search(int val) {\n        Node curr = root;\n        while (curr != null) {\n            if (curr.data == val) return true;\n            curr = (val < curr.data) ? curr.left : curr.right;\n        }\n        return false;\n    }\n}"
 }
 
+CURRICULUM_LESSONS = {
+    'home_row': {
+        'title': "Stage 1: Home Row Foundation",
+        'keys': "A S D F J K L ;",
+        'description': "Anchor your muscle memory on the baseline resting keys. Keep index fingers over F and J.",
+        'content': "asdf jkl; a fad flask fall glad half dash salad flash salsa jak lad fall glad ask a fad flask fall"
+    },
+    'top_row': {
+        'title': "Stage 2: Upper Row Extensions",
+        'keys': "Q W E R T Y U I O P",
+        'description': "Train upward vertical reaches without shifting your wrists off the desk.",
+        'content': "quite write power tower quote trip your wipe wire pure tyre quiet root weep pore write power tower quote"
+    },
+    'bottom_row': {
+        'title': "Stage 3: Lower Row Transitions",
+        'keys': "Z X C V B N M",
+        'description': "Practice downward finger tucks while maintaining wrist stability.",
+        'content': "cabin van mix zoom bomb zinc exam calm civic move bank comb mimic vanish cabin van mix zoom bomb zinc"
+    },
+    'number_row': {
+        'title': "Stage 4: Top Numeric Row",
+        'keys': "1 2 3 4 5 6 7 8 9 0",
+        'description': "Drill long upper-row stretches for numbers and data entry without looking at your hands.",
+        'content': "102 394 582 710 934 681 205 739 461 820 159 348 726 501 934 682 102 394 582 710 934"
+    },
+    'symbols': {
+        'title': "Stage 5: Developer Syntax & Brackets",
+        'keys': "{} [] () <> / \\ ; : ' \"",
+        'description': "Master punctuation and nested programming brackets crucial for software engineering.",
+        'content': "{ [ ( < > ) ] } ; : \" ' / \\ ( [ { } ] ) < > ; : ' \" { [ ( ) ] } / ; : \" ' < > { [ ( < > ) ] }"
+    },
+    'ngrams': {
+        'title': "Stage 6: Frequent English N-Grams",
+        'keys': "the and tha ent ion tio for",
+        'description': "Type common multi-character letter clusters as single continuous muscle memory motions.",
+        'content': "the there that other their they these them then another rather whether together furthermore therefore the there that"
+    }
+}
+
 @typing_bp.route('/')
 def test_page():
     return render_template('typing/test.html')
@@ -74,6 +107,39 @@ def test_page():
 @typing_bp.route('/custom')
 def custom_text_page():
     return render_template('typing/custom.html')
+
+@typing_bp.route('/practice')
+def practice_page():
+    weak_keys = []
+    top_confusions = []
+    dna = None
+    
+    if current_user.is_authenticated:
+        dna = TypingDNA.query.filter_by(user_id=current_user.id).first()
+        if dna:
+            stats = dna.get_key_stats()
+            rates = []
+            for k, val in stats.items():
+                if val.get('total', 0) >= 4 and k.isalpha():
+                    err_rate = val.get('errors', 0) / val['total']
+                    rates.append((k.upper(), round(err_rate * 100, 1), val.get('total', 0)))
+            rates.sort(key=lambda x: x[1], reverse=True)
+            weak_keys = rates[:4]
+
+            conf_dict = dna.get_confusion_matrix()
+            for exp, mapped in conf_dict.items():
+                for typed, cnt in mapped.items():
+                    top_confusions.append((exp.upper(), typed.upper(), cnt))
+            top_confusions.sort(key=lambda x: x[2], reverse=True)
+            top_confusions = top_confusions[:3]
+
+    return render_template(
+        'typing/practice.html',
+        curriculum=CURRICULUM_LESSONS,
+        weak_keys=weak_keys,
+        top_confusions=top_confusions,
+        dna=dna
+    )
 
 @typing_bp.route('/api/daily-text')
 def get_daily_text():
@@ -97,13 +163,25 @@ def get_daily_text():
 
 @typing_bp.route('/api/text')
 def get_text():
+    # 1. Lesson Request from Academy
+    lesson_key = request.args.get('lesson')
+    if lesson_key and lesson_key in CURRICULUM_LESSONS:
+        lesson = CURRICULUM_LESSONS[lesson_key]
+        return jsonify({
+            'id': 0,
+            'content': lesson['content'],
+            'category': lesson['title'],
+            'is_code': False
+        })
+
+    # 2. Retry Identical Run Request
     retry_id = request.args.get('retry_test_id')
     if retry_id:
         prev_test = TypingTest.query.get(int(retry_id))
         if prev_test and prev_test.events_data:
             events = prev_test.get_events()
             if events:
-                max_idx = max(ev.get('char_index', 0) for ev in events)
+                max_idx = max((ev.get('char_index', 0) for ev in events), default=0)
                 text_chars = [' '] * (max_idx + 1)
                 for ev in events:
                     idx = ev.get('char_index', 0)
@@ -137,7 +215,6 @@ def get_text():
             'is_code': True
         })
 
-    # Multi-language word generation
     if language in LANGUAGE_WORD_BANKS and language != 'english':
         bank = LANGUAGE_WORD_BANKS[language]
         selected_content = " ".join(random.choices(bank, k=word_count))

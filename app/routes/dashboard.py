@@ -11,11 +11,13 @@ dashboard_bp = Blueprint('dashboard', __name__)
 @dashboard_bp.route('/')
 @login_required
 def index():
-    # 1. Retroactively evaluate and award badges for all tests logged
     AchievementService.check_and_award(current_user)
 
     tests = TypingTest.query.filter_by(user_id=current_user.id).order_by(TypingTest.completed_at.desc()).all()
     valid_tests = [t for t in tests if not t.suspicious]
+
+    solo_tests = [t for t in valid_tests if t.mode != 'multiplayer']
+    multiplayer_tests = [t for t in valid_tests if t.mode == 'multiplayer']
 
     total_tests = len(valid_tests)
     avg_wpm = round(sum(t.wpm for t in valid_tests) / total_tests, 1) if total_tests else 0
@@ -32,14 +34,14 @@ def index():
         best_wpm=best_wpm,
         avg_accuracy=avg_accuracy,
         total_time_minutes=total_time_minutes,
-        recent_tests=valid_tests[:10],
+        recent_tests=solo_tests[:8],
+        multiplayer_tests=multiplayer_tests[:8],
         achievements=achievements
     )
 
 @dashboard_bp.route('/achievements')
 @login_required
 def achievements_showcase():
-    # 1. Self-healing check: Evaluate user test history and unlock all matching badges
     AchievementService.check_and_award(current_user)
 
     all_achievements = Achievement.query.order_by(Achievement.id.asc()).all()

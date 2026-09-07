@@ -1,0 +1,127 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="card" style="max-width: 1060px; margin: 0 auto;">
+  <!-- Academy Header -->
+  <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 1.25rem; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
+    <div>
+      <h1 style="font-size: 1.8rem; font-weight: 800; margin: 0; display: flex; align-items: center; gap: 0.6rem;">
+        🎓 TypeSphere Academy & Practice Studio
+      </h1>
+      <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.35rem;">
+        AI-driven biometric weakness drills and structured touch-typing curriculum from Home Row to Advanced Code.
+      </p>
+    </div>
+    
+    <div style="display: flex; gap: 0.6rem;">
+      <a href="{{ url_for('typing.test_page') }}" class="btn">&larr; Return to Test Track</a>
+    </div>
+  </div>
+
+  <!-- ============================================== -->
+  <!-- 1. AI BIOMETRIC WEAKNESS COACH                -->
+  <!-- ============================================== -->
+  <div class="card" style="background: var(--bg-card); border: 1.5px solid var(--accent); margin-bottom: 2rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.75rem;">
+      <div>
+        <span style="font-size: 0.75rem; font-weight: 800; background: var(--accent); color: #04101e; padding: 0.2rem 0.55rem; border-radius: 4px; text-transform: uppercase;">
+          AI Telemetry Coach
+        </span>
+        <h3 style="font-size: 1.25rem; margin: 0.35rem 0 0;">Personalized Weakness Prescription</h3>
+      </div>
+      <button onclick="startAdaptiveDrill()" class="btn btn-primary" style="font-weight: 800; padding: 0.65rem 1.5rem;">
+        ⚡ Train My Weaknesses Now
+      </button>
+    </div>
+
+    <p style="color: var(--text-secondary); font-size: 0.9rem; line-height: 1.6; margin-bottom: 1.25rem;">
+      {% if weak_keys %}
+        Our analytical engine inspected your typing DNA and identified sub-second latency and error spikes around keys:
+        <strong>{% for k, err, cnt in weak_keys %}'{{ k }}' ({{ err }}% err){% if not loop.last %}, {% endif %}{% endfor %}</strong>.
+        Starting an adaptive session isolates these specific n-grams to retrain finger muscle memory.
+      {% else %}
+        Complete a few benchmark typing tests while signed in to unlock deep biometric diagnosis of your error keys and finger imbalances.
+      {% endif %}
+    </p>
+
+    <!-- Weakness Metrics Grid -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
+      <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 0.85rem 1rem;">
+        <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Left vs Right Balance</div>
+        <div style="font-size: 1.25rem; font-weight: 800; font-family: var(--font-mono); color: var(--accent); margin-top: 0.25rem;">
+          {{ dna.left_hand_accuracy|round(1) if dna else 98.2 }}% / {{ dna.right_hand_accuracy|round(1) if dna else 99.1 }}%
+        </div>
+      </div>
+
+      <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 0.85rem 1rem;">
+        <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Primary Confusion Pair</div>
+        <div style="font-size: 1.15rem; font-weight: 800; color: var(--warning); margin-top: 0.25rem;">
+          {% if top_confusions %}
+            Expected '{{ top_confusions[0][0] }}' &rarr; Typed '{{ top_confusions[0][1] }}'
+          {% else %}
+            None detected yet
+          {% endif %}
+        </div>
+      </div>
+
+      <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 0.85rem 1rem;">
+        <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Punctuation Stability</div>
+        <div style="font-size: 1.25rem; font-weight: 800; font-family: var(--font-mono); color: var(--success); margin-top: 0.25rem;">
+          {{ dna.punctuation_accuracy|round(1) if dna else 96.0 }}%
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================== -->
+  <!-- 2. STRUCTURED TOUCH-TYPING CURRICULUM          -->
+  <!-- ============================================== -->
+  <div style="border-top: 1px solid var(--border-color); padding-top: 2rem;">
+    <h2 style="font-size: 1.4rem; font-weight: 800; margin-bottom: 0.4rem;">6-Stage Touch Typing Curriculum</h2>
+    <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.5rem;">
+      Progressive mechanical mastery designed for touch typists, developers, and speed competitors.
+    </p>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(310px, 1fr)); gap: 1.25rem;">
+      {% for key, lesson in curriculum.items() %}
+      <div class="card" style="background: var(--bg-card); border: 1px solid var(--border-color); margin-bottom: 0; display: flex; flex-direction: column; justify-content: space-between;">
+        <div>
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+            <h3 style="font-size: 1.1rem; font-weight: 700; margin: 0; color: var(--text-primary);">
+              {{ lesson.title }}
+            </h3>
+            <span style="font-size: 0.7rem; font-weight: 800; background: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--accent); padding: 0.15rem 0.45rem; border-radius: 4px;">
+              STAGE {{ loop.index }}
+            </span>
+          </div>
+
+          <div style="font-family: var(--font-mono); font-size: 0.85rem; color: var(--accent); font-weight: 700; margin-bottom: 0.6rem;">
+            Keys: {{ lesson.keys }}
+          </div>
+
+          <p style="color: var(--text-muted); font-size: 0.85rem; line-height: 1.5; margin-bottom: 1rem;">
+            {{ lesson.description }}
+          </p>
+        </div>
+
+        <button onclick="launchLesson('{{ key }}')" class="btn btn-primary" style="width: 100%; justify-content: center; font-weight: 700; padding: 0.65rem;">
+          Practice Lesson &rarr;
+        </button>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function startAdaptiveDrill() {
+  window.location.href = "{{ url_for('typing.test_page') }}?mode=adaptive";
+}
+
+function launchLesson(lessonKey) {
+  window.location.href = `{{ url_for('typing.test_page') }}?lesson=${encodeURIComponent(lessonKey)}`;
+}
+</script>
+{% endblock %}
