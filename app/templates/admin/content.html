@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+
+{% block robots %}noindex, nofollow{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 1.25rem; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+    <div>
+      <h1 style="font-size: 1.8rem; font-weight: 800; margin: 0;">Typing Content & Difficulty CRUD</h1>
+      <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.25rem;">
+        Add, inspect, and delete text prompts for Easy, Moderate, Hard, and Expert difficulty levels.
+      </p>
+    </div>
+    <a href="{{ url_for('admin.index') }}" class="btn">&larr; Back to Admin Overview</a>
+  </div>
+
+  <!-- Create New Prompt Box -->
+  <form method="POST" style="background: var(--bg-card); padding: 1.5rem; border-radius: var(--radius); margin-bottom: 2rem; border: 1px solid var(--border-color);">
+    <h3 style="font-size: 1.15rem; margin-bottom: 1rem;">Add New Content Prompt</h3>
+    
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+      <div>
+        <label style="display: block; font-size: 0.85rem; font-weight: 700; margin-bottom: 0.35rem;">Category</label>
+        <input type="text" name="category" placeholder="Literature, Technology, Science, General" required style="width: 100%; padding: 0.65rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-primary);">
+      </div>
+
+      <div>
+        <label style="display: block; font-size: 0.85rem; font-weight: 700; margin-bottom: 0.35rem;">Difficulty Tier</label>
+        <select name="difficulty" style="width: 100%; padding: 0.65rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-primary);">
+          <option value="easy">Easy (Simple & Short Words)</option>
+          <option value="moderate" selected>Moderate (Standard English)</option>
+          <option value="hard">Hard (Advanced Lexicon & Syllables)</option>
+          <option value="expert">Expert (Sophisticated & Mixed Symbols)</option>
+        </select>
+      </div>
+    </div>
+
+    <div style="margin-bottom: 1rem;">
+      <label style="display: block; font-size: 0.85rem; font-weight: 700; margin-bottom: 0.35rem;">Passage Text</label>
+      <textarea name="content" rows="4" required style="width: 100%; padding: 0.75rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-primary); font-family: var(--font-mono);"></textarea>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1.25rem;">
+      <input type="checkbox" name="is_code" id="is_code">
+      <label for="is_code" style="font-size: 0.85rem;">This content is programming source code</label>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Save Content Prompt</button>
+  </form>
+
+  <!-- Content Table -->
+  <h3 style="font-size: 1.15rem; margin-bottom: 1rem;">Configured Database Prompts ({{ texts|length }})</h3>
+  <div class="table-responsive-container">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Category</th>
+          <th>Difficulty</th>
+          <th>Content Preview</th>
+          <th>Code?</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in texts %}
+        <tr>
+          <td>#{{ t.id }}</td>
+          <td><strong>{{ t.category }}</strong></td>
+          <td><span class="btn btn-sm" style="padding: 0.15rem 0.45rem; font-size: 0.75rem;">{{ t.difficulty|capitalize }}</span></td>
+          <td style="max-width: 380px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-mono); font-size: 0.85rem;">{{ t.content }}</td>
+          <td>{{ 'Yes (' + t.code_lang + ')' if t.is_code else 'No' }}</td>
+          <td>
+            <form method="POST" action="{{ url_for('admin.delete_content', text_id=t.id) }}" onsubmit="return confirm('Delete this prompt permanently?');">
+              <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

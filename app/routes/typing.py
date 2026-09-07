@@ -8,6 +8,7 @@ from datetime import date, datetime
 from app import db
 from app.models.typing import TypingTest, TypingText, TypingDNA
 from app.models.challenge import DailyChallenge
+from app.models.feedback import Announcement
 from app.services.typing_analyzer import TypingAnalyzer
 from app.services.anti_cheat import AntiCheatSystem
 from app.services.profile_analyzer import ProfileAnalyzer
@@ -16,13 +17,38 @@ from app.services.achievement_service import AchievementService
 
 typing_bp = Blueprint('typing', __name__)
 
-LANGUAGE_WORD_BANKS = {
-    'english': [
-        "the", "be", "to", "of", "and", "a", "in", "that", "have", "it", "for", "not", "on", "with", "he", "as",
-        "you", "do", "at", "this", "but", "his", "by", "from", "they", "we", "say", "her", "she", "or", "an",
-        "will", "my", "one", "all", "would", "there", "their", "what", "so", "up", "out", "if", "about", "who",
-        "get", "which", "go", "me", "when", "make", "can", "like", "time", "no", "just", "him", "know", "take"
+LEVEL_WORD_BANKS = {
+    'easy': [
+        "the", "and", "a", "to", "in", "is", "you", "that", "it", "he", "was", "for", "on", "are", "as", "with",
+        "his", "they", "at", "be", "this", "have", "from", "or", "one", "had", "by", "word", "but", "not",
+        "what", "all", "were", "we", "when", "your", "can", "said", "there", "use", "an", "each", "which",
+        "she", "do", "how", "their", "if", "will", "up", "other", "about", "out", "many", "then", "them", "these",
+        "so", "some", "her", "would", "make", "like", "him", "into", "time", "has", "look", "two", "more", "write",
+        "go", "see", "number", "no", "way", "could", "people", "my", "than", "first", "water", "been", "call", "who"
     ],
+    'moderate': [
+        "account", "between", "certain", "country", "develop", "example", "general", "however", "interest",
+        "important", "machine", "national", "problem", "program", "question", "service", "system", "through",
+        "business", "children", "company", "consider", "different", "education", "experience", "following",
+        "government", "information", "language", "movement", "national", "organization", "particular", "president",
+        "provide", "relationship", "situation", "sometimes", "technology", "together", "understand", "university"
+    ],
+    'hard': [
+        "accomplishment", "archaeological", "characteristic", "chronological", "circumstantial", "communication",
+        "comprehensive", "consequential", "differentiation", "electromagnetic", "enthusiastic", "extraordinary",
+        "heterogeneous", "implementation", "inconvenience", "infrastructure", "intercontinental", "jurisdiction",
+        "kaleidoscopic", "microbiological", "miscellaneous", "multidisciplinary", "nanotechnology", "neurochemical",
+        "orthogonal", "parliamentary", "pharmaceutical", "photosynthesis", "psychological", "reconciliation"
+    ],
+    'expert': [
+        "anachronistic", "antediluvian", "circumlocution", "counterintuitive", "crystallization", "deleterious",
+        "disproportionate", "epistemological", "existentialism", "grandiloquent", "idiosyncrasy", "incommensurable",
+        "indistinguishable", "juxtaposition", "lexicographical", "magnanimous", "metamorphosis", "multidimensional",
+        "obfuscation", "panegyric", "phenomenological", "quintessential", "sesquipedalian", "synchronicity"
+    ]
+}
+
+LANGUAGE_WORD_BANKS = {
     'spanish': [
         "de", "la", "que", "el", "en", "y", "a", "los", "se", "del", "las", "un", "por", "con", "no", "una",
         "su", "para", "es", "al", "lo", "como", "mas", "pero", "sus", "le", "ya", "o", "fue", "este", "ha",
@@ -37,72 +63,19 @@ LANGUAGE_WORD_BANKS = {
         "der", "die", "und", "in", "den", "von", "zu", "das", "mit", "sich", "des", "auf", "fur", "ist", "im",
         "dem", "nicht", "ein", "eine", "als", "auch", "es", "an", "werden", "aus", "er", "hat", "dass", "sie",
         "nach", "wird", "bei", "einer", "um", "am", "sind", "noch", "wie", "einem", "uber", "einen", "so"
-    ],
-    'italian': [
-        "di", "e", "il", "che", "la", "a", "in", "un", "per", "del", "non", "i", "si", "da", "le", "della",
-        "con", "sono", "una", "dei", "delle", "come", "al", "ha", "su", "nel", "anche", "piu", "ma", "questo"
-    ],
-    'portuguese': [
-        "de", "a", "o", "que", "e", "do", "da", "em", "um", "para", "com", "nao", "uma", "os", "no", "se",
-        "na", "por", "mais", "as", "dos", "como", "mas", "foi", "ao", "ele", "das", "tem", "a", "seu", "sua"
-    ],
-    'japanese': [
-        "kono", "sono", "ano", "hito", "koto", "toki", "sekai", "kokoro", "hikari", "kaze", "michi", "yume",
-        "mirai", "chikara", "shinjitsu", "kotoba", "shizukesa", "hoshi", "sora", "umi", "hana", "tsuki"
     ]
 }
 
 CODE_SNIPPETS = {
     'python': "def quicksort(arr):\n    if len(arr) <= 1:\n        return arr\n    pivot = arr[len(arr) // 2]\n    left = [x for x in arr if x < pivot]\n    middle = [x for x in arr if x == pivot]\n    right = [x for x in arr if x > pivot]\n    return quicksort(left) + middle + quicksort(right)",
     'javascript': "const calculateCadence = (events) => {\n  return events.reduce((acc, curr, idx, arr) => {\n    if (idx === 0) return acc;\n    return acc + (curr.timestamp - arr[idx - 1].timestamp);\n  }, 0) / (events.length - 1);\n};",
-    'sql': "SELECT users.id, users.username, MAX(typing_tests.wpm) as best_wpm\nFROM users\nJOIN typing_tests ON users.id = typing_tests.user_id\nWHERE typing_tests.suspicious = FALSE\nGROUP BY users.id, users.username\nORDER BY best_wpm DESC\nLIMIT 10;",
-    'html': "<div class=\"dashboard-card\">\n  <header class=\"card-header\">\n    <h2 class=\"title\">Pilot Metrics</h2>\n  </header>\n  <section class=\"content-body\">\n    <span class=\"badge verified\">Verified</span>\n  </section>\n</div>",
-    'css': ".typing-container {\n  display: flex;\n  flex-direction: column;\n  background: var(--bg-card);\n  border: 1px solid var(--accent);\n  border-radius: 8px;\n  padding: 1.5rem;\n  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);\n}",
-    'java': "public class BinarySearchTree {\n    private Node root;\n    public boolean search(int val) {\n        Node curr = root;\n        while (curr != null) {\n            if (curr.data == val) return true;\n            curr = (val < curr.data) ? curr.left : curr.right;\n        }\n        return false;\n    }\n}"
-}
-
-CURRICULUM_LESSONS = {
-    'home_row': {
-        'title': "Stage 1: Home Row Foundation",
-        'keys': "A S D F J K L ;",
-        'description': "Anchor your muscle memory on the baseline resting keys. Keep index fingers over F and J.",
-        'content': "asdf jkl; a fad flask fall glad half dash salad flash salsa jak lad fall glad ask a fad flask fall"
-    },
-    'top_row': {
-        'title': "Stage 2: Upper Row Extensions",
-        'keys': "Q W E R T Y U I O P",
-        'description': "Train upward vertical reaches without shifting your wrists off the desk.",
-        'content': "quite write power tower quote trip your wipe wire pure tyre quiet root weep pore write power tower quote"
-    },
-    'bottom_row': {
-        'title': "Stage 3: Lower Row Transitions",
-        'keys': "Z X C V B N M",
-        'description': "Practice downward finger tucks while maintaining wrist stability.",
-        'content': "cabin van mix zoom bomb zinc exam calm civic move bank comb mimic vanish cabin van mix zoom bomb zinc"
-    },
-    'number_row': {
-        'title': "Stage 4: Top Numeric Row",
-        'keys': "1 2 3 4 5 6 7 8 9 0",
-        'description': "Drill long upper-row stretches for numbers and data entry without looking at your hands.",
-        'content': "102 394 582 710 934 681 205 739 461 820 159 348 726 501 934 682 102 394 582 710 934"
-    },
-    'symbols': {
-        'title': "Stage 5: Developer Syntax & Brackets",
-        'keys': "{} [] () <> / \\ ; : ' \"",
-        'description': "Master punctuation and nested programming brackets crucial for software engineering.",
-        'content': "{ [ ( < > ) ] } ; : \" ' / \\ ( [ { } ] ) < > ; : ' \" { [ ( ) ] } / ; : \" ' < > { [ ( < > ) ] }"
-    },
-    'ngrams': {
-        'title': "Stage 6: Frequent English N-Grams",
-        'keys': "the and tha ent ion tio for",
-        'description': "Type common multi-character letter clusters as single continuous muscle memory motions.",
-        'content': "the there that other their they these them then another rather whether together furthermore therefore the there that"
-    }
+    'sql': "SELECT users.id, users.username, MAX(typing_tests.wpm) as best_wpm\nFROM users\nJOIN typing_tests ON users.id = typing_tests.user_id\nWHERE typing_tests.suspicious = FALSE\nGROUP BY users.id, users.username\nORDER BY best_wpm DESC\nLIMIT 10;"
 }
 
 @typing_bp.route('/')
 def test_page():
-    return render_template('typing/test.html')
+    active_announcement = Announcement.query.filter_by(is_active=True).order_by(Announcement.id.desc()).first()
+    return render_template('typing/test.html', announcement=active_announcement)
 
 @typing_bp.route('/custom')
 def custom_text_page():
@@ -133,6 +106,7 @@ def practice_page():
             top_confusions.sort(key=lambda x: x[2], reverse=True)
             top_confusions = top_confusions[:3]
 
+    from app.routes.typing import CURRICULUM_LESSONS
     return render_template(
         'typing/practice.html',
         curriculum=CURRICULUM_LESSONS,
@@ -163,7 +137,7 @@ def get_daily_text():
 
 @typing_bp.route('/api/text')
 def get_text():
-    # 1. Lesson Request from Academy
+    # 1. Lesson from Academy
     lesson_key = request.args.get('lesson')
     if lesson_key and lesson_key in CURRICULUM_LESSONS:
         lesson = CURRICULUM_LESSONS[lesson_key]
@@ -174,7 +148,7 @@ def get_text():
             'is_code': False
         })
 
-    # 2. Retry Identical Run Request
+    # 2. Retry specific test
     retry_id = request.args.get('retry_test_id')
     if retry_id:
         prev_test = TypingTest.query.get(int(retry_id))
@@ -197,57 +171,68 @@ def get_text():
                         'is_code': prev_test.mode == 'code'
                     })
 
-    mode = request.args.get('mode', 'timed')
-    category = request.args.get('category', 'General')
-    language = request.args.get('language', 'english').lower()
-    is_code = request.args.get('is_code', 'false') == 'true'
-    code_lang = request.args.get('code_lang', 'python').lower()
-    word_count = int(request.args.get('words', 25))
-    with_punctuation = request.args.get('punctuation', 'false') == 'true'
-    with_numbers = request.args.get('numbers', 'false') == 'true'
+    # 3. Dynamic Configuration Parameters
+    content_type = request.args.get('content_type', 'words').lower()
+    level = request.args.get('level', 'moderate').lower()
+    batch_size = int(request.args.get('batch_size', 80)) # Generous chunk for endless streaming
 
-    if is_code:
-        content = CODE_SNIPPETS.get(code_lang, CODE_SNIPPETS['python'])
+    if level not in LEVEL_WORD_BANKS:
+        level = 'moderate'
+
+    if content_type == 'code':
+        lang = request.args.get('code_lang', 'python').lower()
         return jsonify({
             'id': 0,
-            'content': content,
-            'category': f'Code: {code_lang.upper()}',
+            'content': CODE_SNIPPETS.get(lang, CODE_SNIPPETS['python']),
+            'category': f"Code: {lang.upper()}",
             'is_code': True
         })
 
-    if language in LANGUAGE_WORD_BANKS and language != 'english':
-        bank = LANGUAGE_WORD_BANKS[language]
-        selected_content = " ".join(random.choices(bank, k=word_count))
-        category = f"Language: {language.capitalize()}"
-    else:
-        query = TypingText.query
-        if category == 'Quote':
-            query = query.filter_by(category='Literature', is_code=False)
-        elif category != 'All':
-            query = query.filter_by(category=category, is_code=False)
-
+    if content_type == 'quotes':
+        query = TypingText.query.filter_by(category='Literature', is_code=False)
         texts = query.all()
-        if not texts:
-            bank = LANGUAGE_WORD_BANKS['english']
-            selected_content = " ".join(random.choices(bank, k=word_count))
-        else:
-            selected = random.choice(texts)
-            selected_content = selected.content.strip()
-            if mode == 'words':
-                word_list = selected_content.split()
-                selected_content = " ".join(word_list[:word_count]) if len(word_list) >= word_count else " ".join(word_list)
+        if texts:
+            sel = random.choice(texts)
+            return jsonify({
+                'id': sel.id,
+                'content': sel.content.strip(),
+                'category': 'Quotes & Literature',
+                'is_code': False
+            })
 
-    words = selected_content.split()
-    if with_numbers:
+    if content_type == 'numbers':
+        nums = [str(random.randint(10, 9999)) for _ in range(batch_size)]
+        return jsonify({
+            'id': 0,
+            'content': " ".join(nums),
+            'category': 'Numbers Only',
+            'is_code': False
+        })
+
+    # Standard Word Generation with Level Sensitivity
+    bank = LEVEL_WORD_BANKS.get(level, LEVEL_WORD_BANKS['moderate'])
+    words = [random.choice(bank) for _ in range(batch_size)]
+
+    if content_type == 'punctuation':
+        marks = [",", ".", ";", "!", "?"]
         for i in range(len(words)):
+            if random.random() < 0.35 and not words[i].endswith(tuple(marks)):
+                words[i] = words[i] + random.choice(marks)
             if random.random() < 0.25:
+                words[i] = words[i].capitalize()
+
+    elif content_type == 'words_numbers':
+        for i in range(len(words)):
+            if random.random() < 0.2:
                 words[i] = str(random.randint(10, 999))
-    if with_punctuation:
-        punct_marks = [",", ".", ";", "!", "?"]
+
+    elif level in ['hard', 'expert']:
+        # Natural punctuation integration for higher difficulty tiers
+        marks = [",", ".", ";"]
         for i in range(len(words)):
-            if random.random() < 0.35 and not words[i].endswith(tuple(punct_marks)):
-                words[i] = words[i] + random.choice(punct_marks)
-            if random.random() < 0.25:
+            if random.random() < 0.25 and not words[i].endswith(tuple(marks)):
+                words[i] = words[i] + random.choice(marks)
+            if random.random() < 0.2:
                 words[i] = words[i].capitalize()
 
     final_content = " ".join(words)
@@ -255,7 +240,7 @@ def get_text():
     return jsonify({
         'id': 0,
         'content': final_content,
-        'category': category,
+        'category': f"{content_type.capitalize()} ({level.capitalize()})",
         'is_code': False
     })
 
@@ -440,3 +425,42 @@ def ghost_data(test_id):
         'events': test.get_events(),
         'timeline': test.get_timeline()
     })
+
+CURRICULUM_LESSONS = {
+    'home_row': {
+        'title': "Stage 1: Home Row Foundation",
+        'keys': "A S D F J K L ;",
+        'description': "Anchor your muscle memory on the baseline resting keys. Keep index fingers over F and J.",
+        'content': "asdf jkl; a fad flask fall glad half dash salad flash salsa jak lad fall glad ask a fad flask fall"
+    },
+    'top_row': {
+        'title': "Stage 2: Upper Row Extensions",
+        'keys': "Q W E R T Y U I O P",
+        'description': "Train upward vertical reaches without shifting your wrists off the desk.",
+        'content': "quite write power tower quote trip your wipe wire pure tyre quiet root weep pore write power tower quote"
+    },
+    'bottom_row': {
+        'title': "Stage 3: Lower Row Transitions",
+        'keys': "Z X C V B N M",
+        'description': "Practice downward finger tucks while maintaining wrist stability.",
+        'content': "cabin van mix zoom bomb zinc exam calm civic move bank comb mimic vanish cabin van mix zoom bomb zinc"
+    },
+    'number_row': {
+        'title': "Stage 4: Top Numeric Row",
+        'keys': "1 2 3 4 5 6 7 8 9 0",
+        'description': "Drill long upper-row stretches for numbers and data entry without looking at your hands.",
+        'content': "102 394 582 710 934 681 205 739 461 820 159 348 726 501 934 682 102 394 582 710 934"
+    },
+    'symbols': {
+        'title': "Stage 5: Developer Syntax & Brackets",
+        'keys': "{} [] () <> / \\ ; : ' \"",
+        'description': "Master punctuation and nested programming brackets crucial for software engineering.",
+        'content': "{ [ ( < > ) ] } ; : \" ' / \\ ( [ { } ] ) < > ; : ' \" { [ ( ) ] } / ; : \" ' < > { [ ( < > ) ] }"
+    },
+    'ngrams': {
+        'title': "Stage 6: Frequent English N-Grams",
+        'keys': "the and tha ent ion tio for",
+        'description': "Type common multi-character letter clusters as single continuous muscle memory motions.",
+        'content': "the there that other their they these them then another rather whether together furthermore therefore the there that"
+    }
+}

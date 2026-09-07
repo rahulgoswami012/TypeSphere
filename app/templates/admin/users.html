@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+
+{% block robots %}noindex, nofollow{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 1.25rem; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+    <div>
+      <h1 style="font-size: 1.8rem; font-weight: 800; margin: 0;">User Account Management</h1>
+      <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.25rem;">
+        Modify permissions, view typist stats, and delete accounts.
+      </p>
+    </div>
+    <a href="{{ url_for('admin.index') }}" class="btn">&larr; Back to Admin Overview</a>
+  </div>
+
+  <!-- Search Filter -->
+  <form method="GET" action="{{ url_for('admin.manage_users') }}" style="margin-bottom: 1.5rem; display: flex; gap: 0.5rem; max-width: 440px;">
+    <input type="text" name="q" value="{{ search }}" placeholder="Search username or email..." style="flex: 1; padding: 0.55rem 0.75rem; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-primary);">
+    <button type="submit" class="btn btn-primary btn-sm">Search</button>
+  </form>
+
+  <div class="table-responsive-container">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Username</th>
+          <th>Email</th>
+          <th>Role</th>
+          <th>Joined</th>
+          <th>Role Toggle</th>
+          <th>Destructive Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+        <tr>
+          <td>#{{ u.id }}</td>
+          <td><strong>{{ u.username }}</strong></td>
+          <td>{{ u.email }}</td>
+          <td>
+            <span style="font-size: 0.75rem; padding: 0.2rem 0.5rem; border-radius: 4px; background: {{ 'var(--accent-glow)' if u.is_admin else 'var(--bg-card)' }}; color: {{ 'var(--accent)' if u.is_admin else 'var(--text-muted)' }}; font-weight: 700;">
+              {{ u.role|upper }}
+            </span>
+          </td>
+          <td>{{ u.created_at.strftime('%b %d, %Y') }}</td>
+          <td>
+            {% if u.id != current_user.id %}
+            <form method="POST" action="{{ url_for('admin.toggle_role', user_id=u.id) }}">
+              <button type="submit" class="btn btn-sm">
+                Make {{ 'User' if u.is_admin else 'Admin' }}
+              </button>
+            </form>
+            {% else %}
+            <span style="color: var(--text-muted); font-size: 0.8rem;">(Active You)</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if u.id != current_user.id %}
+            <form method="POST" action="{{ url_for('admin.delete_user', user_id=u.id) }}" onsubmit="return confirm('Permanently delete user @{{ u.username }}? This action cannot be undone.');">
+              <button type="submit" class="btn btn-danger btn-sm">Delete User</button>
+            </form>
+            {% else %}
+            -
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

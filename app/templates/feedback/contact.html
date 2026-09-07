@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="card" style="max-width: 680px; margin: 2rem auto;">
+  <div style="border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; margin-bottom: 1.5rem;">
+    <h1 style="font-size: 1.75rem; font-weight: 800; margin: 0;">Contact TypeSphere</h1>
+    <p style="color: var(--text-muted); font-size: 0.88rem; margin-top: 0.25rem;">
+      Inquiries, partnership proposals, and technical support requests.
+    </p>
+  </div>
+
+  <form method="POST" action="{{ url_for('feedback.contact') }}">
+    <div style="margin-bottom: 1.25rem;">
+      <label style="display: block; font-size: 0.85rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.35rem;">Full Name</label>
+      <input type="text" name="name" required style="width: 100%; padding: 0.65rem; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary);">
+    </div>
+
+    <div style="margin-bottom: 1.25rem;">
+      <label style="display: block; font-size: 0.85rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.35rem;">Email Address</label>
+      <input type="email" name="email" required style="width: 100%; padding: 0.65rem; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary);">
+    </div>
+
+    <div style="margin-bottom: 1.25rem;">
+      <label style="display: block; font-size: 0.85rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.35rem;">Subject</label>
+      <input type="text" name="subject" required style="width: 100%; padding: 0.65rem; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary);">
+    </div>
+
+    <div style="margin-bottom: 1.5rem;">
+      <label style="display: block; font-size: 0.85rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.35rem;">Message</label>
+      <textarea name="message" rows="5" required style="width: 100%; padding: 0.65rem; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary); font-family: inherit; line-height: 1.5;"></textarea>
+    </div>
+
+    <button type="submit" class="btn btn-primary" style="padding: 0.75rem 2rem; font-weight: 700;">
+      Send Message &rarr;
+    </button>
+  </form>
+</div>
+{% endblock %}

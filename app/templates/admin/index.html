@@ -1,19 +1,26 @@
 {% extends 'base.html' %}
 
+{% block robots %}noindex, nofollow{% endblock %}
+
 {% block content %}
 <div class="card">
   <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 1.25rem; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
     <div>
-      <h1 style="font-size: 1.8rem; font-weight: 700; margin: 0;">Administration & Anti-Cheat Control</h1>
-      <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.35rem;">System health diagnostics and telemetry moderation.</p>
+      <h1 style="font-size: 1.8rem; font-weight: 800; margin: 0;">Full Platform Administration</h1>
+      <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.25rem;">
+        Total CRUD management across users, typing content, feedback, reviews, announcements, and anti-cheat.
+      </p>
     </div>
-    <div style="display: flex; gap: 0.75rem;">
-      <a href="{{ url_for('admin.manage_texts') }}" class="btn btn-primary">Manage Prompt Database &rarr;</a>
+    
+    <div style="display: flex; gap: 0.6rem; flex-wrap: wrap;">
+      <a href="{{ url_for('admin.manage_users') }}" class="btn">👥 Manage Users</a>
+      <a href="{{ url_for('admin.manage_content') }}" class="btn">📝 Content CRUD</a>
+      <a href="{{ url_for('admin.manage_feedback') }}" class="btn">💬 Feedback & Messages</a>
     </div>
   </div>
 
-  <!-- Metric Overview HUD -->
-  <div class="stats-hud" style="grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));">
+  <!-- Primary System Telemetry Grid -->
+  <div class="stats-hud" style="grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); margin-bottom: 2rem;">
     <div class="stat-box">
       <div class="stat-label">Registered Typists</div>
       <div class="stat-value">{{ total_users }}</div>
@@ -26,100 +33,71 @@
       <div class="stat-label">Flagged Suspicious</div>
       <div class="stat-value" style="color: var(--danger);">{{ suspicious_count }}</div>
     </div>
+    <div class="stat-box">
+      <div class="stat-label">Unread Messages</div>
+      <div class="stat-value" style="color: var(--warning);">{{ unread_messages }}</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-label">Pending Feedback</div>
+      <div class="stat-value">{{ pending_feedback }}</div>
+    </div>
   </div>
 
-  <!-- Dispatch Today's Official Daily Challenge -->
-  <div class="card" style="background: var(--bg-card); border-color: var(--accent); margin: 2rem 0;">
-    <h3 style="font-size: 1.15rem; color: var(--accent); margin-bottom: 0.5rem;">Dispatch Official Daily Challenge</h3>
+  <!-- Daily Challenge Dispatcher -->
+  <div class="card" style="background: var(--bg-card); margin-bottom: 2rem;">
+    <h3 style="font-size: 1.15rem; margin-bottom: 0.5rem; color: var(--accent);">
+      Official 24H Daily Challenge Dispatcher
+    </h3>
     <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.25rem;">
-      Active passage for today: <strong>{{ current_daily.title if current_daily else 'Not Published' }}</strong>
+      Active prompt for today: <strong>{{ current_daily.title if current_daily else 'None set' }}</strong>
     </p>
 
     <form method="POST" action="{{ url_for('admin.create_daily') }}">
       <div style="margin-bottom: 1rem;">
-        <label style="display: block; font-size: 0.85rem; margin-bottom: 0.4rem;">Challenge Title</label>
-        <input type="text" name="title" value="{{ current_daily.title if current_daily else 'The Kinetic Discipline' }}" required style="width: 100%; padding: 0.65rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-primary); font-family: inherit;">
+        <label style="display: block; font-size: 0.85rem; font-weight: 700; margin-bottom: 0.35rem;">Challenge Title</label>
+        <input type="text" name="title" value="{{ current_daily.title if current_daily else 'The Kinetic Discipline' }}" required style="width: 100%; padding: 0.65rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-primary);">
       </div>
       <div style="margin-bottom: 1rem;">
-        <label style="display: block; font-size: 0.85rem; margin-bottom: 0.4rem;">Passage Content</label>
+        <label style="display: block; font-size: 0.85rem; font-weight: 700; margin-bottom: 0.35rem;">Passage Content</label>
         <textarea name="content" rows="3" required style="width: 100%; padding: 0.65rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-primary); font-family: var(--font-mono);">{{ current_daily.content if current_daily else '' }}</textarea>
       </div>
-      <button type="submit" class="btn btn-primary">Publish Official Daily Challenge</button>
+      <button type="submit" class="btn btn-primary">Publish Daily Challenge</button>
     </form>
   </div>
 
-  <!-- Anti-Cheat Quarantine -->
-  <h3 style="margin-bottom: 1rem; font-size: 1.15rem;">Quarantined Tests (Anti-Cheat Flagged)</h3>
-  <table style="width: 100%; border-collapse: collapse; text-align: left; margin-bottom: 2.5rem;">
-    <thead>
-      <tr style="border-bottom: 1px solid var(--border-color); color: var(--text-muted); font-size: 0.85rem;">
-        <th style="padding: 0.75rem;">Test ID</th>
-        <th style="padding: 0.75rem;">Typist</th>
-        <th style="padding: 0.75rem;">Recorded WPM</th>
-        <th style="padding: 0.75rem;">Flag Reason</th>
-        <th style="padding: 0.75rem;">Action</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for t in recent_suspicious %}
-      <tr style="border-bottom: 1px solid var(--border-color); font-size: 0.9rem;">
-        <td style="padding: 0.75rem;">#{{ t.id }}</td>
-        <td style="padding: 0.75rem;">{{ t.user.username if t.user else 'Guest' }}</td>
-        <td style="padding: 0.75rem; color: var(--danger); font-weight: 700;">{{ t.wpm }}</td>
-        <td style="padding: 0.75rem; font-size: 0.85rem; color: var(--warning);">{{ t.suspicion_reason }}</td>
-        <td style="padding: 0.75rem;">
-          <form method="POST" action="{{ url_for('admin.clear_flag', test_id=t.id) }}">
-            <button type="submit" class="btn" style="padding: 0.25rem 0.6rem; font-size: 0.75rem;">Clear Flag</button>
-          </form>
-        </td>
-      </tr>
-      {% else %}
-      <tr>
-        <td colspan="5" style="padding: 1.5rem; text-align: center; color: var(--text-muted);">No flagged runs detected. System integrity nominal.</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-
-  <!-- User Account Roster -->
-  <h3 style="margin-bottom: 1rem; font-size: 1.15rem;">Registered Typists Roster</h3>
-  <table style="width: 100%; border-collapse: collapse; text-align: left;">
-    <thead>
-      <tr style="border-bottom: 1px solid var(--border-color); color: var(--text-muted); font-size: 0.85rem;">
-        <th style="padding: 0.75rem;">ID</th>
-        <th style="padding: 0.75rem;">Username</th>
-        <th style="padding: 0.75rem;">Email</th>
-        <th style="padding: 0.75rem;">Role</th>
-        <th style="padding: 0.75rem;">Joined</th>
-        <th style="padding: 0.75rem;">Role Management</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for u in users %}
-      <tr style="border-bottom: 1px solid var(--border-color); font-size: 0.9rem;">
-        <td style="padding: 0.75rem;">#{{ u.id }}</td>
-        <td style="padding: 0.75rem; font-weight: 600;">{{ u.username }}</td>
-        <td style="padding: 0.75rem; color: var(--text-muted);">{{ u.email }}</td>
-        <td style="padding: 0.75rem;">
-          <span style="font-size: 0.75rem; padding: 0.2rem 0.5rem; border-radius: 4px; background: {{ 'rgba(88, 166, 255, 0.2)' if u.is_admin else 'var(--bg-card)' }}; color: {{ 'var(--accent)' if u.is_admin else 'var(--text-muted)' }};">
-            {{ u.role|upper }}
-          </span>
-        </td>
-        <td style="padding: 0.75rem; color: var(--text-muted); font-size: 0.85rem;">{{ u.created_at.strftime('%Y-%m-%d') }}</td>
-        <td style="padding: 0.75rem;">
-          {% if u.id != current_user.id %}
-          <form method="POST" action="{{ url_for('admin.toggle_role', user_id=u.id) }}">
-            <button type="submit" class="btn" style="padding: 0.2rem 0.55rem; font-size: 0.75rem;">
-              Make {{ 'User' if u.is_admin else 'Admin' }}
-            </button>
-          </form>
-          {% else %}
-          <span style="font-size: 0.75rem; color: var(--text-muted);">(You)</span>
-          {% endif %}
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  <!-- Quarantined Anti-Cheat Telemetry -->
+  <h3 style="font-size: 1.15rem; margin-bottom: 1rem;">Anti-Cheat Quarantined Runs</h3>
+  <div class="table-responsive-container">
+    <table>
+      <thead>
+        <tr>
+          <th>Test ID</th>
+          <th>Pilot</th>
+          <th>WPM</th>
+          <th>Flag Reason</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in recent_suspicious %}
+        <tr>
+          <td>#{{ t.id }}</td>
+          <td>{{ t.user.username if t.user else 'Guest' }}</td>
+          <td style="color: var(--danger); font-weight: 700;">{{ t.wpm }}</td>
+          <td style="color: var(--warning); font-size: 0.85rem;">{{ t.suspicion_reason }}</td>
+          <td>
+            <form method="POST" action="{{ url_for('admin.clear_flag', test_id=t.id) }}">
+              <button type="submit" class="btn btn-sm">Clear Flag</button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">No flagged runs detected. System integrity nominal.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 </div>
 {% endblock %}

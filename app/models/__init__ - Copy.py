@@ -1,4 +1,4 @@
-from flask import Flask, render_template
+from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from flask_migrate import Migrate
@@ -28,27 +28,22 @@ def create_app(config_class=Config):
     def load_user(user_id):
         return User.query.get(int(user_id))
 
-    # Auto-patch missing tables & columns for development SQLite databases
+    # Automatic SQLite Column Migration Guard for V2.0 Ranked Fields
     with app.app_context():
-        db.create_all()
         try:
             with db.engine.connect() as conn:
-                res = conn.execute(text("PRAGMA table_info(user_settings)"))
+                res = conn.execute(text("PRAGMA table_info(users)"))
                 cols = [row[1] for row in res.fetchall()]
-                if cols and 'blind_mode' not in cols:
-                    conn.execute(text("ALTER TABLE user_settings ADD COLUMN blind_mode BOOLEAN DEFAULT 1"))
-                if cols and 'ghost_mode' not in cols:
-                    conn.execute(text("ALTER TABLE user_settings ADD COLUMN ghost_mode BOOLEAN DEFAULT 0"))
-                if cols and 'default_duration' not in cols:
-                    conn.execute(text("ALTER TABLE user_settings ADD COLUMN default_duration INTEGER DEFAULT 60"))
-                if cols and 'default_content' not in cols:
-                    conn.execute(text("ALTER TABLE user_settings ADD COLUMN default_content VARCHAR(32) DEFAULT 'words'"))
-                if cols and 'default_level' not in cols:
-                    conn.execute(text("ALTER TABLE user_settings ADD COLUMN default_level VARCHAR(32) DEFAULT 'moderate'"))
-                if cols and 'sound_volume' not in cols:
-                    conn.execute(text("ALTER TABLE user_settings ADD COLUMN sound_volume FLOAT DEFAULT 0.7"))
+                if cols and 'is_verified' not in cols:
+                    conn.execute(text("ALTER TABLE users ADD COLUMN is_verified BOOLEAN DEFAULT 1"))
+                if cols and 'elo_rating' not in cols:
+                    conn.execute(text("ALTER TABLE users ADD COLUMN elo_rating INTEGER DEFAULT 1000"))
+                if cols and 'ranked_wins' not in cols:
+                    conn.execute(text("ALTER TABLE users ADD COLUMN ranked_wins INTEGER DEFAULT 0"))
+                if cols and 'ranked_losses' not in cols:
+                    conn.execute(text("ALTER TABLE users ADD COLUMN ranked_losses INTEGER DEFAULT 0"))
                 conn.commit()
-        except Exception:
+        except Exception as e:
             pass
 
     # Register Blueprints
@@ -60,7 +55,6 @@ def create_app(config_class=Config):
     from app.routes.multiplayer import multiplayer_bp
     from app.routes.admin import admin_bp
     from app.routes.settings import settings_bp
-    from app.routes.feedback import feedback_bp
 
     app.register_blueprint(auth_bp, url_prefix='/auth')
     app.register_blueprint(typing_bp, url_prefix='/typing')
@@ -70,12 +64,10 @@ def create_app(config_class=Config):
     app.register_blueprint(multiplayer_bp, url_prefix='/multiplayer')
     app.register_blueprint(admin_bp, url_prefix='/admin')
     app.register_blueprint(settings_bp, url_prefix='/settings')
-    app.register_blueprint(feedback_bp, url_prefix='/feedback')
 
-    # Root route and /typing/ represent the identical homepage cleanly
     @app.route('/')
-    def root_home():
-        from app.routes.typing import test_page
-        return test_page()
+    def index():
+        from flask import redirect, url_for
+        return redirect(url_for('typing.test_page'))
 
     return app

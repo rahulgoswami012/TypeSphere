@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="card" style="max-width: 860px; margin: 2rem auto;">
+  <div style="border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; margin-bottom: 1.5rem;">
+    <h1 style="font-size: 1.75rem; font-weight: 800; margin: 0;">Platform Feedback</h1>
+    <p style="color: var(--text-muted); font-size: 0.88rem; margin-top: 0.25rem;">
+      Help us improve TypeSphere. Submit bug reports, UI suggestions, and feature requests.
+    </p>
+  </div>
+
+  {% if not current_user.is_authenticated %}
+  <div class="alert-box alert-warning" style="margin-bottom: 1.5rem;">
+    <div>
+      <strong>Sign-In Required:</strong> You must be signed in to submit platform feedback and track engineer responses.
+    </div>
+    <a href="{{ url_for('auth.login', next=url_for('feedback.submit_feedback')) }}" class="btn btn-primary btn-sm">Sign In</a>
+  </div>
+  {% else %}
+  <form method="POST" action="{{ url_for('feedback.submit_feedback') }}" style="margin-bottom: 2rem;">
+    <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 1rem; margin-bottom: 1.25rem;">
+      <div>
+        <label style="display: block; font-size: 0.85rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.35rem;">Category</label>
+        <select name="category" style="width: 100%; padding: 0.65rem; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary);">
+          <option value="Bug Report">Bug Report</option>
+          <option value="Typing Test">Typing Test & Physics</option>
+          <option value="UI/UX">UI & Ergonomics</option>
+          <option value="Multiplayer">Multiplayer & Races</option>
+          <option value="Feature Request">Feature Request</option>
+        </select>
+      </div>
+
+      <div>
+        <label style="display: block; font-size: 0.85rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.35rem;">Summary Title</label>
+        <input type="text" name="title" required placeholder="e.g. Minor delay on punctuation transition..." style="width: 100%; padding: 0.65rem; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary);">
+      </div>
+    </div>
+
+    <div style="margin-bottom: 1.5rem;">
+      <label style="display: block; font-size: 0.85rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.35rem;">Detailed Feedback</label>
+      <textarea name="message" rows="4" required placeholder="Describe what occurred or what feature you would love to see..." style="width: 100%; padding: 0.65rem; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary); font-family: inherit; line-height: 1.5;"></textarea>
+    </div>
+
+    <button type="submit" class="btn btn-primary" style="padding: 0.65rem 1.5rem; font-weight: 700;">
+      Submit Feedback
+    </button>
+  </form>
+
+  <h3 style="font-size: 1.15rem; margin-bottom: 1rem;">Your Past Submissions</h3>
+  <div class="table-responsive-container">
+    <table>
+      <thead>
+        <tr>
+          <th>Category</th>
+          <th>Summary</th>
+          <th>Status</th>
+          <th>Response</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for fb in user_submissions %}
+        <tr>
+          <td><span class="btn btn-sm" style="padding: 0.15rem 0.4rem; font-size: 0.75rem;">{{ fb.category }}</span></td>
+          <td><strong>{{ fb.title }}</strong></td>
+          <td><span style="font-weight: 700; font-size: 0.8rem; color: var(--accent);">{{ fb.status }}</span></td>
+          <td>{{ fb.admin_response or 'Pending review' }}</td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">No previous submissions recorded.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

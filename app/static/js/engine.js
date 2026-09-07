@@ -1,6 +1,7 @@
 /**
- * TypeSphere Core Engine (v2.1 Refined)
- * Universal desktop/mobile input, line-by-line auto-scroll, fatigue detection, and reliable state recovery.
+ * TypeSphere Core Typing Engine
+ * Supports infinite passage streaming for all timed tests (1-20 min),
+ * No Time Limit mode, default Blind Mode ON, Ghost Mode OFF, and smooth caret autoscroll.
  */
 class TypingEngine {
   constructor() {
@@ -11,13 +12,19 @@ class TypingEngine {
 
     this.startTime = null;
     this.timerInterval = null;
-    this.durationLimit = 60;
-    this.wordLimit = 25;
-    this.mode = 'timed'; // 'timed', 'words', 'quote', 'code', 'survival', 'accuracy', 'daily', 'custom'
-    this.language = 'english';
+    
+    // Default Test Parameters
+    this.durationLimit = 60; // 60s, 120s, 300s, 600s, 1200s, 0 (No Limit)
+    this.contentType = 'words'; // words, quotes, numbers, punctuation, words_numbers, code, custom
+    this.level = 'moderate'; // easy, moderate, hard, expert
     this.codeLanguage = 'python';
-    this.withPunctuation = false;
-    this.withNumbers = false;
+
+    // Defaults: Blind Mode ON, Ghost Mode OFF
+    this.blindModeActive = true;
+    this.ghostEnabled = false;
+    this.ghostWpm = 70;
+    this.ghostProgress = 0;
+    this.ghostInterval = null;
 
     this.isFinished = false;
     this.isPaused = false;
@@ -26,17 +33,7 @@ class TypingEngine {
     this.streak = 0;
     this.errors = 0;
 
-    // Survival Mode Attributes
-    this.maxLives = 3;
-    this.lives = 3;
-
-    // Ghost Pacer System
-    this.ghostEnabled = true;
-    this.ghostWpm = 70;
-    this.ghostProgress = 0;
-    this.ghostInterval = null;
-
-    // DOM Caches
+    // DOM Elements
     this.container = document.getElementById('typing-box');
     this.display = document.getElementById('text-display');
     this.caret = document.getElementById('caret');
@@ -44,122 +41,115 @@ class TypingEngine {
     this.hudWpm = document.getElementById('hud-wpm');
     this.hudAcc = document.getElementById('hud-acc');
     this.hudTime = document.getElementById('hud-time');
-    this.hudStreak = document.getElementById('hud-streak');
-    this.fatigueBanner = document.getElementById('fatigue-alert');
-    this.livesContainer = document.getElementById('survival-lives');
-    this.dailyBanner = document.getElementById('daily-badge-banner');
-    this.pauseModal = document.getElementById('pause-modal');
-    this.pausedFloatingBar = document.getElementById('paused-floating-bar');
-    this.pauseBtn = document.getElementById('pause-btn');
-    this.mobileProxy = document.getElementById('mobile-text-proxy');
+    this.hudErrors = document.getElementById('hud-errors');
     this.speedometerArc = document.getElementById('speedo-arc');
+    this.pauseModal = document.getElementById('pause-modal');
+    this.mobileProxy = document.getElementById('mobile-text-proxy');
 
     this.bindEvents();
-    this.parseUrlParameters();
+    this.loadUserSessionPreferences();
   }
 
-  parseUrlParameters() {
-    const params = new URLSearchParams(window.location.search);
-    const ghostTestId = params.get('ghost_race');
-    if (ghostTestId) {
-      fetch(`/typing/api/ghost/${ghostTestId}`)
-        .then(res => res.json())
-        .then(data => {
-          if (data && data.wpm) {
-            this.ghostWpm = Math.round(data.wpm);
-            const toggleBtn = document.getElementById('ghost-toggle');
-            if (toggleBtn) toggleBtn.textContent = `Ghost: PB (${this.ghostWpm} WPM)`;
-          }
-        })
-        .catch(() => {});
+  loadUserSessionPreferences() {
+    // Read session/local preferences if available
+    const prefs = window.settingsManager ? window.settingsManager.current : null;
+    if (prefs) {
+      this.durationLimit = prefs.default_duration !== undefined ? prefs.default_duration : 60;
+      this.contentType = prefs.default_content || 'words';
+      this.level = prefs.default_level || 'moderate';
+      this.blindModeActive = prefs.blind_mode !== undefined ? prefs.blind_mode : true;
+      this.ghostEnabled = prefs.ghost_mode !== undefined ? prefs.ghost_mode : false;
     }
-
-    const modeParam = params.get('mode');
-    if (modeParam) this.mode = modeParam;
-
-    const durationParam = params.get('duration');
-    if (durationParam) this.durationLimit = parseInt(durationParam, 10);
+    this.updateControlsUI();
   }
 
-  async loadPrompt(customEndpoint = null) {
-    let endpoint = customEndpoint;
+  updateControlsUI() {
+    const timeSelect = document.getElementById('config-time-select');
+    const contentSelect = document.getElementById('config-content-select');
+    const levelSelect = document.getElementById('config-level-select');
+    const blindBtn = document.getElementById('toggle-blind-btn');
+    const ghostBtn = document.getElementById('toggle-ghost-btn');
 
-    const params = new URLSearchParams(window.location.search);
-    const retryTestId = params.get('retry_test_id');
-    if (retryTestId && !endpoint) {
-      endpoint = `/typing/api/text?retry_test_id=${retryTestId}`;
+    if (timeSelect) timeSelect.value = this.durationLimit.toString();
+    if (contentSelect) contentSelect.value = this.contentType;
+    if (levelSelect) levelSelect.value = this.level;
+
+    if (blindBtn) {
+      blindBtn.textContent = `Blind Mode: ${this.blindModeActive ? 'ON' : 'OFF'}`;
+      blindBtn.classList.toggle('active-choice', this.blindModeActive);
     }
+    if (ghostBtn) {
+      ghostBtn.textContent = `Ghost: ${this.ghostEnabled ? 'ON' : 'OFF'}`;
+      ghostBtn.classList.toggle('active-choice', this.ghostEnabled);
+    }
+  }
 
-    if (this.mode === 'custom' && !endpoint) {
-      const storedText = sessionStorage.getItem('typesphere_custom_text');
-      const storedDuration = sessionStorage.getItem('typesphere_custom_duration');
-
-      if (storedDuration !== null && storedDuration !== undefined) {
-        const parsedDur = parseInt(storedDuration, 10);
-        this.durationLimit = parsedDur > 0 ? parsedDur : 0;
-      }
-
-      if (storedText && storedText.length > 0) {
-        this.targetText = storedText.trim();
-        this.renderText();
-        this.reset();
+  async loadPrompt(append = false) {
+    if (this.contentType === 'custom') {
+      const stored = sessionStorage.getItem('typesphere_custom_text');
+      if (stored && stored.trim().length > 0) {
+        if (append) {
+          this.targetText += " " + stored.trim();
+        } else {
+          this.targetText = stored.trim();
+        }
+        this.renderText(append);
+        if (!append) this.reset();
         return;
       }
     }
 
-    if (!endpoint) {
-      if (this.mode === 'daily') {
-        endpoint = '/typing/api/daily-text';
-      } else if (this.mode === 'words') {
-        endpoint = `/typing/api/text?mode=words&words=${this.wordLimit}&language=${this.language}&punctuation=${this.withPunctuation}&numbers=${this.withNumbers}`;
-      } else if (this.mode === 'quote') {
-        endpoint = `/typing/api/text?category=Quote&punctuation=true`;
-      } else if (this.mode === 'code') {
-        endpoint = `/typing/api/text?is_code=true&code_lang=${this.codeLanguage}`;
-      } else {
-        endpoint = `/typing/api/text?mode=timed&language=${this.language}&punctuation=${this.withPunctuation}&numbers=${this.withNumbers}`;
-      }
-    }
-
     try {
-      const res = await fetch(endpoint);
+      const url = `/typing/api/text?content_type=${encodeURIComponent(this.contentType)}&level=${encodeURIComponent(this.level)}&code_lang=${encodeURIComponent(this.codeLanguage)}&batch_size=70`;
+      const res = await fetch(url);
       const data = await res.json();
-      this.targetText = (data.content || "").trim();
+      const newChunk = (data.content || "").trim();
 
-      if (this.durationLimit >= 300) {
-        this.targetText = `${this.targetText} ${this.targetText} ${this.targetText}`;
+      if (append) {
+        this.targetText += " " + newChunk;
+        this.renderText(true);
+      } else {
+        this.targetText = newChunk;
+        this.renderText(false);
+        this.reset();
       }
-
-      if (this.dailyBanner) {
-        if (this.mode === 'daily') {
-          this.dailyBanner.style.display = 'flex';
-          const titleSpan = document.getElementById('daily-challenge-title');
-          if (titleSpan && data.title) titleSpan.textContent = data.title;
-        } else {
-          this.dailyBanner.style.display = 'none';
-        }
-      }
-
-      this.renderText();
-      this.reset();
     } catch {
-      this.targetText = "Speed and precision compound into true keyboard mastery. Maintain cadence and relaxed posture.";
-      this.renderText();
-      this.reset();
+      const fallback = "The quick brown fox jumps over the lazy dog. Programming and precision define the craft of digital mastery.";
+      if (append) {
+        this.targetText += " " + fallback;
+        this.renderText(true);
+      } else {
+        this.targetText = fallback;
+        this.renderText(false);
+        this.reset();
+      }
     }
   }
 
-  renderText() {
-    this.display.innerHTML = '';
-    const fragment = document.createDocumentFragment();
-    for (let i = 0; i < this.targetText.length; i++) {
-      const span = document.createElement('span');
-      span.className = 'char';
-      span.textContent = this.targetText[i];
-      fragment.appendChild(span);
+  renderText(isAppend = false) {
+    if (!isAppend) {
+      this.display.innerHTML = '';
+      const fragment = document.createDocumentFragment();
+      for (let i = 0; i < this.targetText.length; i++) {
+        const span = document.createElement('span');
+        span.className = 'char';
+        span.textContent = this.targetText[i];
+        fragment.appendChild(span);
+      }
+      this.display.appendChild(fragment);
+      this.updateCaretPosition();
+    } else {
+      // Smoothly append characters without re-rendering existing spans
+      const currentSpanCount = this.display.children.length;
+      const fragment = document.createDocumentFragment();
+      for (let i = currentSpanCount; i < this.targetText.length; i++) {
+        const span = document.createElement('span');
+        span.className = 'char';
+        span.textContent = this.targetText[i];
+        fragment.appendChild(span);
+      }
+      this.display.appendChild(fragment);
     }
-    this.display.appendChild(fragment);
-    this.updateCaretPosition();
   }
 
   reset() {
@@ -175,60 +165,35 @@ class TypingEngine {
     this.totalPausedDuration = 0;
     this.streak = 0;
     this.errors = 0;
-    this.lives = this.maxLives;
     this.ghostProgress = 0;
 
     if (this.pauseModal) this.pauseModal.style.display = 'none';
-    if (this.pausedFloatingBar) this.pausedFloatingBar.style.display = 'none';
-    if (this.pauseBtn) this.pauseBtn.textContent = '⏸ Pause';
     if (this.display) this.display.style.filter = 'none';
 
     this.hudWpm.textContent = '0';
     this.hudAcc.textContent = '100%';
-    this.hudStreak.textContent = '0';
+    this.hudErrors.textContent = '0';
     this.updateSpeedometer(0);
 
+    // Initial Time HUD display
     if (this.durationLimit > 0) {
       this.hudTime.textContent = this.formatTimeDisplay(this.durationLimit);
-    } else if (this.mode === 'words') {
-      this.hudTime.textContent = `${this.wordLimit}w`;
     } else {
-      this.hudTime.textContent = 'FULL';
+      this.hudTime.textContent = '0s (No Limit)';
     }
-
-    if (this.livesContainer) {
-      this.livesContainer.style.display = (this.mode === 'survival') ? 'flex' : 'none';
-      this.renderLives();
-    }
-    if (this.fatigueBanner) this.fatigueBanner.style.display = 'none';
 
     const spans = this.display.querySelectorAll('.char');
     spans.forEach(s => s.className = 'char');
     this.updateCaretPosition();
-
-    if (window.virtualKeyboard && this.targetText.length > 0) {
-      window.virtualKeyboard.updateCurrentExpectedKey(this.targetText[0]);
-    }
   }
 
   formatTimeDisplay(totalSeconds) {
     if (totalSeconds >= 60) {
       const mins = Math.floor(totalSeconds / 60);
       const secs = totalSeconds % 60;
-      return `${mins}m ${secs > 0 ? `${secs}s` : ''}`;
+      return `${mins}m ${secs > 0 ? secs + 's' : ''}`.trim();
     }
     return `${totalSeconds}s`;
-  }
-
-  renderLives() {
-    if (!this.livesContainer) return;
-    this.livesContainer.innerHTML = '';
-    for (let i = 0; i < this.maxLives; i++) {
-      const heart = document.createElement('span');
-      heart.textContent = i < this.lives ? '❤️' : '🖤';
-      heart.style.fontSize = '1.15rem';
-      this.livesContainer.appendChild(heart);
-    }
   }
 
   bindEvents() {
@@ -243,7 +208,7 @@ class TypingEngine {
 
       if (e.key === 'Tab') {
         e.preventDefault();
-        this.loadPrompt();
+        this.loadPrompt(false);
         return;
       }
 
@@ -262,9 +227,7 @@ class TypingEngine {
 
     this.container.addEventListener('click', () => {
       this.container.classList.add('focus-ring');
-      if (this.mobileProxy) {
-        this.mobileProxy.focus();
-      }
+      if (this.mobileProxy) this.mobileProxy.focus();
     });
 
     if (this.mobileProxy) {
@@ -277,21 +240,12 @@ class TypingEngine {
           this.mobileProxy.value = '';
         }
       });
-
-      this.mobileProxy.addEventListener('keydown', (e) => {
-        if (e.key === 'Backspace') {
-          this.handleKeystroke('Backspace', e);
-        }
-      });
     }
   }
 
   togglePause() {
-    if (this.isPaused) {
-      this.resumeTest();
-    } else {
-      this.pauseTest();
-    }
+    if (this.isPaused) this.resumeTest();
+    else this.pauseTest();
   }
 
   pauseTest() {
@@ -301,17 +255,8 @@ class TypingEngine {
     clearInterval(this.timerInterval);
     clearInterval(this.ghostInterval);
 
-    if (this.pauseBtn) this.pauseBtn.textContent = '▶ Resume';
     if (this.display) this.display.style.filter = 'blur(4px)';
     if (this.pauseModal) this.pauseModal.style.display = 'flex';
-    if (this.pausedFloatingBar) this.pausedFloatingBar.style.display = 'none';
-  }
-
-  closePauseModal() {
-    if (this.pauseModal) this.pauseModal.style.display = 'none';
-    if (this.isPaused && this.pausedFloatingBar) {
-      this.pausedFloatingBar.style.display = 'flex';
-    }
   }
 
   resumeTest() {
@@ -320,10 +265,8 @@ class TypingEngine {
     this.totalPausedDuration += (now - this.pausedAt);
     this.isPaused = false;
 
-    if (this.pauseBtn) this.pauseBtn.textContent = '⏸ Pause';
     if (this.display) this.display.style.filter = 'none';
     if (this.pauseModal) this.pauseModal.style.display = 'none';
-    if (this.pausedFloatingBar) this.pausedFloatingBar.style.display = 'none';
 
     this.startTick(true);
     if (this.ghostEnabled) this.startGhostRacer();
@@ -336,26 +279,27 @@ class TypingEngine {
 
     const now = performance.now() / 1000.0;
 
+    // Start clock on initial strike
     if (!this.startTime) {
       this.startTime = now;
-      this.startTick();
+      this.startTick(false);
       if (this.ghostEnabled) this.startGhostRacer();
     }
 
-    const expectedChar = this.targetText[this.currentIndex];
     const spans = this.display.querySelectorAll('.char');
-    const lastTimestamp = this.events.length > 0 ? this.events[this.events.length - 1].timestamp : this.startTime;
-    const latencyMs = Math.round((now - lastTimestamp) * 1000);
+    if (this.currentIndex >= spans.length) return;
 
+    const expectedChar = this.targetText[this.currentIndex];
+
+    // Handle Backspace (Disabled if Blind Mode is ON)
     if (key === 'Backspace') {
       if (originalEvent) originalEvent.preventDefault();
+      if (this.blindModeActive) return; // Disables Backspace in Blind Mode
+
       if (this.currentIndex > 0) {
         this.currentIndex--;
         spans[this.currentIndex].className = 'char';
         this.updateCaretPosition();
-        if (window.virtualKeyboard) {
-          window.virtualKeyboard.updateCurrentExpectedKey(this.targetText[this.currentIndex]);
-        }
       }
       return;
     }
@@ -374,21 +318,6 @@ class TypingEngine {
       this.streak = 0;
       this.errors++;
       if (window.soundEngine) window.soundEngine.playKey(true);
-
-      if (this.mode === 'survival') {
-        this.lives--;
-        this.renderLives();
-        if (this.lives <= 0) {
-          this.finishTest(true);
-          return;
-        }
-      }
-
-      if (this.mode === 'accuracy') {
-        alert("Flawless run interrupted. Resetting track.");
-        this.reset();
-        return;
-      }
     }
 
     this.events.push({
@@ -399,28 +328,19 @@ class TypingEngine {
       timestamp: parseFloat(now.toFixed(4))
     });
 
-    if (window.virtualKeyboard) {
-      window.virtualKeyboard.highlightKey(key);
-      window.virtualKeyboard.recordKeyMetric(expectedChar, key, isCorrect, latencyMs);
-    }
-
     this.currentIndex++;
     this.updateCaretPosition();
     this.updateLiveStats(now);
 
-    if (this.currentIndex < this.targetText.length) {
-      if (window.virtualKeyboard) {
-        window.virtualKeyboard.updateCurrentExpectedKey(this.targetText[this.currentIndex]);
-      }
-    } else {
-      this.finishTest();
+    // Continuous Infinite Text Streaming: Request additional text before reaching end
+    if (this.currentIndex >= spans.length - 25) {
+      this.loadPrompt(true);
     }
   }
 
   startTick(isResume = false) {
-    if (!isResume) {
-      this.tickElapsed = 0;
-    }
+    if (!isResume) this.tickElapsed = 0;
+
     this.timerInterval = setInterval(() => {
       this.tickElapsed++;
       const now = performance.now() / 1000.0;
@@ -433,7 +353,8 @@ class TypingEngine {
           this.finishTest();
         }
       } else {
-        this.hudTime.textContent = this.formatTimeDisplay(this.tickElapsed);
+        // No Time Limit stopwatch mode
+        this.hudTime.textContent = `${this.formatTimeDisplay(this.tickElapsed)} (No Limit)`;
       }
     }, 1000);
   }
@@ -466,7 +387,7 @@ class TypingEngine {
 
     this.hudWpm.textContent = netWpm;
     this.hudAcc.textContent = `${acc}%`;
-    this.hudStreak.textContent = this.streak;
+    this.hudErrors.textContent = this.errors;
     this.updateSpeedometer(netWpm);
 
     this.timeline.push({
@@ -490,7 +411,8 @@ class TypingEngine {
       this.caret.style.left = `${target.offsetLeft}px`;
       this.caret.style.top = `${target.offsetTop + 4}px`;
 
-      const targetMid = target.offsetTop - (this.container.clientHeight / 2) + 25;
+      // Smooth Line Auto-Centering
+      const targetMid = target.offsetTop - (this.container.clientHeight / 2) + 30;
       if (Math.abs(this.container.scrollTop - targetMid) > 20) {
         this.container.scrollTo({
           top: Math.max(0, targetMid),
@@ -504,7 +426,7 @@ class TypingEngine {
     }
   }
 
-  async finishTest(survivalFailed = false) {
+  async finishTest() {
     if (this.isFinished) return;
     this.isFinished = true;
     clearInterval(this.timerInterval);
@@ -517,11 +439,9 @@ class TypingEngine {
       events: this.events,
       timeline: this.timeline,
       duration: Math.max(1.0, duration),
-      target_text: this.targetText,
-      mode: this.mode
+      target_text: this.targetText.substring(0, this.currentIndex),
+      mode: this.durationLimit > 0 ? `timed_${this.durationLimit}` : 'no_limit'
     };
-
-    this.displayResultOverlay(survivalFailed);
 
     try {
       const res = await fetch('/typing/api/submit', {
@@ -531,33 +451,16 @@ class TypingEngine {
       });
       const data = await res.json();
       if (data.success && data.test_id) {
-        setTimeout(() => {
-          window.location.href = `/typing/result/${data.test_id}`;
-        }, 900);
+        window.location.href = `/typing/result/${data.test_id}`;
       }
     } catch {
-      // Local fallback preserves completion metrics
+      // Local recovery
+      window.location.reload();
     }
-  }
-
-  displayResultOverlay(survivalFailed) {
-    const overlay = document.getElementById('result-modal');
-    if (!overlay) return;
-
-    const correctChars = this.events.filter(e => e.correct).length;
-    const finalWpm = this.hudWpm.textContent;
-    const finalAcc = this.hudAcc.textContent;
-
-    document.getElementById('res-wpm').textContent = finalWpm;
-    document.getElementById('res-acc').textContent = finalAcc;
-    document.getElementById('res-chars').textContent = `${correctChars} / ${this.events.length}`;
-    document.getElementById('res-status').textContent = survivalFailed ? "SURVIVAL ELIMINATED" : "BENCHMARK COMPLETED";
-
-    overlay.style.display = 'flex';
   }
 }
 
 window.typingEngine = new TypingEngine();
 document.addEventListener('DOMContentLoaded', () => {
-  window.typingEngine.loadPrompt();
+  window.typingEngine.loadPrompt(false);
 });
