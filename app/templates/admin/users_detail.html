@@ -1,0 +1,87 @@
+{% extends 'admin/base_admin.html' %}
+{% block title %}User @{{ user.username }} | Control Center{% endblock %}
+
+{% block admin_content %}
+<div style="margin-bottom:1.5rem;">
+  <a href="{{ url_for('admin.users_list') }}" style="color:var(--admin-accent); font-size:0.85rem; text-decoration:none;">&larr; Back to Directory</a>
+  <h1 style="font-size:1.6rem; font-weight:800; margin-top:0.4rem;">User Profile: @{{ user.username }}</h1>
+</div>
+
+<div style="display:grid; grid-template-columns: 1fr 2fr; gap:1.5rem; margin-bottom:1.5rem;">
+  <!-- Moderation & Role Card -->
+  <div class="card">
+    <h3 style="font-size:1.1rem; margin-bottom:1rem;">Account Management</h3>
+    <div style="margin-bottom:1.25rem;">
+      <div style="font-size:0.75rem; color:var(--admin-text-muted);">EMAIL</div>
+      <div style="font-weight:600;">{{ user.email }}</div>
+    </div>
+
+    <!-- Role Form -->
+    <form method="POST" action="{{ url_for('admin.update_user_role', user_id=user.id) }}" style="margin-bottom:1.5rem;">
+      <label style="display:block; font-size:0.75rem; color:var(--admin-text-muted); margin-bottom:0.3rem;">AUTHORITY ROLE</label>
+      <select name="role" style="width:100%; padding:0.5rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff; margin-bottom:0.6rem;">
+        {% for r in roles %}
+        <option value="{{ r }}" {% if user.role == r %}selected{% endif %}>{{ r|upper }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="btn btn-sm btn-primary" style="width:100%; justify-content:center;">Update Role</button>
+    </form>
+
+    <!-- Account Actions -->
+    <h4 style="font-size:0.85rem; color:var(--admin-text-muted); margin-bottom:0.6rem;">ACCOUNT MODERATION</h4>
+    <form method="POST" action="{{ url_for('admin.moderate_user', user_id=user.id) }}" style="display:flex; flex-direction:column; gap:0.5rem;">
+      <input type="text" name="reason" placeholder="Enter reason for action..." style="padding:0.45rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff; font-size:0.8rem;" required>
+      
+      {% if user.is_suspended %}
+      <button type="submit" name="action" value="unsuspend" class="btn btn-sm">Lift Suspension</button>
+      {% else %}
+      <button type="submit" name="action" value="suspend" class="btn btn-sm btn-danger">Suspend Account</button>
+      {% endif %}
+
+      {% if user.is_banned %}
+      <button type="submit" name="action" value="unban" class="btn btn-sm">Lift Ban</button>
+      {% else %}
+      <button type="submit" name="action" value="ban" class="btn btn-sm btn-danger">Permanent Ban</button>
+      {% endif %}
+
+      {% if current_user.is_super_admin and user.id != current_user.id %}
+      <button type="submit" name="action" value="delete" class="btn btn-sm btn-danger" onclick="return confirm('Permanently erase this account and tests?');">Delete User</button>
+      {% endif %}
+    </form>
+
+    <!-- Impersonation Action -->
+    {% if current_user.is_super_admin and user.id != current_user.id %}
+    <form method="POST" action="{{ url_for('admin.impersonate_user', user_id=user.id) }}" style="margin-top:1.5rem;">
+      <button type="submit" class="btn btn-sm" style="width:100%; justify-content:center; border-color:#f59e0b; color:#f59e0b;">👤 Impersonate User</button>
+    </form>
+    {% endif %}
+  </div>
+
+  <!-- Activity & Test Record -->
+  <div class="card">
+    <h3 style="font-size:1.1rem; margin-bottom:1rem;">Recent Activity Stream</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Action</th>
+          <th>Feature</th>
+          <th>IP Address</th>
+          <th>Time</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for act in activities %}
+        <tr>
+          <td><span class="badge badge-primary">{{ act.action }}</span></td>
+          <td>{{ act.feature }}</td>
+          <td style="font-family:var(--admin-mono); font-size:0.8rem;">{{ act.ip_address or 'Unknown' }}</td>
+          <td style="color:var(--admin-text-muted); font-size:0.8rem;">{{ act.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4" style="text-align:center; color:var(--admin-text-muted);">No activity records for this account.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

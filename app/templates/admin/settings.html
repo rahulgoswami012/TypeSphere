@@ -1,0 +1,41 @@
+{% extends 'admin/base_admin.html' %}
+{% block title %}System Parameters | Control Center{% endblock %}
+
+{% block admin_content %}
+<div style="margin-bottom:1.5rem;">
+  <h1 style="font-size:1.6rem; font-weight:800;">Platform Runtime Configuration</h1>
+  <p style="color:var(--admin-text-muted); font-size:0.85rem;">Modify operational variables without redeploying code.</p>
+</div>
+
+<div class="card" style="max-width:700px;">
+  <form method="POST">
+    <div style="margin-bottom:1.25rem;">
+      <label style="display:block; font-size:0.78rem; font-weight:700; color:var(--admin-text-muted); margin-bottom:0.3rem;">MAINTENANCE MODE</label>
+      <select name="maintenance_mode" style="width:100%; padding:0.6rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff;">
+        <option value="false" {% if configs.get('maintenance_mode') != 'true' %}selected{% endif %}>Disabled (Normal Operations)</option>
+        <option value="true" {% if configs.get('maintenance_mode') == 'true' %}selected{% endif %}>Enabled (Block public typing tests)</option>
+      </select>
+    </div>
+
+    <div style="margin-bottom:1.25rem;">
+      <label style="display:block; font-size:0.78rem; font-weight:700; color:var(--admin-text-muted); margin-bottom:0.3rem;">ALLOW NEW REGISTRATIONS</label>
+      <select name="allow_registrations" style="width:100%; padding:0.6rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff;">
+        <option value="true" {% if configs.get('allow_registrations') != 'false' %}selected{% endif %}>Allow User Onboarding</option>
+        <option value="false" {% if configs.get('allow_registrations') == 'false' %}selected{% endif %}>Lock Registrations</option>
+      </select>
+    </div>
+
+    <div style="margin-bottom:1.25rem;">
+      <label style="display:block; font-size:0.78rem; font-weight:700; color:var(--admin-text-muted); margin-bottom:0.3rem;">DEFAULT TEST DURATION (SECONDS)</label>
+      <input type="number" name="default_test_duration" value="{{ configs.get('default_test_duration', '60') }}" style="width:100%; padding:0.6rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff;">
+    </div>
+
+    <div style="margin-bottom:1.5rem;">
+      <label style="display:block; font-size:0.78rem; font-weight:700; color:var(--admin-text-muted); margin-bottom:0.3rem;">ANTI-CHEAT HUMAN WPM CEILING</label>
+      <input type="number" name="min_wpm_cutoff" value="{{ configs.get('min_wpm_cutoff', '250') }}" style="width:100%; padding:0.6rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff;">
+    </div>
+
+    <button type="submit" class="btn btn-primary" style="padding:0.7rem 1.75rem;">Save System Parameters</button>
+  </form>
+</div>
+{% endblock %}

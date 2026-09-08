@@ -1,0 +1,61 @@
+{% extends 'admin/base_admin.html' %}
+{% block title %}Leaderboard Moderation | Control Center{% endblock %}
+
+{% block admin_content %}
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+  <div>
+    <h1 style="font-size:1.6rem; font-weight:800;">Leaderboard Audit & Score Verification</h1>
+    <p style="color:var(--admin-text-muted); font-size:0.85rem;">Enforce anti-cheat compliance and curate official rankings.</p>
+  </div>
+  <div style="display:flex; gap:0.4rem;">
+    <a href="{{ url_for('admin.leaderboard_manage', suspicious='all') }}" class="btn btn-sm">All Scores</a>
+    <a href="{{ url_for('admin.leaderboard_manage', suspicious='flagged') }}" class="btn btn-sm btn-danger">Flagged Only</a>
+    <a href="{{ url_for('admin.leaderboard_manage', suspicious='verified') }}" class="btn btn-sm">Verified Only</a>
+  </div>
+</div>
+
+<div class="card" style="padding:0; overflow:hidden;">
+  <table>
+    <thead>
+      <tr>
+        <th>Test ID</th>
+        <th>Pilot</th>
+        <th>WPM</th>
+        <th>Accuracy</th>
+        <th>Mode</th>
+        <th>Integrity Status</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for t in tests.items %}
+      <tr>
+        <td>#{{ t.id }}</td>
+        <td><strong>{{ t.user.username if t.user else 'Guest' }}</strong></td>
+        <td style="font-family:var(--admin-mono); font-weight:700; color:var(--admin-accent);">{{ t.wpm }}</td>
+        <td>{{ t.accuracy }}%</td>
+        <td>{{ t.mode }}</td>
+        <td>
+          {% if t.suspicious %}
+          <span class="badge badge-danger">FLAGGED SUSPICIOUS</span>
+          <div style="font-size:0.75rem; color:var(--admin-danger); margin-top:2px;">{{ t.suspicion_reason or 'Automated limit violation' }}</div>
+          {% else %}
+          <span class="badge badge-success">VERIFIED</span>
+          {% endif %}
+        </td>
+        <td>
+          <div style="display:flex; gap:0.4rem;">
+            <form method="POST" action="{{ url_for('admin.test_toggle_flag', test_id=t.id) }}">
+              <button type="submit" class="btn btn-sm">{{ 'Mark Verified' if t.suspicious else 'Flag Score' }}</button>
+            </form>
+            <form method="POST" action="{{ url_for('admin.test_delete', test_id=t.id) }}" onsubmit="return confirm('Erase this record completely?');">
+              <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

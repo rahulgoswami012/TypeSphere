@@ -1,0 +1,40 @@
+{% extends 'admin/base_admin.html' %}
+{% block title %}Audit Trail | TypeSphere Control Center{% endblock %}
+
+{% block admin_content %}
+<div style="margin-bottom:1.5rem;">
+  <h1 style="font-size:1.6rem; font-weight:800;">Immutable Admin Audit Log</h1>
+  <p style="color:var(--admin-text-muted); font-size:0.85rem;">Permanent historical ledger of all administrative modifications.</p>
+</div>
+
+<div class="card" style="padding:0; overflow:hidden;">
+  <table>
+    <thead>
+      <tr>
+        <th>Admin</th>
+        <th>Action</th>
+        <th>Entity Type</th>
+        <th>Target ID</th>
+        <th>Details</th>
+        <th>Origin IP</th>
+        <th>Timestamp</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for l in logs.items %}
+      <tr>
+        <td><strong>{{ l.admin_username }}</strong></td>
+        <td><span class="badge badge-primary">{{ l.action }}</span></td>
+        <td>{{ l.target_type }}</td>
+        <td>#{{ l.target_id or '-' }}</td>
+        <td style="font-size:0.8rem; color:var(--admin-text-muted);">{{ l.details or 'No metadata' }}</td>
+        <td style="font-family:var(--admin-mono); font-size:0.8rem;">{{ l.ip_address or 'System' }}</td>
+        <td style="font-size:0.8rem;">{{ l.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" style="text-align:center; padding:2rem; color:var(--admin-text-muted);">No records registered.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

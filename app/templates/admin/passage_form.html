@@ -1,0 +1,62 @@
+{% extends 'admin/base_admin.html' %}
+{% block title %}{{ action }} Passage | Control Center{% endblock %}
+
+{% block admin_content %}
+<div style="margin-bottom:1.5rem;">
+  <a href="{{ url_for('admin.passages_list') }}" style="color:var(--admin-accent); font-size:0.85rem; text-decoration:none;">&larr; Back to Passages</a>
+  <h1 style="font-size:1.6rem; font-weight:800; margin-top:0.4rem;">{{ action }} Typing Passage</h1>
+</div>
+
+<div class="card" style="max-width:850px;">
+  <form method="POST">
+    <div style="display:grid; grid-template-columns: 2fr 1fr; gap:1rem; margin-bottom:1.25rem;">
+      <div>
+        <label style="display:block; font-size:0.75rem; color:var(--admin-text-muted); margin-bottom:0.3rem;">PASSAGE TITLE</label>
+        <input type="text" name="title" value="{{ passage.title if passage else '' }}" required style="width:100%; padding:0.6rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff;">
+      </div>
+      <div>
+        <label style="display:block; font-size:0.75rem; color:var(--admin-text-muted); margin-bottom:0.3rem;">SOURCE / AUTHOR</label>
+        <input type="text" name="source" value="{{ passage.source if passage else 'Administrator' }}" style="width:100%; padding:0.6rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff;">
+      </div>
+    </div>
+
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem; margin-bottom:1.25rem;">
+      <div>
+        <label style="display:block; font-size:0.75rem; color:var(--admin-text-muted); margin-bottom:0.3rem;">CATEGORY</label>
+        <select name="category" style="width:100%; padding:0.6rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff;">
+          {% for cat in ['General', 'Daily Life', 'Education', 'Technology', 'Science', 'Business', 'History', 'Literature', 'Professional'] %}
+          <option value="{{ cat }}" {% if passage and passage.category == cat %}selected{% endif %}>{{ cat }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label style="display:block; font-size:0.75rem; color:var(--admin-text-muted); margin-bottom:0.3rem;">DIFFICULTY TIER</label>
+        <select name="difficulty" style="width:100%; padding:0.6rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff;">
+          {% for diff in ['Easy', 'Medium', 'Hard', 'Expert'] %}
+          <option value="{{ diff }}" {% if passage and passage.difficulty == diff %}selected{% endif %}>{{ diff }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <div style="margin-bottom:1.5rem;">
+      <label style="display:block; font-size:0.75rem; color:var(--admin-text-muted); margin-bottom:0.3rem;">COMPLETE PASSAGE TEXT</label>
+      <textarea name="content" rows="8" required style="width:100%; padding:0.75rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff; font-family:var(--admin-mono); line-height:1.6;">{{ passage.content if passage else '' }}</textarea>
+    </div>
+
+    {% if passage %}
+    <div style="margin-bottom:1.5rem;">
+      <label style="display:flex; align-items:center; gap:0.5rem; font-size:0.85rem; cursor:pointer;">
+        <input type="checkbox" name="is_active" {% if passage.is_active %}checked{% endif %}>
+        <span>Enable this passage in active test selection</span>
+      </label>
+    </div>
+    {% endif %}
+
+    <div style="display:flex; justify-content:flex-end; gap:0.75rem;">
+      <a href="{{ url_for('admin.passages_list') }}" class="btn">Cancel</a>
+      <button type="submit" class="btn btn-primary">{{ action }} Passage</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

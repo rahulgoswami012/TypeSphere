@@ -6,6 +6,7 @@ from flask_socketio import SocketIO
 from sqlalchemy import text
 from config import Config
 
+# Instantiate database and extensions FIRST
 db = SQLAlchemy()
 login_manager = LoginManager()
 migrate = Migrate()
@@ -31,29 +32,32 @@ def create_app(config_class=Config):
     from app.models.feedback import ContactMessage, FeedbackItem, RatingReview, SiteSetting, Announcement
     from app.models.curriculum import LessonStage, UserLessonProgress
     from app.models.content import ContentItem, ExamTemplate
-    from app.models.game import GameRecord
+    from app.models.game import GameRecord, ArcadeLeaderboard
+    from app.models.arcade_content import ArcadeContentItem, ArcadeGameConfig
     from app.models.plan import UserSubscription
+    from app.models.admin import RolePermission, AdminAuditLog, UserActivity, VisitorTraffic, SecurityEvent, PlatformConfig
 
     @login_manager.user_loader
     def load_user(user_id):
         return User.query.get(int(user_id))
 
+    # Auto-patch missing tables & columns for SQLite databases
     with app.app_context():
         db.create_all()
-        # Safe SQLite migrations
         try:
             with db.engine.connect() as conn:
-                res = conn.execute(text("PRAGMA table_info(user_settings)"))
-                cols = [row[1] for row in res.fetchall()]
-                if cols and 'blind_mode' not in cols:
-                    conn.execute(text("ALTER TABLE user_settings ADD COLUMN blind_mode BOOLEAN DEFAULT 1"))
-                if cols and 'ghost_mode' not in cols:
-                    conn.execute(text("ALTER TABLE user_settings ADD COLUMN ghost_mode BOOLEAN DEFAULT 0"))
-                conn.commit()
+                if 'sqlite' in str(db.engine.url):
+                    res = conn.execute(text("PRAGMA table_info(user_settings)"))
+                    cols = [row[1] for row in res.fetchall()]
+                    if cols and 'blind_mode' not in cols:
+                        conn.execute(text("ALTER TABLE user_settings ADD COLUMN blind_mode BOOLEAN DEFAULT 1"))
+                    if cols and 'ghost_mode' not in cols:
+                        conn.execute(text("ALTER TABLE user_settings ADD COLUMN ghost_mode BOOLEAN DEFAULT 0"))
+                    conn.commit()
         except Exception:
             pass
 
-    # Register All Blueprints
+    # Register Blueprints
     from app.routes.auth import auth_bp
     from app.routes.typing import typing_bp
     from app.routes.dashboard import dashboard_bp
@@ -78,6 +82,15 @@ def create_app(config_class=Config):
     app.register_blueprint(learn_bp, url_prefix='/learn')
     app.register_blueprint(games_bp, url_prefix='/games')
 
+    # Register traffic & telemetry analytics hooks
+    from app.services.admin_security import capture_traffic
+    capture_traffic(app)
+
+    # Register Arcade real-time multiplayer sockets
+    from app.services.game_socket_engine import register_arcade_socket_events
+    register_arcade_socket_events()
+
+    # Root route and /typing/ share the same home test page
     @app.route('/')
     def root_home():
         from app.routes.typing import test_page

@@ -10,8 +10,16 @@ class User(UserMixin, db.Model):
     username = db.Column(db.String(64), unique=True, nullable=False, index=True)
     email = db.Column(db.String(120), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.String(256), nullable=False)
-    role = db.Column(db.String(20), default='user') # 'user' or 'admin'
+    
+    # Granular Roles: 'super_admin', 'admin', 'moderator', 'content_manager', 'analyst', 'user'
+    role = db.Column(db.String(32), default='user', nullable=False, index=True)
     is_verified = db.Column(db.Boolean, default=True, nullable=True)
+    
+    # Account Moderation States
+    is_suspended = db.Column(db.Boolean, default=False, index=True)
+    is_banned = db.Column(db.Boolean, default=False, index=True)
+    status_reason = db.Column(db.String(255), nullable=True)
+    last_active = db.Column(db.DateTime, default=datetime.utcnow)
     
     # Version 2.0 Ranked Fields
     elo_rating = db.Column(db.Integer, default=1000, nullable=False, index=True)
@@ -34,21 +42,24 @@ class User(UserMixin, db.Model):
 
     @property
     def is_admin(self):
-        return self.role == 'admin'
+        return self.role in ['super_admin', 'admin', 'moderator', 'content_manager', 'analyst']
+
+    @property
+    def is_super_admin(self):
+        return self.role == 'super_admin'
+
+    @property
+    def is_active_account(self):
+        return not self.is_banned and not self.is_suspended
 
     @property
     def rank_division(self):
         elo = self.elo_rating or 1000
-        if elo >= 1900:
-            return "Grandmaster"
-        elif elo >= 1700:
-            return "Diamond"
-        elif elo >= 1500:
-            return "Platinum"
-        elif elo >= 1300:
-            return "Gold"
-        elif elo >= 1100:
-            return "Silver"
+        if elo >= 1900: return "Grandmaster"
+        if elo >= 1700: return "Diamond"
+        if elo >= 1500: return "Platinum"
+        if elo >= 1300: return "Gold"
+        if elo >= 1100: return "Silver"
         return "Bronze"
 
     @property

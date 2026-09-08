@@ -1,0 +1,49 @@
+{% extends 'admin/base_admin.html' %}
+{% block title %}Security Center | TypeSphere Control Center{% endblock %}
+
+{% block admin_content %}
+<div style="margin-bottom:1.5rem;">
+  <h1 style="font-size:1.6rem; font-weight:800;">Security Center & Incident Monitor</h1>
+  <p style="color:var(--admin-text-muted); font-size:0.85rem;">Audit anomalous requests, failed logins, and access boundary violations.</p>
+</div>
+
+<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:1rem; margin-bottom:1.5rem;">
+  <div class="card" style="margin:0;">
+    <div style="font-size:0.75rem; color:var(--admin-text-muted);">FAILED LOGIN ATTEMPTS</div>
+    <div style="font-size:1.8rem; font-weight:800; color:var(--admin-warning);">{{ failed_logins }}</div>
+  </div>
+  <div class="card" style="margin:0;">
+    <div style="font-size:0.75rem; color:var(--admin-text-muted);">CRITICAL INCIDENTS</div>
+    <div style="font-size:1.8rem; font-weight:800; color:var(--admin-danger);">{{ critical_events }}</div>
+  </div>
+</div>
+
+<div class="card" style="padding:0; overflow:hidden;">
+  <table>
+    <thead>
+      <tr>
+        <th>Event</th>
+        <th>Severity</th>
+        <th>Identifier</th>
+        <th>IP Address</th>
+        <th>Description</th>
+        <th>Time</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for ev in events.items %}
+      <tr>
+        <td><strong>{{ ev.event_type }}</strong></td>
+        <td>
+          <span class="badge {{ 'badge-danger' if ev.severity in ['HIGH', 'CRITICAL'] else 'badge-warning' }}">{{ ev.severity }}</span>
+        </td>
+        <td>{{ ev.identifier or 'N/A' }}</td>
+        <td style="font-family:var(--admin-mono); font-size:0.8rem;">{{ ev.ip_address or 'Unknown' }}</td>
+        <td style="font-size:0.8rem; max-width:350px;">{{ ev.description }}</td>
+        <td style="color:var(--admin-text-muted); font-size:0.78rem;">{{ ev.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

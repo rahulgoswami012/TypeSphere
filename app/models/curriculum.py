@@ -3,6 +3,9 @@ from app import db
 
 class LessonStage(db.Model):
     __tablename__ = 'lesson_stages'
+    __table_args__ = (
+        db.UniqueConstraint('track', 'stage_number', name='uix_track_stage'),
+    )
 
     id = db.Column(db.Integer, primary_key=True)
     track = db.Column(db.String(32), default='beginner', index=True) # 'beginner', 'intermediate', 'advanced', 'expert'
@@ -20,6 +23,7 @@ class LessonStage(db.Model):
     min_wpm_to_pass = db.Column(db.Float, default=20.0)
     min_accuracy_to_pass = db.Column(db.Float, default=95.0)
     required_attempts = db.Column(db.Integer, default=2) # Multi-attempt verification
+
 
 class UserLessonProgress(db.Model):
     __tablename__ = 'user_lesson_progress'

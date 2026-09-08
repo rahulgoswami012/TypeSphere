@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}TypeSphere Control Center{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --admin-bg: #090d16;
+      --admin-surface: #111726;
+      --admin-elevated: #1a2236;
+      --admin-border: #232d44;
+      --admin-accent: #3b82f6;
+      --admin-accent-glow: rgba(59, 130, 246, 0.2);
+      --admin-success: #10b981;
+      --admin-warning: #f59e0b;
+      --admin-danger: #ef4444;
+      --admin-text-main: #f8fafc;
+      --admin-text-muted: #94a3b8;
+      --admin-font: 'Plus Jakarta Sans', sans-serif;
+      --admin-mono: 'JetBrains Mono', monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--admin-bg);
+      color: var(--admin-text-main);
+      font-family: var(--admin-font);
+      display: flex;
+      min-height: 100vh;
+    }
+    /* Dedicated Sidebar */
+    .admin-sidebar {
+      width: 260px;
+      background: var(--admin-surface);
+      border-right: 1px solid var(--admin-border);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+    }
+    .sidebar-brand {
+      padding: 1.5rem;
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: var(--admin-accent);
+      border-bottom: 1px solid var(--admin-border);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .sidebar-section-title {
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--admin-text-muted);
+      padding: 1.25rem 1.5rem 0.4rem;
+      font-weight: 700;
+    }
+    .sidebar-nav { list-style: none; }
+    .sidebar-link {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.65rem 1.5rem;
+      color: var(--admin-text-muted);
+      text-decoration: none;
+      font-size: 0.88rem;
+      font-weight: 600;
+      transition: all 0.15s;
+    }
+    .sidebar-link:hover, .sidebar-link.active {
+      color: var(--admin-text-main);
+      background: var(--admin-elevated);
+      border-left: 3px solid var(--admin-accent);
+    }
+    /* Main Content */
+    .admin-main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+    .admin-topbar {
+      height: 65px;
+      background: var(--admin-surface);
+      border-bottom: 1px solid var(--admin-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 2rem;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .admin-content {
+      padding: 2rem;
+      flex: 1;
+    }
+    .card {
+      background: var(--admin-surface);
+      border: 1px solid var(--admin-border);
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .btn {
+      padding: 0.55rem 1rem;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 0.85rem;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      border: 1px solid var(--admin-border);
+      background: var(--admin-elevated);
+      color: var(--admin-text-main);
+    }
+    .btn-primary { background: var(--admin-accent); border-color: var(--admin-accent); }
+    .btn-danger { background: var(--admin-danger); border-color: var(--admin-danger); color: #fff; }
+    .btn-sm { padding: 0.35rem 0.65rem; font-size: 0.78rem; }
+    .badge {
+      display: inline-block;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .badge-primary { background: var(--admin-accent-glow); color: var(--admin-accent); }
+    .badge-success { background: rgba(16, 185, 129, 0.15); color: var(--admin-success); }
+    .badge-danger { background: rgba(239, 68, 68, 0.15); color: var(--admin-danger); }
+    .badge-warning { background: rgba(245, 158, 11, 0.15); color: var(--admin-warning); }
+    table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+    th { text-align: left; padding: 0.75rem 1rem; color: var(--admin-text-muted); font-size: 0.75rem; text-transform: uppercase; border-bottom: 1px solid var(--admin-border); }
+    td { padding: 0.85rem 1rem; border-bottom: 1px solid var(--admin-border); }
+    tr:hover td { background: rgba(255, 255, 255, 0.02); }
+    .impersonation-bar {
+      background: #7c2d12;
+      color: #fed7aa;
+      padding: 0.5rem 1.5rem;
+      font-size: 0.85rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+  </style>
+</head>
+<body>
+  <!-- Impersonation Notice Bar -->
+  {% if session.get('admin_impersonator_id') %}
+  <div class="impersonation-bar" style="position:fixed; top:0; left:0; right:0; z-index:9999;">
+    <span>⚠️ You are simulating user account: <strong>{{ current_user.username }}</strong></span>
+    <a href="{{ url_for('admin.stop_impersonation') }}" style="color:#fff; text-decoration:underline; font-weight:700;">Exit Simulation</a>
+  </div>
+  {% endif %}
+
+  <!-- Administrator Dedicated Sidebar -->
+  <aside class="admin-sidebar">
+    <div class="sidebar-brand">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+      TypeSphere Admin
+    </div>
+
+    <div class="sidebar-section-title">Overview</div>
+    <ul class="sidebar-nav">
+      <li><a href="{{ url_for('admin.dashboard') }}" class="sidebar-link">📊 Dashboard</a></li>
+      <li><a href="{{ url_for('admin.traffic_analytics') }}" class="sidebar-link">📈 Traffic & Analytics</a></li>
+    </ul>
+
+    <div class="sidebar-section-title">Directory & Content</div>
+    <ul class="sidebar-nav">
+      <li><a href="{{ url_for('admin.users_list') }}" class="sidebar-link">👥 User Accounts</a></li>
+      <li><a href="{{ url_for('admin.passages_list') }}" class="sidebar-link">📝 Passage Library</a></li>
+      <li><a href="{{ url_for('admin.leaderboard_manage') }}" class="sidebar-link">🏆 Leaderboard Verifier</a></li>
+    </ul>
+
+    <div class="sidebar-section-title">Auditing & Security</div>
+    <ul class="sidebar-nav">
+      <li><a href="{{ url_for('admin.security_center') }}" class="sidebar-link">🛡️ Security Events</a></li>
+      <li><a href="{{ url_for('admin.audit_logs') }}" class="sidebar-link">📜 Action Audit Trail</a></li>
+    </ul>
+
+    <div class="sidebar-section-title">Control</div>
+    <ul class="sidebar-nav">
+      <li><a href="{{ url_for('admin.system_settings') }}" class="sidebar-link">⚙️ System Parameters</a></li>
+    </ul>
+
+    <div style="margin-top:auto; padding:1.5rem; border-top:1px solid var(--admin-border);">
+      <a href="{{ url_for('typing.test_page') }}" class="btn" style="width:100%; justify-content:center;">🌐 View Public Website</a>
+    </div>
+  </aside>
+
+  <!-- Content Workspace -->
+  <div class="admin-main">
+    <header class="admin-topbar">
+      <div>
+        <span class="badge badge-primary">{{ current_user.role|upper }}</span>
+        <span style="font-size:0.9rem; margin-left:0.5rem; font-weight:600;">{{ current_user.username }}</span>
+      </div>
+      <div style="display:flex; gap:0.5rem;">
+        <a href="{{ url_for('admin.export_csv', data_type='users') }}" class="btn btn-sm">Export Users CSV</a>
+        <a href="{{ url_for('admin.export_csv', data_type='tests') }}" class="btn btn-sm">Export Tests CSV</a>
+        <a href="{{ url_for('auth.logout') }}" class="btn btn-sm btn-danger">Sign Out</a>
+      </div>
+    </header>
+
+    <div class="admin-content">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, msg in messages %}
+            <div style="padding:0.75rem 1rem; border-radius:6px; margin-bottom:1.5rem; background:var(--admin-surface); border-left:4px solid var(--admin-accent);">
+              {{ msg }}
+            </div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      {% block admin_content %}{% endblock %}
+    </div>
+  </div>
+</body>
+</html>

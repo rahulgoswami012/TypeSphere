@@ -32,7 +32,6 @@ def practice_page():
     weak_keys = []
     top_confusions = []
     dna = None
-    
     if current_user.is_authenticated:
         dna = TypingDNA.query.filter_by(user_id=current_user.id).first()
         if dna:
@@ -52,7 +51,6 @@ def practice_page():
             top_confusions.sort(key=lambda x: x[2], reverse=True)
             top_confusions = top_confusions[:3]
 
-    from app.routes.typing import CURRICULUM_LESSONS
     return render_template(
         'typing/practice.html',
         curriculum=CURRICULUM_LESSONS,
@@ -83,7 +81,7 @@ def get_daily_text():
 
 @typing_bp.route('/api/text')
 def get_text():
-    # 1. Lesson from Academy
+    # 1. Lesson from Touch Typing Academy
     lesson_key = request.args.get('lesson')
     if lesson_key and lesson_key in CURRICULUM_LESSONS:
         lesson = CURRICULUM_LESSONS[lesson_key]
@@ -94,31 +92,34 @@ def get_text():
             'is_code': False
         })
 
-    # 2. Retry specific test
+    # 2. Retry specific previous test run
     retry_id = request.args.get('retry_test_id')
     if retry_id:
-        prev_test = TypingTest.query.get(int(retry_id))
-        if prev_test and prev_test.events_data:
-            events = prev_test.get_events()
-            if events:
-                max_idx = max((ev.get('char_index', 0) for ev in events), default=0)
-                text_chars = [' '] * (max_idx + 1)
-                for ev in events:
-                    idx = ev.get('char_index', 0)
-                    exp = ev.get('expected', '')
-                    if 0 <= idx < len(text_chars):
-                        text_chars[idx] = exp
-                reconstructed = "".join(text_chars).strip()
-                if len(reconstructed) > 5:
-                    return jsonify({
-                        'id': prev_test.id,
-                        'content': reconstructed,
-                        'category': 'Retry Drill',
-                        'is_code': prev_test.mode == 'code'
-                    })
+        try:
+            prev_test = TypingTest.query.get(int(retry_id))
+            if prev_test and prev_test.events_data:
+                events = prev_test.get_events()
+                if events:
+                    max_idx = max((ev.get('char_index', 0) for ev in events), default=0)
+                    text_chars = [' '] * (max_idx + 1)
+                    for ev in events:
+                        idx = ev.get('char_index', 0)
+                        exp = ev.get('expected', '')
+                        if 0 <= idx < len(text_chars):
+                            text_chars[idx] = exp
+                    reconstructed = "".join(text_chars).strip()
+                    if len(reconstructed) > 5:
+                        return jsonify({
+                            'id': prev_test.id,
+                            'content': reconstructed,
+                            'category': 'Retry Drill',
+                            'is_code': prev_test.mode == 'code'
+                        })
+        except Exception:
+            pass
 
     # 3. Dynamic Multi-Tiered Content Generation
-    test_type = request.args.get('test_type', 'speed').lower()
+    test_type = request.args.get('test_type', request.args.get('content_type', 'words')).lower()
     difficulty = request.args.get('level', 'moderate').lower()
     code_lang = request.args.get('code_lang', 'python').lower()
 
@@ -129,11 +130,12 @@ def get_text():
         code_lang=code_lang
     )
 
+    category_title = f"{test_type.replace('_', ' ').title()} ({difficulty.title()})"
     return jsonify({
         'id': 0,
         'content': content,
-        'category': f"{test_type.replace('_', ' ').title()} ({difficulty.title()})",
-        'is_code': test_type == 'coding'
+        'category': category_title,
+        'is_code': test_type in ['code', 'coding']
     })
 
 @typing_bp.route('/api/adaptive-drill')
@@ -150,6 +152,9 @@ def submit_test():
         duration = max(0.1, float(data.get('duration', 1.0)))
         target_text = data.get('target_text', '')
         mode = data.get('mode', 'timed')
+        is_ranked = bool(data.get('is_ranked', False))
+        content_category = data.get('content_category', 'General')
+        difficulty = data.get('difficulty', 'moderate')
 
         metrics = TypingAnalyzer.calculate_metrics(events, target_text, duration)
         is_suspicious, reason = AntiCheatSystem.evaluate(events, duration, metrics['wpm'], metrics['accuracy'])
@@ -157,6 +162,9 @@ def submit_test():
         test = TypingTest(
             user_id=current_user.id if current_user.is_authenticated else None,
             mode=mode,
+            is_ranked=is_ranked and not is_suspicious,
+            content_category=content_category,
+            difficulty=difficulty,
             duration=duration,
             wpm=metrics['wpm'],
             raw_wpm=metrics['raw_wpm'],
@@ -173,7 +181,6 @@ def submit_test():
             timeline_data=json.dumps(data.get('timeline', [])),
             events_data=json.dumps(events)
         )
-
         db.session.add(test)
         db.session.commit()
 
@@ -231,11 +238,9 @@ def result_page(test_id):
         tier_color = "var(--text-muted)"
 
     xp_earned = int((test.wpm * (test.accuracy / 100.0)) * (test.duration / 10.0))
-
     events = test.get_events()
     difficult_keys = {}
     hesitations = []
-    
     max_idx = max((ev.get('char_index', 0) for ev in events), default=0)
     text_chars = [' '] * (max_idx + 1)
 
@@ -244,10 +249,8 @@ def result_page(test_id):
         exp = ev.get('expected', '')
         if 0 <= idx < len(text_chars):
             text_chars[idx] = exp
-
         if not ev.get('correct', True) and exp:
             difficult_keys[exp] = difficult_keys.get(exp, 0) + 1
-        
         if i > 0:
             dt = ev.get('timestamp', 0) - events[i-1].get('timestamp', 0)
             if dt > 0.45 and exp.strip():
@@ -260,6 +263,10 @@ def result_page(test_id):
     sorted_difficult_keys = sorted(difficult_keys.items(), key=lambda x: x[1], reverse=True)[:5]
     top_hesitations = sorted(hesitations, key=lambda x: x['delay_ms'], reverse=True)[:4]
 
+    # Synthesize intelligent next-step recommendation
+    coach_data = WeaknessCoach.analyze_and_recommend(test.user_id)
+    recommendation = coach_data.get('recommendation')
+
     return render_template(
         'typing/result.html',
         test=test,
@@ -271,13 +278,13 @@ def result_page(test_id):
         difficult_keys=sorted_difficult_keys,
         hesitations=top_hesitations,
         target_text=reconstructed_text,
-        events_json=json.dumps(events)
+        events_json=json.dumps(events),
+        recommendation=recommendation
     )
 
 @typing_bp.route('/certificate/<int:test_id>')
 def certificate_page(test_id):
     test = TypingTest.query.get_or_404(test_id)
-    
     if current_user.is_authenticated:
         AchievementService.award_code(current_user, 'certified_typist')
 

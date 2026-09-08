@@ -1,0 +1,80 @@
+{% extends 'admin/base_admin.html' %}
+{% block title %}Traffic Telemetry | TypeSphere Control Center{% endblock %}
+
+{% block admin_content %}
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+  <div>
+    <h1 style="font-size:1.6rem; font-weight:800;">Traffic & Visitor Intelligence</h1>
+    <p style="color:var(--admin-text-muted); font-size:0.85rem;">Aggregated session telemetry over the last {{ days }} days.</p>
+  </div>
+  <div style="display:flex; gap:0.4rem;">
+    <a href="{{ url_for('admin.traffic_analytics', days=7) }}" class="btn btn-sm">7 Days</a>
+    <a href="{{ url_for('admin.traffic_analytics', days=30) }}" class="btn btn-sm">30 Days</a>
+    <a href="{{ url_for('admin.traffic_analytics', days=90) }}" class="btn btn-sm">90 Days</a>
+  </div>
+</div>
+
+<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:1rem; margin-bottom:1.5rem;">
+  <div class="card" style="margin:0;">
+    <div style="font-size:0.75rem; color:var(--admin-text-muted);">TOTAL PAGE VIEWS</div>
+    <div style="font-size:1.8rem; font-weight:800; color:var(--admin-accent);">{{ total_views }}</div>
+  </div>
+  <div class="card" style="margin:0;">
+    <div style="font-size:0.75rem; color:var(--admin-text-muted);">UNIQUE SESSIONS</div>
+    <div style="font-size:1.8rem; font-weight:800; color:var(--admin-success);">{{ unique_sessions }}</div>
+  </div>
+  <div class="card" style="margin:0;">
+    <div style="font-size:0.75rem; color:var(--admin-text-muted);">AUTHENTICATED VIEWS</div>
+    <div style="font-size:1.8rem; font-weight:800;">{{ registered_views }}</div>
+  </div>
+  <div class="card" style="margin:0;">
+    <div style="font-size:0.75rem; color:var(--admin-text-muted);">GUEST / ANONYMOUS</div>
+    <div style="font-size:1.8rem; font-weight:800; color:var(--admin-warning);">{{ guest_views }}</div>
+  </div>
+</div>
+
+<div style="display:grid; grid-template-columns: 2fr 1fr; gap:1.5rem;">
+  <div class="card" style="margin:0;">
+    <h3 style="font-size:1.05rem; margin-bottom:1rem;">Top Entry & Route Volumes</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Endpoint Path</th>
+          <th>Views</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for path, count in popular_pages %}
+        <tr>
+          <td><code style="font-family:var(--admin-mono); color:var(--admin-accent);">{{ path }}</code></td>
+          <td><strong>{{ count }}</strong></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card" style="margin:0;">
+    <h3 style="font-size:1.05rem; margin-bottom:1rem;">Device & Client Mix</h3>
+    <div style="margin-bottom:1.5rem;">
+      <div style="font-size:0.75rem; color:var(--admin-text-muted); margin-bottom:0.5rem;">PLATFORM TYPE</div>
+      {% for dev, count in devices %}
+      <div style="display:flex; justify-content:space-between; margin-bottom:0.3rem;">
+        <span>{{ dev|capitalize }}</span>
+        <strong>{{ count }}</strong>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div>
+      <div style="font-size:0.75rem; color:var(--admin-text-muted); margin-bottom:0.5rem;">BROWSER ENGINE</div>
+      {% for b, count in browsers %}
+      <div style="display:flex; justify-content:space-between; margin-bottom:0.3rem;">
+        <span>{{ b }}</span>
+        <strong>{{ count }}</strong>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

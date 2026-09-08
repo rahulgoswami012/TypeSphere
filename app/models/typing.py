@@ -8,9 +8,9 @@ class TypingTest(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True, index=True)
     
-    # Mode & Ranked Status
+    # Mode & Ranked Classification
     mode = db.Column(db.String(32), default='timed') # 'timed', 'words', 'quote', 'custom', 'code', etc.
-    is_ranked = db.Column(db.Boolean, default=False, index=True) # True ONLY for standard, verified tests
+    is_ranked = db.Column(db.Boolean, default=False, index=True) # True only for verified standard runs
     content_category = db.Column(db.String(64), default='General')
     difficulty = db.Column(db.String(32), default='moderate') # 'easy', 'moderate', 'hard', 'expert'
     
@@ -34,9 +34,9 @@ class TypingTest(db.Model):
     suspicion_reason = db.Column(db.String(255), nullable=True)
     completed_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
 
-    # Detailed Keystroke Log & WPM Timeline
-    timeline_data = db.Column(db.Text, nullable=True) # JSON list of dicts: [{'t': 1.0, 'wpm': 75, 'acc': 98}]
-    events_data = db.Column(db.Text, nullable=True)   # JSON list of all keystrokes for replay
+    # Serialized Keystroke Log & WPM Timeline for Replays
+    timeline_data = db.Column(db.Text, nullable=True)
+    events_data = db.Column(db.Text, nullable=True)
 
     def get_timeline(self):
         return json.loads(self.timeline_data) if self.timeline_data else []
@@ -48,18 +48,29 @@ class TypingText(db.Model):
     __tablename__ = 'typing_texts'
 
     id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(128), default="Untitled Passage")
     category = db.Column(db.String(64), default='General', index=True)
-    difficulty = db.Column(db.String(32), default='moderate', index=True) # 'easy', 'moderate', 'hard', 'expert'
+    difficulty = db.Column(db.String(32), default='Medium', index=True) # Easy, Medium, Hard, Expert
     language = db.Column(db.String(32), default='english')
     content = db.Column(db.Text, nullable=False)
     source = db.Column(db.String(128), default='System')
     is_code = db.Column(db.Boolean, default=False)
     code_lang = db.Column(db.String(32), nullable=True)
     
-    # Metadata for Balanced Generator Selection
+    # Content Metadata
     word_count = db.Column(db.Integer, default=0)
     character_count = db.Column(db.Integer, default=0)
-    complexity_score = db.Column(db.Float, default=1.0) # Lexical rating
+    complexity_score = db.Column(db.Float, default=1.0)
+    is_active = db.Column(db.Boolean, default=True, index=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_by = db.Column(db.String(64), default="System")
+    updated_by = db.Column(db.String(64), nullable=True)
+
+    def calculate_stats(self):
+        words = self.content.strip().split()
+        self.word_count = len(words)
+        self.character_count = len(self.content.strip())
 
 class TypingDNA(db.Model):
     __tablename__ = 'typing_dna'
@@ -74,9 +85,7 @@ class TypingDNA(db.Model):
     capitals_accuracy = db.Column(db.Float, default=100.0)
     rhythm_consistency_avg = db.Column(db.Float, default=100.0)
     
-    # Key-Level Behavioral Metrics: {"e": {"total": 120, "errors": 4, "delays": [0.12, 0.14]}}
     key_stats_json = db.Column(db.Text, default='{}')
-    # Confusion Matrix: {"e": {"r": 4}} means 'e' was mistyped as 'r' 4 times
     confusion_matrix_json = db.Column(db.Text, default='{}')
     updated_at = db.Column(db.DateTime, default=datetime.utcnow)
 

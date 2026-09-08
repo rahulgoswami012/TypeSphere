@@ -1,0 +1,81 @@
+{% extends 'admin/base_admin.html' %}
+{% block title %}Passage CMS | TypeSphere Control Center{% endblock %}
+
+{% block admin_content %}
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
+  <div>
+    <h1 style="font-size:1.6rem; font-weight:800;">Passage Content Management</h1>
+    <p style="color:var(--admin-text-muted); font-size:0.85rem;">Administer the text library and verified test corpus.</p>
+  </div>
+  <a href="{{ url_for('admin.passage_create') }}" class="btn btn-primary">+ Create New Passage</a>
+</div>
+
+<!-- Filters -->
+<div class="card" style="padding:1rem; margin-bottom:1.5rem;">
+  <form method="GET" style="display:flex; gap:0.75rem; flex-wrap:wrap;">
+    <input type="text" name="q" value="{{ search }}" placeholder="Search passage text or title..." style="flex:1; min-width:200px; padding:0.5rem 0.75rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff;">
+    
+    <select name="category" style="padding:0.5rem 0.75rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff;">
+      <option value="">All Categories</option>
+      {% for cat in categories %}
+      <option value="{{ cat }}" {% if category == cat %}selected{% endif %}>{{ cat }}</option>
+      {% endfor %}
+    </select>
+
+    <select name="difficulty" style="padding:0.5rem 0.75rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff;">
+      <option value="">All Difficulties</option>
+      <option value="Easy" {% if difficulty == 'Easy' %}selected{% endif %}>Easy</option>
+      <option value="Medium" {% if difficulty == 'Medium' %}selected{% endif %}>Medium</option>
+      <option value="Hard" {% if difficulty == 'Hard' %}selected{% endif %}>Hard</option>
+      <option value="Expert" {% if difficulty == 'Expert' %}selected{% endif %}>Expert</option>
+    </select>
+
+    <button type="submit" class="btn btn-primary">Apply Filters</button>
+  </form>
+</div>
+
+<!-- Passages Table -->
+<div class="card" style="padding:0; overflow:hidden;">
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Title / Excerpt</th>
+        <th>Category</th>
+        <th>Difficulty</th>
+        <th>Words</th>
+        <th>Status</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in passages.items %}
+      <tr>
+        <td>#{{ p.id }}</td>
+        <td>
+          <div style="font-weight:700;">{{ p.title }}</div>
+          <div style="font-size:0.78rem; color:var(--admin-text-muted); max-width:400px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ p.content }}</div>
+        </td>
+        <td><span class="badge badge-primary">{{ p.category }}</span></td>
+        <td>{{ p.difficulty }}</td>
+        <td>{{ p.word_count }}</td>
+        <td>
+          <span class="badge {{ 'badge-success' if p.is_active else 'badge-danger' }}">{{ 'ACTIVE' if p.is_active else 'DISABLED' }}</span>
+        </td>
+        <td>
+          <div style="display:flex; gap:0.4rem;">
+            <a href="{{ url_for('admin.passage_edit', passage_id=p.id) }}" class="btn btn-sm">Edit</a>
+            <form method="POST" action="{{ url_for('admin.passage_toggle', passage_id=p.id) }}">
+              <button type="submit" class="btn btn-sm">{{ 'Disable' if p.is_active else 'Enable' }}</button>
+            </form>
+            <form method="POST" action="{{ url_for('admin.passage_delete', passage_id=p.id) }}" onsubmit="return confirm('Permanently remove this passage?');">
+              <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
