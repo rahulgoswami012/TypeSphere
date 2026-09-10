@@ -1,68 +1,71 @@
 {% extends 'base.html' %}
-
+{% block title %}Arcade Flight Modules & Typing Games | TypeSphere{% endblock %}
 {% block content %}
-<div class="card" style="max-width:1160px; margin:0 auto;">
-  <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:1.25rem; margin-bottom:1.75rem; flex-wrap:wrap; gap:1rem;">
-    <div>
-      <div style="display:flex; align-items:center; gap:0.6rem;">
-        <h1 style="font-size:1.85rem; font-weight:800; margin:0;">TypeSphere Arcade</h1>
-        <span style="background:var(--accent-glow); color:var(--accent); font-weight:800; font-size:0.75rem; padding:0.2rem 0.55rem; border-radius:4px;">
-          12 DISCIPLINES
-        </span>
-      </div>
-      <p style="color:var(--text-secondary); font-size:0.88rem; margin-top:0.25rem;">
-        Competitive and educational gaming engines engineered to build instinctive tactile recognition, agility under pressure, and velocity.
-      </p>
-    </div>
-
-    <div style="display:flex; gap:0.6rem;">
-      <a href="{{ url_for('typing.test_page') }}" class="btn">&larr; Free Test Track</a>
-      <a href="{{ url_for('learn.index') }}" class="btn">Academy &rarr;</a>
-    </div>
-  </div>
-
-  <!-- 12-Game Arcade Matrix -->
-  <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:1.25rem;">
-    {% for g in games %}
-    <div class="card" style="background:var(--bg-card); border:1px solid var(--border-color); margin-bottom:0; display:flex; flex-direction:column; justify-content:space-between;">
-      <div>
-        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.75rem;">
-          <div style="display:flex; align-items:center; gap:0.75rem;">
-            <span style="font-size:2.3rem;">{{ g.icon }}</span>
-            <div>
-              <h3 style="font-size:1.2rem; font-weight:800; margin:0; color:var(--text-primary);">{{ g.title }}</h3>
-              <span style="font-size:0.75rem; color:var(--accent); font-weight:700; text-transform:uppercase;">{{ g.category }}</span>
+<div class="card" style="max-width: 1160px; margin: 0 auto; padding: 2rem;">
+    <!-- Directory Header -->
+    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:1.5rem; margin-bottom:2rem; flex-wrap:wrap; gap:1rem;">
+        <div>
+            <div style="display:flex; align-items:center; gap:0.65rem;">
+                <span style="font-size:2.2rem;">🕹️</span>
+                <div>
+                    <h1 style="font-size:1.85rem; font-weight:800; margin:0;">TypeSphere Arcade</h1>
+                    <span style="background:var(--accent-glow); color:var(--accent); font-weight:800; font-size:0.75rem; padding:0.2rem 0.6rem; border-radius:4px; text-transform:uppercase;">
+                        11 Kinetic Disciplines
+                    </span>
+                </div>
             </div>
-          </div>
-          <span style="font-size:0.68rem; font-weight:800; background:var(--bg-secondary); border:1px solid var(--border-color); padding:0.15rem 0.45rem; border-radius:4px; color:var(--text-secondary);">
-            {{ g.badge }}
-          </span>
+            <p style="color:var(--text-secondary); font-size:0.9rem; margin-top:0.4rem; line-height:1.55;">
+                Engineered gaming disciplines designed to build instinctive tactile recognition, reaction latency, pressure tolerance, and burst velocity.
+            </p>
         </div>
-
-        <p style="color:var(--text-secondary); font-size:0.86rem; line-height:1.55; margin-bottom:1rem;">
-          {{ g.summary }}
-        </p>
-      </div>
-
-      <div>
-        <div style="background:var(--bg-secondary); border-radius:var(--radius-sm); padding:0.5rem 0.75rem; margin-bottom:0.85rem; font-size:0.78rem; display:flex; justify-content:space-between;">
-          <span style="color:var(--text-muted);">Play Modes:</span>
-          <strong style="color:var(--text-primary);">{{ g.supports|join(' &bull; ') }}</strong>
+        <div style="display:flex; gap:0.6rem; flex-wrap:wrap;">
+            <a href="{{ url_for('typing.test_page') }}" class="btn btn-sm">&larr; Speed Benchmark</a>
+            <a href="{{ url_for('learn.index') }}" class="btn btn-sm">Academy Tracks &rarr;</a>
         </div>
-
-        <div style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem;">
-          {% set pb = high_scores.get(g.slug, 0) %}
-          <div style="font-size:0.8rem; color:var(--text-muted);">
-            Record: <strong style="color:{{ 'var(--warning)' if pb > 0 else 'var(--text-secondary)' }}; font-family:var(--font-mono);">{{ pb }} pts</strong>
-          </div>
-          
-          <a href="{{ url_for('games.play_arena', game_slug=g.slug) }}" class="btn btn-primary" style="padding:0.55rem 1.25rem; font-weight:700;">
-            Setup Game &rarr;
-          </a>
-        </div>
-      </div>
     </div>
-    {% endfor %}
-  </div>
+
+    <!-- 11-Game Cockpit Matrix -->
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:1.5rem;">
+        {% for g in games %}
+        <div class="card" style="background:var(--bg-card); margin-bottom:0; display:flex; flex-direction:column; justify-content:space-between; border-color:var(--border-color);">
+            <div>
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.85rem;">
+                    <div style="display:flex; align-items:center; gap:0.75rem;">
+                        <span style="font-size:2.4rem;">{{ g.icon }}</span>
+                        <div>
+                            <h3 style="font-size:1.2rem; font-weight:800; margin:0; color:var(--text-primary);">{{ g.title }}</h3>
+                            <span style="font-size:0.75rem; color:var(--accent); font-weight:700; text-transform:uppercase; letter-spacing:0.04em;">{{ g.category }}</span>
+                        </div>
+                    </div>
+                    <span style="font-size:0.68rem; font-weight:800; background:var(--bg-secondary); border:1px solid var(--border-color); padding:0.2rem 0.5rem; border-radius:4px; color:var(--text-secondary); text-transform:uppercase;">
+                        {{ g.badge }}
+                    </span>
+                </div>
+
+                <p style="color:var(--text-secondary); font-size:0.86rem; line-height:1.55; margin-bottom:1rem;">
+                    {{ g.summary }}
+                </p>
+
+                <!-- Objective Ribbon -->
+                <div style="background:var(--bg-secondary); border-radius:var(--radius-sm); padding:0.6rem 0.85rem; margin-bottom:1rem; font-size:0.8rem;">
+                    <div style="margin-bottom:0.2rem;"><strong>Win:</strong> <span style="color:var(--text-primary);">{{ g.win_condition }}</span></div>
+                    <div><strong style="color:var(--danger);">Lose:</strong> <span style="color:var(--text-muted);">{{ g.lose_condition }}</span></div>
+                </div>
+            </div>
+
+            <div>
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem; padding-top:0.75rem; border-top:1px solid var(--border-color);">
+                    {% set pb = high_scores.get(g.slug, 0) %}
+                    <div style="font-size:0.82rem; color:var(--text-muted);">
+                        Record: <strong style="color:{{ 'var(--warning)' if pb > 0 else 'var(--text-secondary)' }}; font-family:var(--font-mono); font-size:0.95rem;">{{ pb }} pts</strong>
+                    </div>
+                    <a href="{{ url_for('games.play_arena', game_slug=g.slug) }}" class="btn btn-primary btn-sm" style="font-weight:800; padding:0.55rem 1.25rem;">
+                        Pre-Flight & Launch &rarr;
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
 </div>
 {% endblock %}

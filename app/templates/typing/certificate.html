@@ -1,286 +1,272 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Official Certificate of Typing Proficiency - {{ candidate_name }}</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
-  <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Official Pilot Flight Certificate - {{ candidate_name }} | TypeSphere</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Plus+Jakarta+Sans:wght@400;600;700;800&family=JetBrains+Mono:wght@600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background: #060911;
+            color: #0f172a;
+            font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem 1rem;
+        }
 
-    body {
-      background: #0b0f17;
-      color: #1a202c;
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 1.5rem 1rem;
-    }
+        .cert-outer-wrapper {
+            width: 100%;
+            max-width: 900px;
+            background: #ffffff;
+            border: 12px solid #0f172a;
+            outline: 3px solid {{ tier_color }};
+            outline-offset: -7px;
+            padding: clamp(1.5rem, 4.5vw, 3.25rem);
+            position: relative;
+            box-shadow: 0 25px 55px rgba(0, 0, 0, 0.75);
+            background-image: radial-gradient(#e2e8f0 1.2px, transparent 1.2px);
+            background-size: 24px 24px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
 
-    /* Mobile orientation recommendation */
-    .mobile-rotate-hint {
-      display: none;
-      background: rgba(88, 166, 255, 0.15);
-      border: 1px solid var(--accent);
-      color: var(--accent);
-      padding: 0.5rem 1rem;
-      border-radius: 20px;
-      font-size: 0.8rem;
-      font-weight: 600;
-      margin-bottom: 1rem;
-      text-align: center;
-    }
+        .cert-header {
+            text-align: center;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 1.25rem;
+            margin-bottom: 1.5rem;
+        }
+        .cert-brand-mark {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.85rem;
+            font-weight: 800;
+            letter-spacing: 0.15em;
+            color: #64748b;
+            text-transform: uppercase;
+            margin-bottom: 0.35rem;
+        }
+        .cert-title {
+            font-family: 'Cinzel', serif;
+            font-size: clamp(1.4rem, 4vw, 2.3rem);
+            font-weight: 900;
+            letter-spacing: 0.04em;
+            color: #090d16;
+            text-transform: uppercase;
+        }
+        .cert-subtitle {
+            font-size: clamp(0.72rem, 2vw, 0.88rem);
+            color: {{ tier_color }};
+            font-weight: 800;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            margin-top: 0.25rem;
+        }
 
-    @media (max-width: 768px) {
-      .mobile-rotate-hint {
-        display: block;
-      }
-    }
+        .cert-body {
+            text-align: center;
+            padding: 1rem 0;
+        }
+        .cert-conferred-text {
+            font-size: clamp(0.75rem, 2vw, 0.85rem);
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            font-weight: 700;
+            margin-bottom: 0.4rem;
+        }
+        .cert-pilot-name {
+            font-family: 'Cinzel', serif;
+            font-size: clamp(1.75rem, 5.5vw, 2.75rem);
+            font-weight: 900;
+            color: #090d16;
+            border-bottom: 2.5px solid #cbd5e1;
+            display: inline-block;
+            padding: 0 2rem 0.25rem;
+            margin-bottom: 1.25rem;
+            word-break: break-word;
+        }
+        .cert-description {
+            font-size: clamp(0.85rem, 2.2vw, 0.98rem);
+            line-height: 1.65;
+            color: #334155;
+            max-width: 680px;
+            margin: 0 auto 1.75rem;
+        }
 
-    /* Fluid Responsive Certificate Container */
-    .cert-container {
-      width: 100%;
-      max-width: 860px;
-      min-height: 560px;
-      background: #ffffff;
-      border: 10px solid #1e293b;
-      outline: 3px solid {{ tier_color }};
-      outline-offset: -7px;
-      padding: clamp(1.25rem, 4vw, 3rem);
-      position: relative;
-      box-shadow: 0 20px 45px rgba(0, 0, 0, 0.7);
-      background-image: radial-gradient(#e2e8f0 1px, transparent 1px);
-      background-size: 20px 20px;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-    }
+        .cert-metrics-grid {
+            display: flex;
+            justify-content: center;
+            gap: clamp(1.2rem, 4vw, 3.5rem);
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+        .cert-metric-box {
+            text-align: center;
+            min-width: 90px;
+        }
+        .cert-metric-val {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: clamp(1.6rem, 4.2vw, 2.25rem);
+            font-weight: 800;
+            color: #090d16;
+        }
+        .cert-metric-lbl {
+            font-size: clamp(0.68rem, 1.8vw, 0.76rem);
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            font-weight: 700;
+        }
 
-    .cert-header {
-      text-align: center;
-      border-bottom: 2px solid #e2e8f0;
-      padding-bottom: 1rem;
-      margin-bottom: 1.25rem;
-    }
+        .cert-footer-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-top: 1.5rem;
+            border-top: 1.5px solid #e2e8f0;
+            padding-top: 1.25rem;
+            flex-wrap: wrap;
+            gap: 1.25rem;
+        }
+        .cert-meta-info {
+            font-size: clamp(0.72rem, 2vw, 0.8rem);
+            color: #475569;
+            line-height: 1.55;
+            text-align: left;
+        }
+        .cert-seal {
+            width: clamp(80px, 16vw, 110px);
+            height: clamp(80px, 16vw, 110px);
+            border-radius: 50%;
+            border: 3.5px dashed {{ tier_color }};
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: #f8fafc;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            transform: rotate(-8deg);
+            flex-shrink: 0;
+        }
+        .cert-seal-wings { font-size: 1.4rem; line-height: 1; margin-bottom: 2px; }
+        .cert-seal-tier {
+            font-family: 'Cinzel', serif;
+            font-size: clamp(0.72rem, 2.2vw, 0.85rem);
+            font-weight: 900;
+            color: {{ tier_color }};
+            letter-spacing: 0.08em;
+        }
+        .cert-seal-sub {
+            font-size: 0.58rem;
+            color: #64748b;
+            font-weight: 800;
+            letter-spacing: 0.1em;
+        }
 
-    .cert-title {
-      font-size: clamp(1.2rem, 3.5vw, 2.1rem);
-      font-weight: 800;
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-      color: #0f172a;
-    }
+        .action-bar {
+            margin-top: 1.5rem;
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            justify-content: center;
+            width: 100%;
+            max-width: 900px;
+        }
+        .btn {
+            background: #151d30;
+            color: #f1f5f9;
+            border: 1px solid #24314c;
+            padding: 0.65rem 1.4rem;
+            border-radius: 6px;
+            font-weight: 700;
+            font-size: 0.9rem;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.15s ease;
+        }
+        .btn-primary { background: #38bdf8; color: #04101e; border-color: #38bdf8; }
+        .btn-primary:hover { background: #0284c7; color: #fff; }
 
-    .cert-subtitle {
-      font-size: clamp(0.7rem, 2vw, 0.95rem);
-      color: #64748b;
-      margin-top: 0.25rem;
-      text-transform: uppercase;
-      letter-spacing: 0.12em;
-    }
-
-    .cert-body {
-      text-align: center;
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-    }
-
-    .cert-awarded-to {
-      font-size: clamp(0.75rem, 2vw, 0.85rem);
-      color: #64748b;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      margin-bottom: 0.35rem;
-    }
-
-    .cert-name {
-      font-size: clamp(1.5rem, 5vw, 2.4rem);
-      font-weight: 800;
-      color: #0f172a;
-      border-bottom: 2px solid #cbd5e1;
-      display: inline-block;
-      padding: 0 1.5rem 0.25rem;
-      margin: 0 auto 1.25rem;
-      font-family: Georgia, serif;
-      word-break: break-word;
-    }
-
-    .cert-text {
-      font-size: clamp(0.85rem, 2.2vw, 1rem);
-      line-height: 1.6;
-      color: #334155;
-      max-width: 620px;
-      margin: 0 auto 1.5rem;
-    }
-
-    .cert-stats {
-      display: flex;
-      justify-content: center;
-      gap: clamp(1rem, 4vw, 3rem);
-      margin-bottom: 1.5rem;
-      flex-wrap: wrap;
-    }
-
-    .cert-stat-box {
-      text-align: center;
-      min-width: 80px;
-    }
-
-    .cert-stat-val {
-      font-size: clamp(1.4rem, 4vw, 2.1rem);
-      font-weight: 800;
-      color: #0f172a;
-      font-family: 'JetBrains Mono', monospace;
-    }
-
-    .cert-stat-lbl {
-      font-size: clamp(0.65rem, 1.8vw, 0.78rem);
-      color: #64748b;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-
-    /* Footer & Seal Section */
-    .cert-bottom-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-end;
-      margin-top: 1rem;
-      flex-wrap: wrap;
-      gap: 1rem;
-    }
-
-    .cert-footer-meta {
-      font-size: clamp(0.7rem, 2vw, 0.8rem);
-      color: #64748b;
-      line-height: 1.5;
-      text-align: left;
-    }
-
-    .cert-seal {
-      width: clamp(75px, 15vw, 105px);
-      height: clamp(75px, 15vw, 105px);
-      border-radius: 50%;
-      border: 3px dashed {{ tier_color }};
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      background: #f8fafc;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-      transform: rotate(-10deg);
-      flex-shrink: 0;
-    }
-
-    .cert-seal-text {
-      font-size: clamp(0.7rem, 2.2vw, 0.85rem);
-      font-weight: 800;
-      color: {{ tier_color }};
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-    }
-
-    .action-bar {
-      margin-top: 1.5rem;
-      display: flex;
-      gap: 0.75rem;
-      flex-wrap: wrap;
-      justify-content: center;
-      width: 100%;
-      max-width: 860px;
-    }
-
-    /* Print & PDF formatting */
-    @media print {
-      body {
-        background: none;
-        padding: 0;
-        min-height: auto;
-      }
-      .action-bar, .mobile-rotate-hint, .navbar {
-        display: none !important;
-      }
-      .cert-container {
-        width: 100%;
-        max-width: 100%;
-        height: 600px;
-        box-shadow: none;
-        page-break-inside: avoid;
-      }
-    }
-  </style>
+        @media print {
+            body { background: none; padding: 0; min-height: auto; }
+            .action-bar, .navbar, .app-footer { display: none !important; }
+            .cert-outer-wrapper { width: 100%; max-width: 100%; box-shadow: none; border-width: 8px; page-break-inside: avoid; }
+        }
+    </style>
 </head>
 <body>
+    <div class="cert-outer-wrapper">
+        <header class="cert-header">
+            <div class="cert-brand-mark">⚡ TypeSphere Biometric Telemetry Network</div>
+            <h1 class="cert-title">Flight Certificate of Competence</h1>
+            <div class="cert-subtitle">{{ cert_tier }}</div>
+        </header>
 
-  <div class="mobile-rotate-hint">
-    📱 Tip: Rotate your phone to landscape for full certificate view
-  </div>
+        <div class="cert-body">
+            <div class="cert-conferred-text">This official document certifies that Pilot</div>
+            <div class="cert-pilot-name">{{ candidate_name }}</div>
+            <p class="cert-description">
+                has successfully executed an authorized typing benchmark under verified flight parameters. Raw keystroke intervals, micro-hesitations, and cadence rhythms were cryptographically analyzed and authenticated against anti-cheat standards.
+            </p>
 
-  <div class="cert-container">
-    <!-- Header -->
-    <div class="cert-header">
-      <h1 class="cert-title">TypeSphere Certificate of Competence</h1>
-      <div class="cert-subtitle">Standardized Benchmark & Biometric Verification</div>
+            <div class="cert-metrics-grid">
+                <div class="cert-metric-box">
+                    <div class="cert-metric-val">{{ test.wpm }}</div>
+                    <div class="cert-metric-lbl">Net Speed (WPM)</div>
+                </div>
+                <div class="cert-metric-box">
+                    <div class="cert-metric-val">{{ test.accuracy }}%</div>
+                    <div class="cert-metric-lbl">Keystroke Accuracy</div>
+                </div>
+                <div class="cert-metric-box">
+                    <div class="cert-metric-val">{{ test.duration|round|int }}s</div>
+                    <div class="cert-metric-lbl">Active Duration</div>
+                </div>
+                <div class="cert-metric-box">
+                    <div class="cert-metric-val">{{ test.consistency }}%</div>
+                    <div class="cert-metric-lbl">Rhythm Consistency</div>
+                </div>
+            </div>
+        </div>
+
+        <footer class="cert-footer-row">
+            <div class="cert-meta-info">
+                <div><strong>Cryptographic Seal:</strong> <span style="font-family:'JetBrains Mono',monospace;">{{ cert_code }}</span></div>
+                <div><strong>Completed:</strong> {{ test.completed_at.strftime('%B %d, %Y') }} (Indian Standard Time)</div>
+                <div><strong>Discipline:</strong> {{ test.content_category }} &bull; Tier: {{ test.difficulty|capitalize }}</div>
+                <div><strong>Verification Protocol:</strong> SHA-256 Authenticated Flight Ledger</div>
+            </div>
+            <div class="cert-seal">
+                <span class="cert-seal-wings">🪽</span>
+                <span class="cert-seal-tier">{{ tier_badge }}</span>
+                <span class="cert-seal-sub">AUTHENTICATED</span>
+            </div>
+        </footer>
     </div>
 
-    <!-- Body -->
-    <div class="cert-body">
-      <div class="cert-awarded-to">This certifies that</div>
-      <div class="cert-name">{{ candidate_name }}</div>
-      <div class="cert-text">
-        has successfully completed an authorized typing benchmark under standard test parameters, exhibiting verified speed and accuracy.
-      </div>
-
-      <!-- Telemetry Stats -->
-      <div class="cert-stats">
-        <div class="cert-stat-box">
-          <div class="cert-stat-val">{{ test.wpm }}</div>
-          <div class="cert-stat-lbl">Net Speed (WPM)</div>
-        </div>
-        <div class="cert-stat-box">
-          <div class="cert-stat-val">{{ test.accuracy }}%</div>
-          <div class="cert-stat-lbl">Accuracy</div>
-        </div>
-        <div class="cert-stat-box">
-          <div class="cert-stat-val">{{ test.duration }}s</div>
-          <div class="cert-stat-lbl">Duration</div>
-        </div>
-      </div>
+    <div class="action-bar">
+        <button onclick="window.print()" class="btn btn-primary">
+            🖨️ Print / Download PDF
+        </button>
+        <a href="{{ url_for('typing.result_page', test_id=test.id) }}" class="btn">
+            &larr; Return to Telemetry
+        </a>
+        <a href="{{ url_for('typing.test_page') }}" class="btn">
+            ⚡ Next Benchmark
+        </a>
     </div>
-
-    <!-- Bottom Row: Meta & Seal -->
-    <div class="cert-bottom-row">
-      <div class="cert-footer-meta">
-        <div><strong>Verification ID:</strong> {{ cert_code }}</div>
-        <div><strong>Issued On:</strong> {{ test.completed_at.strftime('%B %d, %Y') }}</div>
-        <div><strong>Classification:</strong> {{ cert_tier }}</div>
-      </div>
-
-      <div class="cert-seal">
-        <span class="cert-seal-text">{{ tier_badge }}</span>
-        <span style="font-size: 0.6rem; color: #64748b; font-weight: 700;">VERIFIED</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- Actions -->
-  <div class="action-bar">
-    <button onclick="window.print()" class="btn btn-primary" style="padding: 0.75rem 1.5rem; font-size: 0.95rem;">
-      🖨️ Print / Download PDF
-    </button>
-    <a href="{{ url_for('typing.result_page', test_id=test.id) }}" class="btn" style="padding: 0.75rem 1.5rem; font-size: 0.95rem;">
-      &larr; Back to Results
-    </a>
-  </div>
-
 </body>
 </html>

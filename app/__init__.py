@@ -6,7 +6,6 @@ from flask_socketio import SocketIO
 from sqlalchemy import text
 from config import Config
 
-# Instantiate database and extensions FIRST
 db = SQLAlchemy()
 login_manager = LoginManager()
 migrate = Migrate()
@@ -24,7 +23,7 @@ def create_app(config_class=Config):
     login_manager.login_view = 'auth.login'
     login_manager.login_message_category = 'info'
 
-    # Register all database models before create_all
+    # Register models before schema initialization
     from app.models.user import User
     from app.models.typing import TypingTest, TypingText, TypingDNA
     from app.models.challenge import DailyChallenge, Achievement, UserAchievement
@@ -41,20 +40,49 @@ def create_app(config_class=Config):
     def load_user(user_id):
         return User.query.get(int(user_id))
 
-    # Auto-patch missing tables & columns for SQLite databases
+    # Auto-patch tables with missing columns across development & production
     with app.app_context():
         db.create_all()
         try:
             with db.engine.connect() as conn:
-                if 'sqlite' in str(db.engine.url):
-                    res = conn.execute(text("PRAGMA table_info(user_settings)"))
-                    cols = [row[1] for row in res.fetchall()]
-                    if cols and 'blind_mode' not in cols:
-                        conn.execute(text("ALTER TABLE user_settings ADD COLUMN blind_mode BOOLEAN DEFAULT 1"))
-                    if cols and 'ghost_mode' not in cols:
-                        conn.execute(text("ALTER TABLE user_settings ADD COLUMN ghost_mode BOOLEAN DEFAULT 0"))
-                    conn.commit()
-        except Exception:
+                # 1. Patch user_settings table
+                res = conn.execute(text("PRAGMA table_info(user_settings)"))
+                s_cols = {row[1] for row in res.fetchall()}
+                if s_cols:
+                    patches = [
+                        ('typing_area_style', "VARCHAR(32) DEFAULT 'modern'"),
+                        ('keyboard_display', "VARCHAR(32) DEFAULT 'heatmap'"),
+                        ('reduce_motion', "BOOLEAN DEFAULT 0"),
+                        ('confidence_mode', "BOOLEAN DEFAULT 0"),
+                        ('game_sound_volume', "FLOAT DEFAULT 0.7"),
+                        ('game_sound_theme', "VARCHAR(32) DEFAULT 'retro'"),
+                        ('blind_mode', "BOOLEAN DEFAULT 1"),
+                        ('ghost_mode', "BOOLEAN DEFAULT 0")
+                    ]
+                    for col_name, col_def in patches:
+                        if col_name not in s_cols:
+                            conn.execute(text(f"ALTER TABLE user_settings ADD COLUMN {col_name} {col_def}"))
+
+                # 2. Patch users table
+                res = conn.execute(text("PRAGMA table_info(users)"))
+                u_cols = {row[1] for row in res.fetchall()}
+                if u_cols and 'ranked_draws' not in u_cols:
+                    conn.execute(text("ALTER TABLE users ADD COLUMN ranked_draws INTEGER DEFAULT 0"))
+
+                # 3. Patch typing_tests table
+                res = conn.execute(text("PRAGMA table_info(typing_tests)"))
+                t_cols = {row[1] for row in res.fetchall()}
+                if t_cols:
+                    if 'total_mistakes' not in t_cols:
+                        conn.execute(text("ALTER TABLE typing_tests ADD COLUMN total_mistakes INTEGER DEFAULT 0"))
+                    if 'uncorrected_errors' not in t_cols:
+                        conn.execute(text("ALTER TABLE typing_tests ADD COLUMN uncorrected_errors INTEGER DEFAULT 0"))
+                    if 'time_of_day_ist' not in t_cols:
+                        conn.execute(text("ALTER TABLE typing_tests ADD COLUMN time_of_day_ist INTEGER"))
+
+                conn.commit()
+        except Exception as e:
+            # Soft fallback if engine does not support PRAGMA (e.g. cloud managed Postgres)
             pass
 
     # Register Blueprints
@@ -82,15 +110,15 @@ def create_app(config_class=Config):
     app.register_blueprint(learn_bp, url_prefix='/learn')
     app.register_blueprint(games_bp, url_prefix='/games')
 
-    # Register traffic & telemetry analytics hooks
+    # Register security telemetry
     from app.services.admin_security import capture_traffic
     capture_traffic(app)
 
-    # Register Arcade real-time multiplayer sockets
+    # Register real-time arcade WebSockets
     from app.services.game_socket_engine import register_arcade_socket_events
     register_arcade_socket_events()
 
-    # Root route and /typing/ share the same home test page
+    # Shared Root Homepage
     @app.route('/')
     def root_home():
         from app.routes.typing import test_page

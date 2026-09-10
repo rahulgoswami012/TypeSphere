@@ -1,164 +1,328 @@
 {% extends 'base.html' %}
-
+{% block title %}Flight Telemetry Analysis #{{ test.id }} | TypeSphere{% endblock %}
 {% block content %}
-<div class="card" style="max-width:980px; margin:0 auto;">
-  <!-- Result Header -->
-  <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:1.25rem; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
-    <div>
-      <div style="display:flex; align-items:center; gap:0.6rem;">
-        <h1 style="font-size:1.8rem; font-weight:800; margin:0;">Test Results</h1>
-        <span style="background:{{ tier_color }}; color:#04101e; font-weight:800; font-size:0.75rem; padding:0.2rem 0.55rem; border-radius:4px; text-transform:uppercase;">
-          {{ skill_tier }}
-        </span>
-        {% if test.is_ranked %}
-          <span style="background:var(--success-bg); color:var(--success); font-weight:800; font-size:0.75rem; padding:0.2rem 0.55rem; border-radius:4px;">
-            VERIFIED RANKED
-          </span>
-        {% else %}
-          <span style="background:var(--bg-card); color:var(--text-muted); font-size:0.75rem; padding:0.2rem 0.55rem; border-radius:4px;">
-            PRACTICE RUN
-          </span>
-        {% endif %}
-      </div>
-      <p style="color:var(--text-secondary); font-size:0.85rem; margin-top:0.25rem;">
-        Completed on {{ test.completed_at.strftime('%b %d, %Y at %H:%M') }} &bull; Mode: {{ test.mode }}
-      </p>
-    </div>
-
-    <!-- Essential Actions -->
-    <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
-      <a href="{{ url_for('typing.test_page') }}" class="btn btn-primary">&larr; Next Test (Tab)</a>
-      <a href="{{ url_for('typing.test_page') }}?retry_test_id={{ test.id }}" class="btn">🔁 Retry Text</a>
-      <a href="{{ url_for('typing.certificate_page', test_id=test.id) }}" class="btn" style="border-color:var(--warning); color:var(--warning);">🏆 Certificate</a>
-    </div>
-  </div>
-
-  <!-- Primary Results Card: High-Impact Essential Data First -->
-  <div class="stats-hud" style="grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); margin-bottom:1.75rem;">
-    <div class="stat-box">
-      <div class="stat-label">Net Speed</div>
-      <div class="stat-value" style="font-size:2.2rem; color:var(--accent);">{{ test.wpm }} <span style="font-size:0.9rem; color:var(--text-muted);">WPM</span></div>
-    </div>
-    <div class="stat-box">
-      <div class="stat-label">Accuracy</div>
-      <div class="stat-value" style="font-size:2.2rem; color:{{ 'var(--success)' if test.accuracy >= 95 else 'var(--warning)' }};">{{ test.accuracy }}%</div>
-    </div>
-    <div class="stat-box">
-      <div class="stat-label">Consistency</div>
-      <div class="stat-value" style="font-size:2.2rem;">{{ test.consistency }}%</div>
-    </div>
-    <div class="stat-box">
-      <div class="stat-label">Errors Logged</div>
-      <div class="stat-value" style="font-size:2.2rem; color:var(--danger);">{{ test.errors }}</div>
-    </div>
-  </div>
-
-  <!-- =========================================================
-       INTELLIGENT ECOSYSTEM RECOMMENDATION (CONNECTING ALL FEATURES)
-       ========================================================= -->
-  {% if recommendation %}
-  <div class="card" style="background:var(--bg-card); border:1.5px solid var(--accent); margin-bottom:1.75rem; padding:1.25rem 1.5rem;">
-    <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:1rem;">
-      <div style="max-width:640px;">
-        <span style="font-size:0.75rem; font-weight:800; background:var(--accent-glow); color:var(--accent); padding:0.15rem 0.5rem; border-radius:4px; text-transform:uppercase;">
-          Intelligent Next Step
-        </span>
-        <h3 style="font-size:1.15rem; font-weight:800; margin:0.4rem 0 0.25rem 0;">{{ recommendation.title }}</h3>
-        <p style="color:var(--text-secondary); font-size:0.88rem; line-height:1.5; margin:0;">
-          {{ recommendation.reason }}
-        </p>
-      </div>
-
-      <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
-        <a href="{{ recommendation.action_url }}" class="btn btn-primary" style="font-weight:700;">
-          {{ recommendation.action_label }} &rarr;
-        </a>
-      </div>
-    </div>
-
-    <!-- Suggested Curriculum & Game Pathways -->
-    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:0.75rem; margin-top:1.25rem; border-top:1px solid var(--border-color); padding-top:0.85rem; font-size:0.82rem;">
-      <div>
-        <span style="color:var(--text-muted);">Recommended Academy Lesson:</span><br>
-        <a href="{{ url_for('learn.index') }}" style="color:var(--accent); font-weight:700; text-decoration:none;">
-          {{ recommendation.stage_recommendation }} &rarr;
-        </a>
-      </div>
-      <div>
-        <span style="color:var(--text-muted);">Recommended Skill-Building Game:</span><br>
-        <a href="{{ url_for('games.index') }}" style="color:var(--warning); font-weight:700; text-decoration:none;">
-          🎮 {{ recommendation.game_recommendation }} &rarr;
-        </a>
-      </div>
-    </div>
-  </div>
-  {% endif %}
-
-  <!-- Speed Velocity Timeline -->
-  <div style="margin-bottom:1.75rem;">
-    <h3 style="font-size:1.1rem; font-weight:700; margin-bottom:0.75rem;">Speed Progression</h3>
-    <div id="chart-timeline" style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--radius-sm); padding:1rem; min-height:220px;"></div>
-  </div>
-
-  <!-- Detailed Diagnostics Dropdown -->
-  <div style="border-top:1px solid var(--border-color); padding-top:1.25rem;">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-      <h3 style="font-size:1.05rem; font-weight:700; margin:0;">Detailed Biometric Metrics</h3>
-      <button onclick="toggleDetails()" id="btn-toggle-details" class="btn btn-sm">
-        View Detailed Diagnostics &darr;
-      </button>
-    </div>
-
-    <div id="detailed-diagnostics-panel" style="display:none; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:1rem;">
-      <div class="card" style="background:var(--bg-card); margin-bottom:0;">
-        <h4 style="font-size:0.9rem; margin-bottom:0.6rem;">Keystroke Breakdown</h4>
-        <div style="font-size:0.85rem; display:flex; flex-direction:column; gap:0.4rem;">
-          <div style="display:flex; justify-content:space-between;"><span style="color:var(--text-muted);">Correct Characters:</span><strong>{{ test.correct_chars }}</strong></div>
-          <div style="display:flex; justify-content:space-between;"><span style="color:var(--text-muted);">Incorrect Characters:</span><strong style="color:var(--danger);">{{ test.incorrect_chars }}</strong></div>
-          <div style="display:flex; justify-content:space-between;"><span style="color:var(--text-muted);">Gross Uncorrected Speed:</span><strong>{{ test.raw_wpm }} WPM</strong></div>
-        </div>
-      </div>
-
-      <div class="card" style="background:var(--bg-card); margin-bottom:0;">
-        <h4 style="font-size:0.9rem; margin-bottom:0.6rem;">Mistake Locations in this Run</h4>
-        <div style="font-size:0.85rem; display:flex; flex-direction:column; gap:0.35rem;">
-          {% for k, cnt in difficult_keys %}
-            <div style="display:flex; justify-content:space-between; background:var(--bg-secondary); padding:0.3rem 0.6rem; border-radius:4px;">
-              <span>Key '<strong>{{ k }}</strong>'</span>
-              <span style="color:var(--danger); font-weight:700;">{{ cnt }} typo{{ 's' if cnt > 1 else '' }}</span>
+<div class="card" style="max-width: 1040px; margin: 0 auto;">
+    <!-- Top Result Header -->
+    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:1.25rem; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
+        <div>
+            <div style="display:flex; align-items:center; gap:0.6rem;">
+                <h1 style="font-size:1.85rem; font-weight:800; margin:0;">Flight Telemetry Log</h1>
+                <span style="background:{{ tier_color }}; color:#04101e; font-weight:800; font-size:0.75rem; padding:0.2rem 0.6rem; border-radius:4px; text-transform:uppercase;">
+                    {{ skill_tier }}
+                </span>
+                {% if test.is_ranked %}
+                    <span style="background:var(--success-bg); color:var(--success); font-weight:800; font-size:0.75rem; padding:0.2rem 0.6rem; border-radius:4px;">
+                        VERIFIED RANKED
+                    </span>
+                {% else %}
+                    <span style="background:var(--bg-card); color:var(--text-muted); font-size:0.75rem; padding:0.2rem 0.6rem; border-radius:4px;">
+                        PRACTICE RUN
+                    </span>
+                {% endif %}
             </div>
-          {% else %}
-            <span style="color:var(--success);">Zero character errors detected!</span>
-          {% endfor %}
+            <p style="color:var(--text-secondary); font-size:0.85rem; margin-top:0.25rem;">
+                Logged on {{ test.completed_at.strftime('%b %d, %Y at %H:%M') }} IST &bull; Mode: {{ test.mode }} &bull; Discipline: {{ test.content_category }}
+            </p>
         </div>
-      </div>
+        <!-- Actions -->
+        <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+            <a href="{{ url_for('typing.test_page') }}" class="btn btn-primary">&larr; Next Flight (Tab)</a>
+            <a href="{{ url_for('typing.test_page') }}?retry_test_id={{ test.id }}" class="btn">🔁 Retry Prompt</a>
+            {% if certificate_eligible %}
+                <a href="{{ url_for('typing.certificate_page', test_id=test.id) }}" class="btn" style="border-color:#f59e0b; color:#f59e0b; font-weight:700;">
+                    🪽 View Flight Certificate
+                </a>
+            {% else %}
+                <a href="{{ url_for('typing.certificate_page', test_id=test.id) }}" class="btn btn-sm" style="color:var(--text-muted);">
+                    📜 Certificate Standards
+                </a>
+            {% endif %}
+        </div>
     </div>
-  </div>
+
+    <!-- Primary Metrics HUD -->
+    <div class="stats-hud" style="grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); margin-bottom:1.75rem;">
+        <div class="stat-box">
+            <div class="stat-label">Net Velocity</div>
+            <div class="stat-value" style="font-size:2.2rem; color:var(--accent);">{{ test.wpm }} <span style="font-size:0.9rem; color:var(--text-muted);">WPM</span></div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">Accuracy</div>
+            <div class="stat-value" style="font-size:2.2rem; color:{{ 'var(--success)' if test.accuracy >= 95 else 'var(--warning)' }};">{{ test.accuracy }}%</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">Rhythm Cadence</div>
+            <div class="stat-value" style="font-size:2.2rem;">{{ test.consistency }}%</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">Total Mistakes</div>
+            <div class="stat-value" style="font-size:2.2rem; color:var(--danger);">{{ test.total_mistakes or test.errors }}</div>
+        </div>
+    </div>
+
+    <!-- =========================================================
+         INTERACTIVE KEYSTROKE REPLAY STUDIO
+         ========================================================= -->
+    <div class="card" style="background:var(--bg-card); border:1.5px solid var(--accent); margin-bottom:1.75rem; padding:1.25rem 1.5rem;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:0.5rem;">
+            <div>
+                <span style="font-size:0.75rem; font-weight:800; background:var(--accent-glow); color:var(--accent); padding:0.15rem 0.5rem; border-radius:4px; text-transform:uppercase;">
+                    Replay Studio
+                </span>
+                <h3 style="font-size:1.15rem; font-weight:800; margin:0.3rem 0 0;">Keystroke Kinematics Studio</h3>
+            </div>
+            <!-- Live Playback WPM Readout -->
+            <div style="font-family:var(--font-mono); font-size:1rem; font-weight:800;">
+                Pace: <span id="replay-live-wpm" style="color:var(--accent);">0 WPM</span> &bull; 
+                Time: <span id="replay-time-label">0.0s / {{ test.duration }}s</span>
+            </div>
+        </div>
+
+        <!-- Animated Replay Box -->
+        <div id="replay-display-box" class="typing-container" style="min-height:130px; max-height:180px; margin-bottom:1rem; background:var(--bg-secondary);">
+            <div id="replay-caret" class="caret caret-smooth" style="display:none;"></div>
+            <div id="replay-text" class="typing-text-display"></div>
+        </div>
+
+        <!-- Replay Scrubber & Controls -->
+        <div style="display:flex; align-items:center; gap:0.85rem; flex-wrap:wrap;">
+            <button onclick="toggleReplayPlay()" id="btn-replay-play" class="btn btn-primary btn-sm">
+                ▶ Play Replay
+            </button>
+            <button onclick="resetReplay()" class="btn btn-sm">
+                🔄 Rewind
+            </button>
+
+            <!-- Progress Scrubber -->
+            <input type="range" id="replay-scrubber" min="0" max="100" value="0" oninput="onScrub(this.value)" style="flex:1; min-width:140px; cursor:pointer;">
+
+            <!-- Playback Speed Multiplier -->
+            <div style="display:flex; gap:0.25rem;">
+                <button onclick="setReplaySpeed(0.5, this)" class="btn btn-sm">0.5x</button>
+                <button onclick="setReplaySpeed(1.0, this)" class="btn btn-sm active-choice">1.0x</button>
+                <button onclick="setReplaySpeed(1.5, this)" class="btn btn-sm">1.5x</button>
+                <button onclick="setReplaySpeed(2.0, this)" class="btn btn-sm">2.0x</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- =========================================================
+         INTELLIGENT ECOSYSTEM RECOMMENDATION
+         ========================================================= -->
+    {% if recommendation %}
+    <div class="card" style="background:var(--bg-card); border:1px solid var(--border-color); margin-bottom:1.75rem; padding:1.25rem 1.5rem;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:1rem;">
+            <div style="max-width:650px;">
+                <span style="font-size:0.75rem; font-weight:800; background:var(--accent-glow); color:var(--accent); padding:0.15rem 0.5rem; border-radius:4px; text-transform:uppercase;">
+                    AI Prescription
+                </span>
+                <h3 style="font-size:1.15rem; font-weight:800; margin:0.35rem 0 0.25rem 0;">{{ recommendation.title }}</h3>
+                <p style="color:var(--text-secondary); font-size:0.88rem; line-height:1.55; margin:0;">
+                    {{ recommendation.reason }}
+                </p>
+            </div>
+            <a href="{{ recommendation.action_url }}" class="btn btn-primary" style="font-weight:700;">
+                {{ recommendation.action_label }} &rarr;
+            </a>
+        </div>
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:0.75rem; margin-top:1.25rem; border-top:1px solid var(--border-color); padding-top:0.85rem; font-size:0.82rem;">
+            <div>
+                <span style="color:var(--text-muted);">Recommended Academy Milestone:</span><br>
+                <a href="{{ url_for('learn.index') }}" style="color:var(--accent); font-weight:700; text-decoration:none;">
+                    {{ recommendation.stage_recommendation }} &rarr;
+                </a>
+            </div>
+            <div>
+                <span style="color:var(--text-muted);">Recommended Arcade Discipline:</span><br>
+                <a href="{{ url_for('games.index') }}" style="color:var(--warning); font-weight:700; text-decoration:none;">
+                    🎮 {{ recommendation.game_recommendation }} &rarr;
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Speed Progression Timeline Chart -->
+    <div style="margin-bottom:1.75rem;">
+        <h3 style="font-size:1.1rem; font-weight:700; margin-bottom:0.75rem;">Velocity Progression Curve</h3>
+        <div id="chart-timeline" style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--radius-sm); padding:1rem; min-height:220px;"></div>
+    </div>
+
+    <!-- Biometric Hesitations & Mistake Diagnostics -->
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:1.25rem; margin-bottom:1.5rem;">
+        <div class="card" style="background:var(--bg-card); margin-bottom:0;">
+            <h4 style="font-size:0.9rem; margin-bottom:0.75rem; color:var(--accent);">High Error Latency Keys</h4>
+            <div style="display:flex; flex-direction:column; gap:0.4rem; font-size:0.85rem;">
+                {% for k, cnt in difficult_keys %}
+                <div style="display:flex; justify-content:space-between; background:var(--bg-secondary); padding:0.35rem 0.65rem; border-radius:4px;">
+                    <span>Key '<strong>{{ k }}</strong>'</span>
+                    <span style="color:var(--danger); font-weight:700;">{{ cnt }} error{{ 's' if cnt > 1 else '' }}</span>
+                </div>
+                {% else %}
+                <span style="color:var(--success);">Zero keystroke mistakes registered!</span>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="card" style="background:var(--bg-card); margin-bottom:0;">
+            <h4 style="font-size:0.9rem; margin-bottom:0.75rem; color:var(--warning);">Cognitive Hesitations (>450ms)</h4>
+            <div style="display:flex; flex-direction:column; gap:0.4rem; font-size:0.85rem;">
+                {% for h in hesitations %}
+                <div style="display:flex; justify-content:space-between; background:var(--bg-secondary); padding:0.35rem 0.65rem; border-radius:4px;">
+                    <span>Target '<strong>{{ h.char }}</strong>'</span>
+                    <span style="color:var(--warning); font-family:var(--font-mono); font-weight:700;">+{{ h.delay_ms }} ms pause</span>
+                </div>
+                {% else %}
+                <span style="color:var(--success);">Fluid cadence without long hesitation stalls!</span>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
+const rawEvents = {{ events_json|safe if events_json else '[]' }};
+const targetPassage = {{ target_text|tojson|safe if target_text else '""' }};
+const totalDuration = {{ test.duration }};
+
+let replayIndex = 0;
+let isReplaying = false;
+let replayTimer = null;
+let replaySpeed = 1.0;
+
 document.addEventListener('DOMContentLoaded', () => {
-  try {
-    const rawData = {{ test.timeline_data|tojson|safe if test.timeline_data else '[]' }};
-    const timelineData = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
-    if (Array.isArray(timelineData) && timelineData.length > 1) {
-      SvgLineChart.render('chart-timeline', timelineData, '#38bdf8');
-    }
-  } catch {}
+    // 1. Render Timeline Chart
+    try {
+        const rawData = {{ test.timeline_data|tojson|safe if test.timeline_data else '[]' }};
+        const timelineData = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
+        if (Array.isArray(timelineData) && timelineData.length > 1) {
+            SvgLineChart.render('chart-timeline', timelineData, '#38bdf8');
+        }
+    } catch {}
+
+    // 2. Initialize Replay Text Container
+    renderReplayStatic();
 });
 
-function toggleDetails() {
-  const panel = document.getElementById('detailed-diagnostics-panel');
-  const btn = document.getElementById('btn-toggle-details');
-  if (panel.style.display === 'none') {
-    panel.style.display = 'grid';
-    btn.textContent = 'Hide Detailed Diagnostics ↑';
-  } else {
-    panel.style.display = 'none';
-    btn.textContent = 'View Detailed Diagnostics ↓';
-  }
+function renderReplayStatic() {
+    const box = document.getElementById('replay-text');
+    box.innerHTML = '';
+    for (let i = 0; i < targetPassage.length; i++) {
+        const span = document.createElement('span');
+        span.className = 'char';
+        span.textContent = targetPassage[i];
+        box.appendChild(span);
+    }
+}
+
+function toggleReplayPlay() {
+    if (isReplaying) {
+        pauseReplay();
+    } else {
+        startReplay();
+    }
+}
+
+function startReplay() {
+    if (!rawEvents || rawEvents.length === 0) return;
+    isReplaying = true;
+    document.getElementById('btn-replay-play').textContent = '⏸ Pause';
+    document.getElementById('replay-caret').style.display = 'block';
+
+    if (replayIndex >= rawEvents.length) {
+        replayIndex = 0;
+        renderReplayStatic();
+    }
+    stepReplay();
+}
+
+function pauseReplay() {
+    isReplaying = false;
+    clearTimeout(replayTimer);
+    document.getElementById('btn-replay-play').textContent = '▶ Resume';
+}
+
+function resetReplay() {
+    pauseReplay();
+    replayIndex = 0;
+    document.getElementById('replay-scrubber').value = 0;
+    document.getElementById('replay-time-label').textContent = `0.0s / ${totalDuration}s`;
+    document.getElementById('replay-live-wpm').textContent = '0 WPM';
+    renderReplayStatic();
+    document.getElementById('btn-replay-play').textContent = '▶ Play Replay';
+}
+
+function stepReplay() {
+    if (!isReplaying || replayIndex >= rawEvents.length) {
+        pauseReplay();
+        return;
+    }
+
+    const ev = rawEvents[replayIndex];
+    const spans = document.querySelectorAll('#replay-text .char');
+
+    if (ev.char_index < spans.length) {
+        spans[ev.char_index].className = ev.correct ? 'char correct' : 'char incorrect';
+        updateReplayCaret(spans[ev.char_index]);
+    }
+
+    const pct = Math.round((replayIndex / rawEvents.length) * 100);
+    document.getElementById('replay-scrubber').value = pct;
+    document.getElementById('replay-time-label').textContent = `${ev.timestamp.toFixed(1)}s / ${totalDuration}s`;
+
+    const elapsedMin = Math.max(0.01, ev.timestamp / 60.0);
+    const liveNet = Math.round(((replayIndex + 1) / 5.0) / elapsedMin);
+    document.getElementById('replay-live-wpm').textContent = `${liveNet} WPM`;
+
+    replayIndex++;
+
+    if (replayIndex < rawEvents.length) {
+        const nextEv = rawEvents[replayIndex];
+        const delay = Math.max(20, Math.min(600, (nextEv.timestamp - ev.timestamp) * 1000 / replaySpeed));
+        replayTimer = setTimeout(stepReplay, delay);
+    } else {
+        pauseReplay();
+    }
+}
+
+function updateReplayCaret(targetSpan) {
+    const caret = document.getElementById('replay-caret');
+    const box = document.getElementById('replay-display-box');
+    if (!caret || !targetSpan) return;
+
+    caret.style.left = `${targetSpan.offsetLeft + targetSpan.offsetWidth}px`;
+    caret.style.top = `${targetSpan.offsetTop + 4}px`;
+
+    const targetMid = targetSpan.offsetTop - (box.clientHeight / 2) + 20;
+    if (Math.abs(box.scrollTop - targetMid) > 15) {
+        box.scrollTo({ top: Math.max(0, targetMid), behavior: 'smooth' });
+    }
+}
+
+function onScrub(val) {
+    pauseReplay();
+    const targetIdx = Math.floor((val / 100) * rawEvents.length);
+    renderReplayStatic();
+    const spans = document.querySelectorAll('#replay-text .char');
+
+    for (let i = 0; i < targetIdx; i++) {
+        const ev = rawEvents[i];
+        if (ev.char_index < spans.length) {
+            spans[ev.char_index].className = ev.correct ? 'char correct' : 'char incorrect';
+        }
+    }
+    replayIndex = targetIdx;
+    if (targetIdx > 0 && spans[targetIdx - 1]) {
+        updateReplayCaret(spans[targetIdx - 1]);
+    }
+}
+
+function setReplaySpeed(spd, btn) {
+    replaySpeed = spd;
+    btn.parentElement.querySelectorAll('.btn').forEach(b => b.classList.remove('active-choice'));
+    btn.classList.add('active-choice');
 }
 </script>
 {% endblock %}

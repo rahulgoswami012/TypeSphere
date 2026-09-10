@@ -1,14 +1,14 @@
 /**
  * TypeSphere Arcade Unified Client Runtime Engine
  * 
- * Drives all 12 educational typing games:
- * - Speed Racer forward momentum & mistake recoil (never stuck on typos; continuous text loop)
- * - Single-character Bubble Pop (lowercase, uppercase, numbers, symbols, mixed, weak keys)
- * - 3x3 Whack-A-Word spatial reactions with millisecond latency scoring
- * - Zombie Defense (perimeter waves) vs Zombie Duel (1v1 HP combat)
- * - Multi-layer Cipher Hacker (progressive clearance decryption)
- * - Space Defender, Bomb Defuse, Typing Ninja, Memory Type, Keyboard Quest
- * - Definite WIN, LOSS, or FINISHED outcome evaluation and score submission
+ * Drives all 11 educational typing games with unambiguous Win, Loss, and Finish conditions:
+ * - Speed Racer: Velocity forward momentum + typo recoil, multi-lap text replenishment, and pace-car bot competition.
+ * - Bubble Pop: Single-character isolated targeting with active countdown timers (30s, 60s, 120s).
+ * - Whack-A-Word: 3x3 reaction grid with shrinking exposure latency and millisecond scoring.
+ * - Zombie Duel: 1v1 combat duel with HP meters and recoil damage.
+ * - Cipher Hacker: 4-layer cybersecurity breach with lockdown countdown.
+ * - Falling Words / Space Defender / Zombie Defense: Multi-wave quotas (Wave 1 to 5) with definitive victory upon clearing.
+ * - Bomb Defuse, Memory Type, Keyboard Quest: Strict failure and victory rules with end-game result reporting.
  */
 class ArcadeRuntimeEngine {
     constructor() {
@@ -37,6 +37,7 @@ class ArcadeRuntimeEngine {
         this.inputBuffer = "";
         this.isRunning = false;
         this.contentBatch = [];
+        this.remainingSeconds = 60;
         this.keydownHandler = (e) => this.handleKeystroke(e);
     }
 
@@ -60,6 +61,7 @@ class ArcadeRuntimeEngine {
         this.isRunning = true;
         this.startTime = performance.now();
         this.lastActionTimestamp = this.startTime;
+        this.remainingSeconds = parseInt(this.config.objectiveVal) || 60;
 
         this.updateHUD(0, 0, 0);
         this.contentBatch = this.getFallbackBatch(config.slug, config.difficulty, config.charMode);
@@ -78,6 +80,7 @@ class ArcadeRuntimeEngine {
         clearInterval(this.spawnTimer);
         clearInterval(this.aiLoopTimer);
         clearInterval(this.objectiveCountdownTimer);
+        if (this.moleWindowTimer) clearTimeout(this.moleWindowTimer);
         window.removeEventListener('keydown', this.keydownHandler);
 
         if (this.socket) {
@@ -124,15 +127,15 @@ class ArcadeRuntimeEngine {
         }
 
         if (slug === 'bomb_defuse') {
-            return ["ALPHA78", "DELTA94", "OMEGA12", "BRAVO33", "HAZARD8", "VECTOR0"];
+            return ["ALPHA78", "DELTA94", "OMEGA12", "BRAVO33", "HAZARD8", "VECTOR0", "PULSE99"];
         }
 
         if (slug === 'memory_type') {
-            return ["recall", "phantom", "quantum", "horizon", "velocity", "kinetic", "matrix"];
+            return ["recall", "phantom", "quantum", "horizon", "velocity", "kinetic", "matrix", "cadence", "stream"];
         }
 
         if (slug === 'keyboard_quest') {
-            return ["asdf", "jkl;", "glad", "flask", "half", "fall", "quiet", "write", "power", "tower", "cabin", "zinc", "calm"];
+            return ["asdf", "jkl;", "glad", "flask", "half", "fall", "quiet", "write", "power", "tower", "cabin", "zinc", "calm", "jump"];
         }
 
         return common;
@@ -210,12 +213,12 @@ class ArcadeRuntimeEngine {
     initGameMode(slug) {
         switch (slug) {
             case 'speed_racer': this.initSpeedRacer(); break;
-            case 'falling_words': this.initFallingWords(); break;
             case 'bubble_pop': this.initBubblePop(); break;
             case 'whack_a_word': this.initWhackAWord(); break;
-            case 'zombie_defense': this.initZombieDefense(); break;
             case 'zombie_duel': this.initZombieDuel(); break;
             case 'cipher_hacker': this.initCipherHacker(); break;
+            case 'falling_words': this.initFallingWords(); break;
+            case 'zombie_defense': this.initZombieDefense(); break;
             case 'space_defender': this.initSpaceDefender(); break;
             case 'bomb_defuse': this.initBombDefuse(); break;
             case 'typing_ninja': this.initTypingNinja(); break;
@@ -225,9 +228,7 @@ class ArcadeRuntimeEngine {
         }
     }
 
-    // ==========================================================
-    // 1. SPEED RACER: Infinite Passage Replenishment + Typos Recoil
-    // ==========================================================
+    // 1. SPEED RACER
     initSpeedRacer() {
         const isMultiplayer = (this.config.playMode !== 'solo_ai' && this.config.playMode !== 'solo_practice');
         const oppIcon = isMultiplayer ? "🏎️" : "🤖";
@@ -238,22 +239,20 @@ class ArcadeRuntimeEngine {
             <div class="racer-lane-divider" style="top:33%;"></div>
             <div class="racer-lane-divider" style="top:66%;"></div>
             <div class="racer-finish-gate"></div>
-            <!-- Player Car -->
             <div id="car-player" class="racer-vehicle-node" style="top:75px; left:25px;">
                 <div class="racer-vehicle-icon" style="filter:drop-shadow(0 4px 10px rgba(56,189,248,0.8));">🏎️</div>
                 <div class="racer-hud-tag" style="border-color:var(--accent); color:var(--accent);">You</div>
                 <div id="player-nitro" class="nitro-exhaust-burn" style="display:none;"></div>
             </div>
-            <!-- Opponent Car -->
             <div id="car-bot" class="racer-vehicle-node" style="top:210px; left:25px; ${this.config.playMode === 'solo_practice' ? 'display:none;' : ''}">
-                <div class="racer-vehicle-icon" style="${isMultiplayer ? 'filter:drop-shadow(0 4px 10px rgba(244,63,94,0.8));' : ''}">${oppIcon}</div>
+                <div class="racer-vehicle-icon">${oppIcon}</div>
                 <div class="racer-hud-tag" style="border-color:var(--warning); color:var(--warning);">${oppLabel}</div>
             </div>
-            <div id="racer-text-track" style="position:absolute; bottom:15px; left:25px; right:25px; background:rgba(19,25,36,0.96); padding:1rem 1.4rem; border-radius:8px; border:1px solid var(--border-color); font-family:var(--font-mono); font-size:1.25rem; line-height:2.1; box-shadow:0 10px 25px rgba(0,0,0,0.6); max-height:115px; overflow:hidden;"></div>
+            <div id="racer-text-track" style="position:absolute; bottom:15px; left:25px; right:25px; background:rgba(15,21,36,0.96); padding:1rem 1.4rem; border-radius:8px; border:1px solid var(--border-color); font-family:var(--font-mono); font-size:1.25rem; line-height:2.1; box-shadow:0 10px 25px rgba(0,0,0,0.6); max-height:115px; overflow:hidden;"></div>
         `;
 
         this.racerBatchIndex = 0;
-        this.racerPassage = this.contentBatch[0] || "Speed is nothing without precision. Keep your hands balanced, breathe calmly, and glide across the keys with absolute rhythm.";
+        this.racerPassage = this.contentBatch[0] || "Speed is born from economy of movement.";
         this.racerIdx = 0;
         this.playerDistanceMeters = 0;
         this.targetDistanceMeters = parseInt(this.config.objectiveVal) || 500;
@@ -281,16 +280,26 @@ class ArcadeRuntimeEngine {
         if (car) car.style.left = `${offset}px`;
     }
 
-    // ==========================================================
-    // 2. BUBBLE POP: Single Character Master
-    // ==========================================================
+    // 2. BUBBLE POP
     initBubblePop() {
         this.viewport.innerHTML = `
             <div style="position:absolute; top:35px; left:0; right:0; height:2px; background:var(--danger); opacity:0.6;"></div>
+            <div style="position:absolute; top:12px; right:20px; font-family:var(--font-mono); font-weight:800; color:var(--accent);">
+                Time: <span id="bubble-clock">${this.remainingSeconds}s</span>
+            </div>
         `;
         this.bubbleLives = 3;
-        this.spawnTimer = setInterval(() => this.spawnCharBubble(), 1100);
+        this.spawnTimer = setInterval(() => this.spawnCharBubble(), 1000);
         this.gameLoopTimer = setInterval(() => this.tickBubbles(), 40);
+
+        this.objectiveCountdownTimer = setInterval(() => {
+            this.remainingSeconds--;
+            const clk = document.getElementById('bubble-clock');
+            if (clk) clk.textContent = `${this.remainingSeconds}s`;
+            if (this.remainingSeconds <= 0) {
+                this.finishGame(true, `Victory! You defended the ceiling and scored ${this.score} points!`);
+            }
+        }, 1000);
     }
 
     spawnCharBubble() {
@@ -316,19 +325,21 @@ class ArcadeRuntimeEngine {
                 this.bubbleLives--;
                 this.registerError();
                 if (this.bubbleLives <= 0) {
-                    this.finishGame(false, "Loss: Allowed 3 bubbles to burst against the ceiling barrier.");
+                    this.finishGame(false, "Loss: 3 bubbles burst against the ceiling barrier.");
                     break;
                 }
             }
         }
     }
 
-    // ==========================================================
-    // 3. WHACK-A-WORD: 3x3 Reaction Grid
-    // ==========================================================
+    // 3. WHACK-A-WORD
     initWhackAWord() {
         this.viewport.innerHTML = `
-            <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:1rem; max-width:620px; margin:40px auto;">
+            <div style="display:flex; justify-content:space-between; padding:15px 30px 0;">
+                <span style="font-weight:700; color:var(--text-muted);">Reaction Latency Window</span>
+                <span style="font-family:var(--font-mono); font-weight:800; color:var(--warning);">Time: <span id="whack-clock">${this.remainingSeconds}s</span></span>
+            </div>
+            <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:1rem; max-width:620px; margin:20px auto;">
                 ${[0,1,2,3,4,5,6,7,8].map(i => `
                     <div id="hole-${i}" style="height:90px; background:var(--bg-card); border:2px solid var(--border-color); border-radius:8px; display:flex; align-items:center; justify-content:center; font-family:var(--font-mono); font-weight:800; font-size:1.15rem; color:var(--text-muted); transition:background 0.15s ease, border-color 0.15s ease;"></div>
                 `).join('')}
@@ -339,6 +350,15 @@ class ArcadeRuntimeEngine {
         this.currentHole = -1;
         this.missedHoles = 0;
         this.spawnNextMole();
+
+        this.objectiveCountdownTimer = setInterval(() => {
+            this.remainingSeconds--;
+            const clk = document.getElementById('whack-clock');
+            if (clk) clk.textContent = `${this.remainingSeconds}s`;
+            if (this.remainingSeconds <= 0) {
+                this.finishGame(true, `Victory! Target exposure rounds mastered with ${this.score} pts!`);
+            }
+        }, 1000);
     }
 
     spawnNextMole() {
@@ -372,16 +392,14 @@ class ArcadeRuntimeEngine {
             this.missedHoles++;
             this.registerError();
             if (this.missedHoles >= 5) {
-                this.finishGame(false, "Loss: Missed 5 reaction windows.");
+                this.finishGame(false, "Loss: Missed 5 reaction exposure windows.");
             } else {
                 this.spawnNextMole();
             }
         }, windowMs);
     }
 
-    // ==========================================================
-    // 4. ZOMBIE DUEL: 1v1 Combat HP Battle
-    // ==========================================================
+    // 4. ZOMBIE DUEL
     initZombieDuel() {
         this.playerHP = 100;
         this.opponentHP = 100;
@@ -437,18 +455,20 @@ class ArcadeRuntimeEngine {
         if (box) box.textContent = this.duelTarget;
     }
 
-    // ==========================================================
-    // 5. CIPHER HACKER: Multi-Layer Security Breach
-    // ==========================================================
+    // 5. CIPHER HACKER
     initCipherHacker() {
         this.currentLayer = 1;
         this.totalLayers = parseInt(this.config.objectiveVal) || 4;
         this.layerTokens = this.contentBatch[0] || ["0x7FA9", "0xDE4B", "0x91C0"];
         this.tokenIdx = 0;
+        this.lockdownSeconds = 45;
 
         this.viewport.innerHTML = `
-            <div style="text-align:center; padding-top:40px;">
-                <div class="cipher-layer-badge" id="cipher-layer-title">SECURITY LAYER 1 / ${this.totalLayers}</div>
+            <div style="text-align:center; padding-top:25px;">
+                <div style="display:flex; justify-content:space-between; max-width:480px; margin:0 auto 10px;">
+                    <div class="cipher-layer-badge" id="cipher-layer-title">SECURITY LAYER 1 / ${this.totalLayers}</div>
+                    <span style="font-family:var(--font-mono); font-weight:800; color:var(--danger);">Lockdown: <span id="cipher-lockdown-clk">45s</span></span>
+                </div>
                 <div class="cipher-terminal-window" style="max-width:480px; margin:0 auto 1.5rem;">
                     <div id="cipher-target-token" style="font-size:2.5rem; font-weight:900; color:#10b981; word-break:break-all;">...</div>
                 </div>
@@ -456,6 +476,15 @@ class ArcadeRuntimeEngine {
             </div>
         `;
         this.loadNextCipherToken();
+
+        this.objectiveCountdownTimer = setInterval(() => {
+            this.lockdownSeconds--;
+            const clk = document.getElementById('cipher-lockdown-clk');
+            if (clk) clk.textContent = `${this.lockdownSeconds}s`;
+            if (this.lockdownSeconds <= 0) {
+                this.finishGame(false, "Loss: Firewall lockdown timer expired. Root decryption halted.");
+            }
+        }, 1000);
     }
 
     loadNextCipherToken() {
@@ -465,21 +494,28 @@ class ArcadeRuntimeEngine {
         if (el) el.textContent = this.cipherTarget;
     }
 
-    // ==========================================================
-    // 6. FALLING WORDS
-    // ==========================================================
+    // 6. FALLING WORDS (Wave System)
     initFallingWords() {
+        this.currentWave = 1;
+        this.maxWaves = 5;
+        this.wordsClearedInWave = 0;
+        this.waveQuota = 4;
+        this.lives = 3;
+
         this.viewport.innerHTML = `
+            <div style="display:flex; justify-content:space-between; padding:12px 25px 0;">
+                <span style="font-weight:700; color:var(--accent);">WAVE <span id="fw-wave-num">1</span> / ${this.maxWaves}</span>
+                <span style="font-family:var(--font-mono); font-weight:800; color:var(--danger);">Lives: <span id="fw-lives-num">❤️❤️❤️</span></span>
+            </div>
             <div style="position:absolute; bottom:40px; left:0; right:0; height:2px; background:var(--danger); opacity:0.6;"></div>
         `;
-        this.wave = 1;
-        this.maxWaves = parseInt(this.config.objectiveVal) || 5;
+
         this.spawnTimer = setInterval(() => this.spawnFallingNode(), 1800);
         this.gameLoopTimer = setInterval(() => this.tickFallingNodes(), 40);
     }
 
     spawnFallingNode() {
-        if (this.entities.length >= 7 || !this.isRunning) return;
+        if (this.entities.length >= 6 || !this.isRunning) return;
         const word = this.contentBatch[Math.floor(Math.random() * this.contentBatch.length)] || "velocity";
         const el = document.createElement('div');
         el.className = 'falling-meteor-word';
@@ -487,7 +523,7 @@ class ArcadeRuntimeEngine {
         el.style.left = `${Math.random() * (this.viewport.clientWidth - 130) + 15}px`;
         el.style.top = '0px';
         this.viewport.appendChild(el);
-        this.entities.push({ el, word, typed: '', y: 0, speed: 1.1 + (this.wave * 0.2) });
+        this.entities.push({ el, word, typed: '', y: 0, speed: 1.1 + (this.currentWave * 0.25) });
     }
 
     tickFallingNodes() {
@@ -499,20 +535,31 @@ class ArcadeRuntimeEngine {
                 e.el.remove();
                 this.entities.splice(i, 1);
                 if (this.activeTarget === e) this.activeTarget = null;
+                this.lives--;
                 this.registerError();
+                const lEl = document.getElementById('fw-lives-num');
+                if (lEl) lEl.textContent = "❤️".repeat(Math.max(0, this.lives)) || "☠️";
+
+                if (this.lives <= 0) {
+                    this.finishGame(false, "Loss: Defense barrier breached. All lives lost.");
+                    break;
+                }
             }
         }
     }
 
-    // ==========================================================
-    // 7. ZOMBIE DEFENSE (Wave Base Survival)
-    // ==========================================================
+    // 7. ZOMBIE DEFENSE (Wave Base System)
     initZombieDefense() {
         this.baseHP = 100;
+        this.currentWave = 1;
+        this.maxWaves = 4;
+        this.zombiesDefeated = 0;
+
         this.viewport.innerHTML = `
             <div style="position:absolute; right:35px; top:0; bottom:0; width:6px; background:var(--accent); opacity:0.7;"></div>
-            <div style="position:absolute; right:50px; top:20px; font-family:var(--font-mono); font-weight:800; color:var(--accent);">
-                Base Barrier: <span id="defense-hp">100%</span>
+            <div style="display:flex; justify-content:space-between; padding:12px 25px 0; width:calc(100% - 50px);">
+                <span style="font-weight:700; color:var(--accent);">WAVE <span id="zd-wave">1</span> / ${this.maxWaves}</span>
+                <span style="font-family:var(--font-mono); font-weight:800; color:var(--warning);">Base Barrier: <span id="defense-hp">100%</span></span>
             </div>
         `;
         this.spawnTimer = setInterval(() => this.spawnZombieDefenseUnit(), 2100);
@@ -526,7 +573,7 @@ class ArcadeRuntimeEngine {
         el.className = 'falling-meteor-word';
         el.innerHTML = `🧟 <span>${word}</span>`;
         el.style.left = '0px';
-        el.style.top = `${Math.random() * (this.viewport.clientHeight - 70) + 15}px`;
+        el.style.top = `${Math.random() * (this.viewport.clientHeight - 70) + 25}px`;
         el.style.borderColor = 'var(--danger)';
         this.viewport.appendChild(el);
         this.entities.push({ el, word, typed: '', x: 0, speed: 1.1 + Math.random() * 0.8 });
@@ -552,14 +599,19 @@ class ArcadeRuntimeEngine {
         }
     }
 
-    // ==========================================================
     // 8. SPACE DEFENDER
-    // ==========================================================
     initSpaceDefender() {
+        this.shields = 100;
+        this.asteroidsDestroyed = 0;
+        this.targetDestroyQuota = 15;
+
         this.viewport.innerHTML = `
             <div style="position:absolute; left:50%; top:50%; transform:translate(-50%, -50%); font-size:3rem;">🚀</div>
+            <div style="display:flex; justify-content:space-between; padding:12px 25px 0;">
+                <span style="font-weight:700; color:var(--accent);">Targets: <span id="sd-quota">0</span> / ${this.targetDestroyQuota}</span>
+                <span style="font-family:var(--font-mono); font-weight:800; color:var(--success);">Shields: <span id="sd-shields">100%</span></span>
+            </div>
         `;
-        this.shields = 100;
         this.spawnTimer = setInterval(() => this.spawnAsteroidUnit(), 2000);
         this.gameLoopTimer = setInterval(() => this.tickAsteroids(), 40);
     }
@@ -593,37 +645,40 @@ class ArcadeRuntimeEngine {
                 a.el.remove();
                 this.entities.splice(i, 1);
                 this.shields -= 25;
+                const shld = document.getElementById('sd-shields');
+                if (shld) shld.textContent = `${Math.max(0, this.shields)}%`;
                 this.registerError();
                 if (this.shields <= 0) {
-                    this.finishGame(false, "Loss: Starship shields vaporized under asteroid barrage.");
+                    this.finishGame(false, "Loss: Starship shields vaporized under asteroid bombardment.");
                     break;
                 }
             }
         }
     }
 
-    // ==========================================================
     // 9. BOMB DEFUSE
-    // ==========================================================
     initBombDefuse() {
         this.bombSeconds = 40;
+        this.bombStage = 0;
+        this.maxStages = parseInt(this.config.objectiveVal) || 5;
+
         this.viewport.innerHTML = `
-            <div style="text-align:center; padding-top:40px;">
-                <div style="font-size:3rem; margin-bottom:0.4rem;">💣</div>
+            <div style="text-align:center; padding-top:35px;">
+                <div style="font-size:2.8rem; margin-bottom:0.2rem;">💣</div>
+                <div style="font-weight:700; color:var(--text-muted); margin-bottom:0.4rem;">STAGE <span id="bomb-stg">1</span> / ${this.maxStages}</div>
                 <div id="bomb-digital-clock" class="bomb-timer-display" style="font-size:3rem; font-family:var(--font-mono); font-weight:800; color:var(--danger);">00:40</div>
-                <div id="bomb-code-box" style="margin:25px auto; max-width:440px; background:var(--bg-card); border:2px solid var(--accent); border-radius:8px; padding:1.25rem; font-family:var(--font-mono); font-size:1.8rem; letter-spacing:0.15em;">
+                <div id="bomb-code-box" style="margin:20px auto; max-width:440px; background:var(--bg-card); border:2px solid var(--accent); border-radius:8px; padding:1.25rem; font-family:var(--font-mono); font-size:1.8rem; letter-spacing:0.15em;">
                     INIT...
                 </div>
             </div>
         `;
-        this.bombStage = 0;
         this.spawnBombCode();
         this.objectiveCountdownTimer = setInterval(() => {
             this.bombSeconds--;
             const el = document.getElementById('bomb-digital-clock');
             if (el) el.textContent = `00:${this.bombSeconds < 10 ? '0' : ''}${this.bombSeconds}`;
             if (this.bombSeconds <= 0) {
-                this.finishGame(false, "Loss: Countdown reached 00:00. Bomb detonated.");
+                this.finishGame(false, "Loss: Countdown reached 00:00. Detonation triggered.");
             }
         }, 1000);
     }
@@ -635,11 +690,19 @@ class ArcadeRuntimeEngine {
         if (box) box.textContent = this.bombTarget;
     }
 
-    // ==========================================================
     // 10. TYPING NINJA
-    // ==========================================================
     initTypingNinja() {
-        this.spawnTimer = setInterval(() => this.spawnNinjaTarget(), 2000);
+        this.ninjaStrikes = 0;
+        this.ninjaTargetQuota = 15;
+        this.ninjaMisses = 0;
+
+        this.viewport.innerHTML = `
+            <div style="display:flex; justify-content:space-between; padding:12px 25px 0;">
+                <span style="font-weight:700; color:var(--accent);">Sliced: <span id="ninja-q">0</span> / ${this.ninjaTargetQuota}</span>
+                <span style="font-family:var(--font-mono); font-weight:800; color:var(--warning);">Misses: <span id="ninja-m">0</span> / 3</span>
+            </div>
+        `;
+        this.spawnTimer = setInterval(() => this.spawnNinjaTarget(), 1900);
         this.gameLoopTimer = setInterval(() => this.tickNinjaTargets(), 40);
     }
 
@@ -668,17 +731,29 @@ class ArcadeRuntimeEngine {
                 n.el.remove();
                 this.entities.splice(i, 1);
                 if (this.activeTarget === n) this.activeTarget = null;
+                this.ninjaMisses++;
+                const mEl = document.getElementById('ninja-m');
+                if (mEl) mEl.textContent = `${this.ninjaMisses} / 3`;
+                if (this.ninjaMisses >= 3) {
+                    this.finishGame(false, "Loss: Allowed 3 targets to drop unsliced.");
+                    break;
+                }
             }
         }
     }
 
-    // ==========================================================
     // 11. MEMORY TYPE
-    // ==========================================================
     initMemoryType() {
         this.memoryIndex = 0;
+        this.memoryStrikes = 0;
+        this.memoryTotalRounds = parseInt(this.config.objectiveVal) || 5;
+
         this.viewport.innerHTML = `
-            <div style="text-align:center; padding-top:60px;">
+            <div style="display:flex; justify-content:space-between; padding:12px 25px 0;">
+                <span style="font-weight:700; color:var(--accent);">Round: <span id="mem-rnd">1</span> / ${this.memoryTotalRounds}</span>
+                <span style="font-family:var(--font-mono); font-weight:800; color:var(--danger);">Strikes: <span id="mem-str">0</span> / 3</span>
+            </div>
+            <div style="text-align:center; padding-top:35px;">
                 <span class="badge" style="background:var(--accent-glow); color:var(--accent); font-weight:800; padding:0.2rem 0.6rem; border-radius:4px;">RECALL DRILL</span>
                 <div id="memory-box" style="margin:25px auto; max-width:440px; background:var(--bg-card); border:2px solid var(--accent); border-radius:8px; padding:2rem; font-family:var(--font-mono); font-size:2.5rem; letter-spacing:0.15em;">
                     READY
@@ -686,7 +761,7 @@ class ArcadeRuntimeEngine {
                 <div id="memory-hint" style="font-size:0.85rem; color:var(--text-muted);">Sequence flashes for 1.5 seconds...</div>
             </div>
         `;
-        setTimeout(() => this.flashMemoryTarget(), 800);
+        setTimeout(() => this.flashMemoryTarget(), 700);
     }
 
     flashMemoryTarget() {
@@ -695,31 +770,35 @@ class ArcadeRuntimeEngine {
         const box = document.getElementById('memory-box');
         const hint = document.getElementById('memory-hint');
         if (!box) return;
+
         box.textContent = this.memoryTarget;
         box.style.color = "var(--text-primary)";
-        hint.textContent = "Memorize the sequence...";
+        if (hint) hint.textContent = "Memorize the sequence...";
         this.memoryBuffer = "";
 
         setTimeout(() => {
             if (!this.isRunning) return;
             box.textContent = "••••••••";
             box.style.color = "var(--accent)";
-            hint.textContent = "Type the sequence completely from recall!";
+            if (hint) hint.textContent = "Type the sequence completely from mental recall!";
         }, 1500);
     }
 
-    // ==========================================================
     // 12. KEYBOARD QUEST
-    // ==========================================================
     initKeyboardQuest() {
         this.questIndex = 0;
+        this.questTotalStages = 5;
+
         this.viewport.innerHTML = `
-            <div style="text-align:center; padding-top:50px;">
-                <span class="badge" style="background:var(--accent-glow); color:var(--accent); font-weight:800; padding:0.2rem 0.6rem; border-radius:4px;">QUEST STAGE 1</span>
+            <div style="display:flex; justify-content:space-between; padding:12px 25px 0;">
+                <span style="font-weight:700; color:var(--accent);">QUEST PROGRESS</span>
+                <span style="font-family:var(--font-mono); font-weight:800; color:var(--warning);">Stage <span id="kq-stg">1</span> / ${this.questTotalStages}</span>
+            </div>
+            <div style="text-align:center; padding-top:40px;">
                 <div id="quest-target-box" style="margin:25px auto; max-width:440px; background:var(--bg-card); border:2px solid var(--accent); border-radius:8px; padding:1.75rem; font-family:var(--font-mono); font-size:2.2rem; font-weight:800;">
                     ...
                 </div>
-                <div style="font-size:0.85rem; color:var(--text-muted);">Anchor palms on home-row. Strike cleanly.</div>
+                <div style="font-size:0.85rem; color:var(--text-muted);">Anchor palms on home-row. Execute cleanly.</div>
             </div>
         `;
         this.loadNextQuestTarget();
@@ -733,7 +812,7 @@ class ArcadeRuntimeEngine {
     }
 
     // ==========================================================
-    // GLOBAL KEYSTROKE ROUTER (NO PERMANENT STICKING)
+    // GLOBAL KEYSTROKE HANDLER
     // ==========================================================
     handleKeystroke(e) {
         if (!this.isRunning) return;
@@ -747,11 +826,10 @@ class ArcadeRuntimeEngine {
         const char = e.key;
         this.totalCharsTyped++;
 
-        // Calculate live WPM for HUD and telemetry
         const elapsedMin = Math.max(0.01, (performance.now() - this.startTime) / 60000.0);
         const liveNetWpm = Math.round((this.correctCharsTyped / 5.0) / elapsedMin);
 
-        // 1. SPEED RACER: Forward velocity on correct, Recoil on typo, Infinite passage loop
+        // 1. SPEED RACER
         if (this.config.slug === 'speed_racer') {
             const expected = this.racerPassage[this.racerIdx];
             const spans = document.querySelectorAll('#racer-text-track .char');
@@ -761,15 +839,14 @@ class ArcadeRuntimeEngine {
                 this.racerIdx++;
                 this.correctCharsTyped++;
                 this.registerHit(10);
-
                 this.playerDistanceMeters += 2.5;
+
                 if (this.combo > 6) {
-                    this.playerDistanceMeters += 1.5; // Nitro boost
+                    this.playerDistanceMeters += 1.5;
                     const nitro = document.getElementById('player-nitro');
                     if (nitro) nitro.style.display = 'block';
                 }
             } else {
-                // Error recoil: penalize distance, advance char so player is never stuck
                 if (spans[this.racerIdx]) spans[this.racerIdx].className = 'char incorrect';
                 this.racerIdx++;
                 this.playerDistanceMeters = Math.max(0, this.playerDistanceMeters - 1.2);
@@ -783,11 +860,10 @@ class ArcadeRuntimeEngine {
             this.syncProgressToServer(pct, liveNetWpm);
 
             if (pct >= 100) {
-                this.finishGame(true, "VICTORY! You crossed the finish line ahead of the competition!");
+                this.finishGame(true, "Victory! You crossed the finish gate first!");
                 return;
             }
 
-            // Infinite passage streaming: loop to next sentence when nearing end of current passage
             if (this.racerIdx >= this.racerPassage.length) {
                 this.racerBatchIndex++;
                 this.racerPassage = this.contentBatch[this.racerBatchIndex % this.contentBatch.length];
@@ -823,6 +899,7 @@ class ArcadeRuntimeEngine {
                 this.registerHit(10);
                 const hole = document.getElementById(`hole-${this.currentHole}`);
                 if (hole) hole.innerHTML = `<span style="color:var(--success); text-decoration:underline;">${this.whackBuffer}</span>${this.whackTarget.slice(this.whackBuffer.length)}`;
+
                 if (this.whackBuffer === this.whackTarget) {
                     this.spawnNextMole();
                 }
@@ -850,7 +927,7 @@ class ArcadeRuntimeEngine {
                     if (oppLbl) oppLbl.textContent = `${this.opponentHP} / 100 HP`;
 
                     if (this.opponentHP <= 0) {
-                        this.finishGame(true, "VICTORY! You knocked out your opponent in the duel!");
+                        this.finishGame(true, "Victory! Knockout strike executed!");
                         return;
                     } else {
                         this.spawnDuelTarget();
@@ -877,7 +954,7 @@ class ArcadeRuntimeEngine {
                     if (this.tokenIdx >= this.layerTokens.length) {
                         this.currentLayer++;
                         if (this.currentLayer > this.totalLayers) {
-                            this.finishGame(true, "VICTORY! Final root clearance decrypted. System breached!");
+                            this.finishGame(true, "Victory! Final root clearance decrypted. System breached!");
                             return;
                         }
                         this.tokenIdx = 0;
@@ -887,8 +964,7 @@ class ArcadeRuntimeEngine {
                     }
                     this.loadNextCipherToken();
                 }
-                const progressPct = Math.min(100, ((this.currentLayer - 1) / this.totalLayers) * 100);
-                this.syncProgressToServer(progressPct, liveNetWpm);
+                this.syncProgressToServer(Math.round(((this.currentLayer - 1) / this.totalLayers) * 100), liveNetWpm);
             } else {
                 this.registerError();
             }
@@ -906,10 +982,12 @@ class ArcadeRuntimeEngine {
 
                 if (this.bombBuffer === this.bombTarget) {
                     this.bombStage++;
-                    if (this.bombStage >= parseInt(this.config.objectiveVal)) {
-                        this.finishGame(true, "VICTORY! All sequence stages decrypted. Bomb safely defused!");
+                    if (this.bombStage >= this.maxStages) {
+                        this.finishGame(true, "Victory! All sequence stages decrypted. Bomb safely defused!");
                         return;
                     }
+                    const stgEl = document.getElementById('bomb-stg');
+                    if (stgEl) stgEl.textContent = this.bombStage + 1;
                     this.spawnBombCode();
                 }
                 this.syncProgressToServer(0, liveNetWpm);
@@ -928,15 +1006,24 @@ class ArcadeRuntimeEngine {
                 this.registerHit(20);
                 if (this.memoryBuffer === this.memoryTarget) {
                     this.memoryIndex++;
-                    if (this.memoryIndex >= parseInt(this.config.objectiveVal)) {
-                        this.finishGame(true, "VICTORY! You mastered all memory recall rounds!");
+                    if (this.memoryIndex >= this.memoryTotalRounds) {
+                        this.finishGame(true, "Victory! Mastered all memory recall rounds!");
                         return;
                     }
+                    const rndEl = document.getElementById('mem-rnd');
+                    if (rndEl) rndEl.textContent = this.memoryIndex + 1;
                     this.flashMemoryTarget();
                 }
                 this.syncProgressToServer(0, liveNetWpm);
             } else {
+                this.memoryStrikes++;
+                const strEl = document.getElementById('mem-str');
+                if (strEl) strEl.textContent = `${this.memoryStrikes} / 3`;
                 this.registerError();
+                if (this.memoryStrikes >= 3) {
+                    this.finishGame(false, "Loss: 3 sequence recall strikes reached.");
+                    return;
+                }
                 this.flashMemoryTarget();
             }
             return;
@@ -950,8 +1037,15 @@ class ArcadeRuntimeEngine {
                 this.registerHit(15);
                 const box = document.getElementById('quest-target-box');
                 if (box) box.innerHTML = `<span style="color:var(--success);">${this.questBuffer}</span>${this.questTarget.slice(this.questBuffer.length)}`;
+
                 if (this.questBuffer === this.questTarget) {
                     this.questIndex++;
+                    if (this.questIndex >= this.questTotalStages) {
+                        this.finishGame(true, "Victory! All ergonomic keyboard milestones cleared!");
+                        return;
+                    }
+                    const stgEl = document.getElementById('kq-stg');
+                    if (stgEl) stgEl.textContent = this.questIndex + 1;
                     this.loadNextQuestTarget();
                 }
                 this.syncProgressToServer(0, liveNetWpm);
@@ -961,7 +1055,7 @@ class ArcadeRuntimeEngine {
             return;
         }
 
-        // 9. FALLING WORDS, NINJA SLICING, SPACE DEFENDER, ZOMBIE DEFENSE
+        // 9. FALLING WORDS, NINJA, SPACE DEFENDER, ZOMBIE DEFENSE
         const lower = char.toLowerCase();
         if (this.activeTarget) {
             const next = this.activeTarget.word[this.activeTarget.typed.length];
@@ -970,10 +1064,12 @@ class ArcadeRuntimeEngine {
                 this.correctCharsTyped++;
                 this.registerHit(10);
                 this.activeTarget.el.innerHTML = `<span style="color:var(--success); text-decoration:underline;">${this.activeTarget.typed}</span>${this.activeTarget.word.slice(this.activeTarget.typed.length)}`;
+
                 if (this.activeTarget.typed === this.activeTarget.word) {
                     this.activeTarget.el.remove();
                     this.entities.splice(this.entities.indexOf(this.activeTarget), 1);
                     this.activeTarget = null;
+                    this.handleTargetElimination(liveNetWpm);
                 }
                 this.syncProgressToServer(0, liveNetWpm);
                 return;
@@ -991,6 +1087,47 @@ class ArcadeRuntimeEngine {
             this.syncProgressToServer(0, liveNetWpm);
         } else {
             this.registerError();
+        }
+    }
+
+    handleTargetElimination(liveWpm) {
+        if (this.config.slug === 'falling_words') {
+            this.wordsClearedInWave++;
+            if (this.wordsClearedInWave >= this.waveQuota) {
+                this.currentWave++;
+                this.wordsClearedInWave = 0;
+                if (this.currentWave > this.maxWaves) {
+                    this.finishGame(true, "Victory! All 5 descending word waves survived!");
+                    return;
+                }
+                const wEl = document.getElementById('fw-wave-num');
+                if (wEl) wEl.textContent = this.currentWave;
+            }
+        } else if (this.config.slug === 'space_defender') {
+            this.asteroidsDestroyed++;
+            const qEl = document.getElementById('sd-quota');
+            if (qEl) qEl.textContent = this.asteroidsDestroyed;
+            if (this.asteroidsDestroyed >= this.targetDestroyQuota) {
+                this.finishGame(true, "Victory! Orbital sector cleared of all incoming debris!");
+            }
+        } else if (this.config.slug === 'typing_ninja') {
+            this.ninjaStrikes++;
+            const nqEl = document.getElementById('ninja-q');
+            if (nqEl) nqEl.textContent = this.ninjaStrikes;
+            if (this.ninjaStrikes >= this.ninjaTargetQuota) {
+                this.finishGame(true, "Victory! Flawless airborne slicing quota achieved!");
+            }
+        } else if (this.config.slug === 'zombie_defense') {
+            this.zombiesDefeated++;
+            if (this.zombiesDefeated % 4 === 0) {
+                this.currentWave++;
+                if (this.currentWave > this.maxWaves) {
+                    this.finishGame(true, "Victory! Base defended successfully across all waves!");
+                    return;
+                }
+                const zdEl = document.getElementById('zd-wave');
+                if (zdEl) zdEl.textContent = this.currentWave;
+            }
         }
     }
 
@@ -1061,7 +1198,7 @@ class ArcadeRuntimeEngine {
         }
 
         if (trophy) trophy.textContent = outcome === 'WIN' ? '🏆' : (outcome === 'LOSS' ? '❌' : '🏁');
-        if (title) title.textContent = outcome === 'WIN' ? 'Victory! Objective Mastered!' : (outcome === 'LOSS' ? 'Defeat - Practice Makes Velocity!' : 'Practice Concluded');
+        if (title) title.textContent = outcome === 'WIN' ? 'Objective Mastered!' : (outcome === 'LOSS' ? 'Defeat — Recalibrate & Re-engage!' : 'Discipline Concluded');
         if (note) note.textContent = summaryMessage;
 
         const resScore = document.getElementById('res-score');
@@ -1083,10 +1220,10 @@ class ArcadeRuntimeEngine {
 
         if (specBox) {
             specBox.innerHTML = `
-                <div style="display:flex; justify-content:space-between;"><span>Game Discipline:</span><strong>${this.config.slug.replace('_', ' ').toUpperCase()}</strong></div>
+                <div style="display:flex; justify-content:space-between;"><span>Flight Discipline:</span><strong>${this.config.slug.replace('_', ' ').toUpperCase()}</strong></div>
                 <div style="display:flex; justify-content:space-between;"><span>Difficulty Tier:</span><strong>${this.config.difficulty.toUpperCase()}</strong></div>
                 <div style="display:flex; justify-content:space-between;"><span>Session Duration:</span><strong>${Math.round(duration)}s</strong></div>
-                ${avgReaction > 0 ? `<div style="display:flex; justify-content:space-between;"><span>Mean Reaction Latency:</span><strong style="color:var(--warning);">${avgReaction}ms</strong></div>` : ''}
+                ${avgReaction > 0 ? `<div style="display:flex; justify-content:space-between;"><span>Mean Strike Latency:</span><strong style="color:var(--warning);">${avgReaction}ms</strong></div>` : ''}
             `;
         }
 

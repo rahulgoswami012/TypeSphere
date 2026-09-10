@@ -1,108 +1,284 @@
 {% extends 'base.html' %}
-
+{% block title %}Cockpit Preferences & Ergonomics | TypeSphere{% endblock %}
 {% block content %}
-<div class="card" style="max-width: 900px; margin: 0 auto;">
-  <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 1.25rem; margin-bottom: 1.75rem; flex-wrap: wrap; gap: 1rem;">
-    <div>
-      <h1 style="font-size: 1.8rem; font-weight: 700;">Preferences & Ergonomics</h1>
-      <p style="color: var(--text-muted); font-size: 0.85rem;">
-        {% if current_user.is_authenticated %}
-          Logged in as <strong>{{ current_user.username }}</strong>. Changes are saved to your permanent profile.
-        {% else %}
-          Anonymous Session. Changes apply for this session; refreshing restores default settings.
-        {% endif %}
-      </p>
-    </div>
-    
-    <!-- Prominent Reset to Default Settings Button -->
-    <button onclick="window.settingsManager.resetToDefaults()" class="btn btn-danger" style="font-weight: 700;">
-      🔄 Reset to Default Settings
-    </button>
-  </div>
-
-  <!-- Live Interactive Sandbox Preview -->
-  <div style="margin-bottom: 2rem;">
-    <div style="font-size: 0.8rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-bottom: 0.5rem;">
-      Live Preview Sandbox
-    </div>
-    <div class="typing-container focus-ring" style="min-height: 110px; padding: 1.25rem;" onclick="document.getElementById('sandbox-input').focus()">
-      <div id="caret" class="caret caret-smooth" style="left: 20px; top: 20px;"></div>
-      <div id="sandbox-display" class="typing-text-display">
-        The quick brown fox jumps over the lazy dog. Type here to test theme, font, and caret rendering!
-      </div>
-      <input type="text" id="sandbox-input" style="opacity: 0; position: absolute; left: 0; top: 0;" onkeydown="handleSandboxKey(event)">
-    </div>
-  </div>
-
-  <div style="display: flex; flex-direction: column; gap: 2rem;">
-    <!-- 1. Theme Selection -->
-    <div>
-      <h3 style="font-size: 1.1rem; margin-bottom: 0.75rem;">Theme</h3>
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.75rem;">
-        <button onclick="selectTheme('dark')" class="btn" style="justify-content: center;">Dark Matter</button>
-        <button onclick="selectTheme('light')" class="btn" style="justify-content: center;">Clean White</button>
-        <button onclick="selectTheme('cyber')" class="btn" style="justify-content: center;">Neon Cyber</button>
-        <button onclick="selectTheme('sepia')" class="btn" style="justify-content: center;">Warm Sepia</button>
-      </div>
-    </div>
-
-    <!-- 2. Typography -->
-    <div>
-      <h3 style="font-size: 1.1rem; margin-bottom: 0.75rem;">Monospace Typography</h3>
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.75rem;">
-        <button onclick="selectFont('JetBrains Mono')" class="btn" style="font-family: 'JetBrains Mono', monospace; justify-content: center;">JetBrains Mono</button>
-        <button onclick="selectFont('Fira Code')" class="btn" style="font-family: 'Fira Code', monospace; justify-content: center;">Fira Code</button>
-      </div>
-    </div>
-
-    <!-- 3. Font Size & Caret Variant -->
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
-      <div>
-        <div style="display: flex; justify-content: space-between; margin-bottom: 0.75rem;">
-          <h3 style="font-size: 1.1rem;">Font Size</h3>
-          <span id="font-size-label" style="font-weight: 700; color: var(--accent);">22px</span>
+<div class="card" style="max-width: 960px; margin: 0 auto; padding: 2rem;">
+    <!-- Top Header -->
+    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:1.5rem; margin-bottom:2rem; flex-wrap:wrap; gap:1rem;">
+        <div>
+            <div style="display:flex; align-items:center; gap:0.6rem;">
+                <h1 style="font-size:1.85rem; font-weight:800; margin:0;">Cockpit Preferences</h1>
+                <span style="font-size:0.75rem; font-weight:800; background:var(--accent-glow); color:var(--accent); padding:0.2rem 0.6rem; border-radius:4px; text-transform:uppercase;">
+                    Configuration
+                </span>
+            </div>
+            <p style="color:var(--text-secondary); font-size:0.88rem; margin-top:0.35rem;">
+                {% if current_user.is_authenticated %}
+                    Signed in as <strong>{{ current_user.username }}</strong>. Modifications are written permanently to your flight profile.
+                {% else %}
+                    Guest Flight Session. Settings are saved for this browser session; refreshing restores system defaults.
+                {% endif %}
+            </p>
         </div>
-        <input type="range" min="16" max="32" value="22" id="font-size-slider" oninput="selectFontSize(this.value)" style="width: 100%; cursor: pointer;">
-      </div>
 
-      <div>
-        <h3 style="font-size: 1.1rem; margin-bottom: 0.75rem;">Caret Style</h3>
-        <div style="display: flex; gap: 0.5rem;">
-          <button onclick="selectCaret('smooth')" class="btn" style="flex: 1; justify-content: center;">Smooth Line</button>
-          <button onclick="selectCaret('block')" class="btn" style="flex: 1; justify-content: center;">Solid Block</button>
-          <button onclick="selectCaret('underline')" class="btn" style="flex: 1; justify-content: center;">Underline</button>
+        <!-- Prominent Reset to Default Settings Button -->
+        <button type="button" onclick="window.settingsManager.resetToDefaults()" class="btn btn-danger" style="font-weight:800; padding:0.7rem 1.4rem;">
+            🔄 Reset Settings to Default
+        </button>
+    </div>
+
+    <!-- Live Interactive Sandbox Preview -->
+    <div style="margin-bottom:2.25rem;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.6rem;">
+            <span style="font-size:0.75rem; text-transform:uppercase; color:var(--text-muted); font-weight:800; letter-spacing:0.06em;">
+                Live Cockpit Telemetry Sandbox
+            </span>
+            <span style="font-size:0.75rem; color:var(--text-muted);">Click inside and test your typography & caret settings</span>
         </div>
-      </div>
+        <div id="sandbox-typing-box" class="typing-container focus-ring style-modern" style="min-height:120px; padding:1.25rem;" onclick="document.getElementById('sandbox-input').focus()">
+            <div id="sandbox-caret" class="caret caret-smooth" style="left:20px; top:20px;"></div>
+            <div id="sandbox-display" class="typing-text-display">
+                The quick brown fox jumps over the lazy dog. Type here to test theme, font size, caret styles, and audio feedback!
+            </div>
+            <input type="text" id="sandbox-input" style="opacity:0; position:absolute; left:0; top:0;" onkeydown="handleSandboxKey(event)">
+        </div>
     </div>
 
-    <!-- 4. Audio Synthesis -->
-    <div>
-      <h3 style="font-size: 1.1rem; margin-bottom: 0.75rem;">Acoustic Audio Theme</h3>
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.75rem;">
-        <button onclick="selectSound('mechanical')" class="btn" style="justify-content: center;">Cherry MX</button>
-        <button onclick="selectSound('bubble')" class="btn" style="justify-content: center;">Bubble Pop</button>
-        <button onclick="selectSound('beep')" class="btn" style="justify-content: center;">Digital Synth</button>
-      </div>
+    <div style="display:flex; flex-direction:column; gap:2.25rem;">
+        <!-- 1. Theme Palette -->
+        <div>
+            <h3 style="font-size:1.15rem; font-weight:800; margin-bottom:0.4rem;">1. Cockpit Theme & Palette</h3>
+            <p style="color:var(--text-secondary); font-size:0.85rem; margin-bottom:0.85rem;">Select your visual flight theme.</p>
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(170px, 1fr)); gap:0.75rem;">
+                <button type="button" onclick="window.settingsManager.update('theme', 'dark')" class="btn" data-cfg-theme="dark" style="justify-content:center;">
+                    🌌 Dark Matter (Void)
+                </button>
+                <button type="button" onclick="window.settingsManager.update('theme', 'cockpit-hud')" class="btn" data-cfg-theme="cockpit-hud" style="justify-content:center;">
+                    🛩️ Cockpit HUD (Green)
+                </button>
+                <button type="button" onclick="window.settingsManager.update('theme', 'cyber')" class="btn" data-cfg-theme="cyber" style="justify-content:center;">
+                    ⚡ Neon Hyperdrive
+                </button>
+                <button type="button" onclick="window.settingsManager.update('theme', 'sepia')" class="btn" data-cfg-theme="sepia" style="justify-content:center;">
+                    📜 Warm Pilot Sepia
+                </button>
+                <button type="button" onclick="window.settingsManager.update('theme', 'light')" class="btn" data-cfg-theme="light" style="justify-content:center;">
+                    ☀️ Stratosphere (Light)
+                </button>
+            </div>
+        </div>
+
+        <!-- 2. Typing Viewport Frame Style -->
+        <div>
+            <h3 style="font-size:1.15rem; font-weight:800; margin-bottom:0.4rem;">2. Typing Viewport Appearance</h3>
+            <p style="color:var(--text-secondary); font-size:0.85rem; margin-bottom:0.85rem;">Adjust the architectural frame surrounding the text viewport.</p>
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:0.75rem;">
+                <button type="button" onclick="window.settingsManager.update('typing_area_style', 'modern')" class="btn" data-cfg-style="modern" style="justify-content:center;">
+                    Modern Floating Pod
+                </button>
+                <button type="button" onclick="window.settingsManager.update('typing_area_style', 'cockpit')" class="btn" data-cfg-style="cockpit" style="justify-content:center;">
+                    Aeronautical Cockpit
+                </button>
+                <button type="button" onclick="window.settingsManager.update('typing_area_style', 'minimal')" class="btn" data-cfg-style="minimal" style="justify-content:center;">
+                    Pure Minimalist Focus
+                </button>
+                <button type="button" onclick="window.settingsManager.update('typing_area_style', 'terminal')" class="btn" data-cfg-style="terminal" style="justify-content:center;">
+                    CRT Retro Terminal
+                </button>
+            </div>
+        </div>
+
+        <!-- 3. Monospace Typography & Caret Variant -->
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:1.75rem;">
+            <div>
+                <h3 style="font-size:1.15rem; font-weight:800; margin-bottom:0.4rem;">3. Monospace Font</h3>
+                <p style="color:var(--text-secondary); font-size:0.85rem; margin-bottom:0.85rem;">Engineered coding and telemetry typefaces.</p>
+                <div style="display:flex; gap:0.5rem;">
+                    <button type="button" onclick="window.settingsManager.update('font_family', 'JetBrains Mono')" class="btn" data-cfg-font="JetBrains Mono" style="flex:1; font-family:'JetBrains Mono',monospace; justify-content:center;">
+                        JetBrains Mono
+                    </button>
+                    <button type="button" onclick="window.settingsManager.update('font_family', 'Fira Code')" class="btn" data-cfg-font="Fira Code" style="flex:1; font-family:'Fira Code',monospace; justify-content:center;">
+                        Fira Code
+                    </button>
+                </div>
+            </div>
+
+            <div>
+                <h3 style="font-size:1.15rem; font-weight:800; margin-bottom:0.4rem;">4. Caret Indicator Variant</h3>
+                <p style="color:var(--text-secondary); font-size:0.85rem; margin-bottom:0.85rem;">Active tracking cursor styling.</p>
+                <div style="display:flex; gap:0.5rem;">
+                    <button type="button" onclick="window.settingsManager.update('caret_style', 'smooth')" class="btn" data-cfg-caret="smooth" style="flex:1; justify-content:center;">
+                        Smooth Bar
+                    </button>
+                    <button type="button" onclick="window.settingsManager.update('caret_style', 'block')" class="btn" data-cfg-caret="block" style="flex:1; justify-content:center;">
+                        Solid Block
+                    </button>
+                    <button type="button" onclick="window.settingsManager.update('caret_style', 'underline')" class="btn" data-cfg-caret="underline" style="flex:1; justify-content:center;">
+                        Underline
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 5. Font Size Slider -->
+        <div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem;">
+                <h3 style="font-size:1.15rem; font-weight:800;">5. Optical Font Size</h3>
+                <span id="font-size-label" style="font-weight:800; color:var(--accent); font-family:var(--font-mono); font-size:1.1rem;">22px</span>
+            </div>
+            <p style="color:var(--text-secondary); font-size:0.85rem; margin-bottom:0.85rem;">Scales the character rendering size across benchmarks.</p>
+            <input type="range" min="16" max="32" value="22" id="font-size-slider" oninput="window.settingsManager.update('font_size', parseInt(this.value, 10))" style="width:100%; cursor:pointer;">
+        </div>
+
+        <!-- 6. Acoustic Audio Synthesizer -->
+        <div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem;">
+                <h3 style="font-size:1.15rem; font-weight:800;">6. Acoustic Tactile Synthesizer</h3>
+                <span id="sound-volume-label" style="font-weight:800; color:var(--accent); font-family:var(--font-mono);">70%</span>
+            </div>
+            <p style="color:var(--text-secondary); font-size:0.85rem; margin-bottom:0.85rem;">Procedural low-latency Web Audio oscillator switches.</p>
+            
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:1rem; margin-bottom:1rem;">
+                <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+                    <button type="button" onclick="window.settingsManager.update('sound_theme', 'mechanical')" class="btn" data-cfg-sound="mechanical" style="flex:1; justify-content:center;">
+                        Cherry MX Blue
+                    </button>
+                    <button type="button" onclick="window.settingsManager.update('sound_theme', 'bubble')" class="btn" data-cfg-sound="bubble" style="flex:1; justify-content:center;">
+                        Bubble Pop
+                    </button>
+                    <button type="button" onclick="window.settingsManager.update('sound_theme', 'beep')" class="btn" data-cfg-sound="beep" style="flex:1; justify-content:center;">
+                        Digital Synth
+                    </button>
+                </div>
+                <div style="display:flex; align-items:center; gap:0.75rem;">
+                    <button type="button" id="btn-sound-mute-toggle" onclick="toggleSoundMute()" class="btn btn-sm">
+                        Sound: ON
+                    </button>
+                    <input type="range" min="0" max="100" value="70" id="sound-volume-slider" oninput="onSoundVolumeSlide(this.value)" style="flex:1; cursor:pointer;">
+                </div>
+            </div>
+        </div>
+
+        <!-- 7. Benchmark Flight Defaults -->
+        <div style="border-top:1px solid var(--border-color); padding-top:1.75rem;">
+            <h3 style="font-size:1.15rem; font-weight:800; margin-bottom:0.4rem;">7. Initial Benchmark Defaults</h3>
+            <p style="color:var(--text-secondary); font-size:0.85rem; margin-bottom:1rem;">Configure the initial flight state loaded when entering the homepage.</p>
+            
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:1rem; margin-bottom:1.25rem;">
+                <div>
+                    <label style="display:block; font-size:0.75rem; text-transform:uppercase; color:var(--text-muted); font-weight:700; margin-bottom:0.35rem;">Default Duration</label>
+                    <select id="cfg-default-duration-select" onchange="window.settingsManager.update('default_duration', parseInt(this.value, 10))" class="form-select" style="width:100%;">
+                        <option value="15">15s Dash</option>
+                        <option value="30">30s Sprint</option>
+                        <option value="60" selected>1 Min (60s)</option>
+                        <option value="120">2 Min (120s)</option>
+                        <option value="300">5 Min (300s)</option>
+                        <option value="600">10 Min (600s)</option>
+                        <option value="0">No Time Limit</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label style="display:block; font-size:0.75rem; text-transform:uppercase; color:var(--text-muted); font-weight:700; margin-bottom:0.35rem;">Default Discipline</label>
+                    <select id="cfg-default-content-select" onchange="window.settingsManager.update('default_content', this.value)" class="form-select" style="width:100%;">
+                        <option value="words" selected>Words & Sentences</option>
+                        <option value="paragraphs">Full Passages</option>
+                        <option value="exam">Government & Clerical (SSC)</option>
+                        <option value="professional">Workplace Memos</option>
+                        <option value="quotes">Literature & Quotes</option>
+                        <option value="code">Programming Code</option>
+                        <option value="numbers">Numeric Only</option>
+                        <option value="punctuation">Punctuation Focus</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label style="display:block; font-size:0.75rem; text-transform:uppercase; color:var(--text-muted); font-weight:700; margin-bottom:0.35rem;">Default Difficulty Tier</label>
+                    <select id="cfg-default-level-select" onchange="window.settingsManager.update('default_level', this.value)" class="form-select" style="width:100%;">
+                        <option value="easy">Easy (Simple Lexicon)</option>
+                        <option value="moderate" selected>Moderate (Standard English)</option>
+                        <option value="hard">Hard (Advanced Syllables)</option>
+                        <option value="expert">Expert (Complex Vocabulary)</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Toggles for Blind & Ghost Defaults -->
+            <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
+                <button type="button" id="btn-default-blind-toggle" onclick="toggleDefaultBlind()" class="btn btn-sm active-choice">
+                    Default Blind Mode: ON
+                </button>
+                <button type="button" id="btn-default-ghost-toggle" onclick="toggleDefaultGhost()" class="btn btn-sm">
+                    Default Ghost Pacer: OFF
+                </button>
+            </div>
+        </div>
+
+        <!-- 8. Ergonomics & Accessibility -->
+        <div style="border-top:1px solid var(--border-color); padding-top:1.75rem;">
+            <h3 style="font-size:1.15rem; font-weight:800; margin-bottom:0.4rem;">8. Ergonomics, Accessibility & Heatmap Display</h3>
+            <p style="color:var(--text-secondary); font-size:0.85rem; margin-bottom:1rem;">Fine-tune on-screen keyboard visibility and motion comfort.</p>
+            
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:1.25rem;">
+                <div>
+                    <label style="display:block; font-size:0.75rem; text-transform:uppercase; color:var(--text-muted); font-weight:700; margin-bottom:0.4rem;">On-Screen Heatmap Visibility</label>
+                    <div style="display:flex; gap:0.5rem;">
+                        <button type="button" onclick="window.settingsManager.update('keyboard_display', 'heatmap')" class="btn btn-sm active-choice" data-cfg-kb="heatmap" style="flex:1; justify-content:center;">
+                            Heatmap Active
+                        </button>
+                        <button type="button" onclick="window.settingsManager.update('keyboard_display', 'hidden')" class="btn btn-sm" data-cfg-kb="hidden" style="flex:1; justify-content:center;">
+                            Hidden
+                        </button>
+                    </div>
+                </div>
+
+                <div>
+                    <label style="display:block; font-size:0.75rem; text-transform:uppercase; color:var(--text-muted); font-weight:700; margin-bottom:0.4rem;">Motion Sensitivity</label>
+                    <button type="button" id="btn-motion-toggle" onclick="toggleReducedMotion()" class="btn btn-sm" style="width:100%; justify-content:center;">
+                        Reduced Motion: OFF
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
-  </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-function selectTheme(t) { window.settingsManager.update('theme', t); }
-function selectFont(f) { window.settingsManager.update('font_family', f); }
-function selectFontSize(s) {
-  document.getElementById('font-size-label').textContent = s + 'px';
-  window.settingsManager.update('font_size', parseInt(s, 10));
-}
-function selectCaret(c) { window.settingsManager.update('caret_style', c); }
-function selectSound(s) {
-  window.settingsManager.update('sound_theme', s);
-  if (window.soundEngine) window.soundEngine.playKey(false);
-}
 function handleSandboxKey(e) {
-  if (window.soundEngine) window.soundEngine.playKey(e.key === 'Backspace');
+    if (window.soundEngine) {
+        window.soundEngine.playKey(e.key === 'Backspace');
+    }
+}
+
+function onSoundVolumeSlide(val) {
+    const floatVal = parseInt(val, 10) / 100.0;
+    document.getElementById('sound-volume-label').textContent = `${val}%`;
+    window.settingsManager.update('sound_volume', floatVal);
+    if (window.soundEngine) {
+        window.soundEngine.setVolume(floatVal);
+        window.soundEngine.playKey(false);
+    }
+}
+
+function toggleSoundMute() {
+    const next = !window.settingsManager.current.sound_enabled;
+    window.settingsManager.update('sound_enabled', next);
+}
+
+function toggleDefaultBlind() {
+    const next = !window.settingsManager.current.blind_mode;
+    window.settingsManager.update('blind_mode', next);
+}
+
+function toggleDefaultGhost() {
+    const next = !window.settingsManager.current.ghost_mode;
+    window.settingsManager.update('ghost_mode', next);
+}
+
+function toggleReducedMotion() {
+    const next = !window.settingsManager.current.reduce_motion;
+    window.settingsManager.update('reduce_motion', next);
 }
 </script>
 {% endblock %}

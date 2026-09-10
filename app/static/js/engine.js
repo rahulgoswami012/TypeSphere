@@ -1,7 +1,8 @@
 /**
  * TypeSphere Core Engine
  * Two-tier UI architecture, continuous passage streaming for timed tests,
- * live biometric keyboard synchronization, and reliable state transitions without layout jumping.
+ * genuine completion points for untimed and custom tests, 5-battery survival mode,
+ * and live biometric keyboard synchronization without layout jumping.
  */
 class TypingEngine {
     constructor() {
@@ -17,10 +18,14 @@ class TypingEngine {
         this.durationLimit = 60; // 15, 30, 60, 120, 300, 600, 1200, or 0 (No Limit)
         this.contentType = 'words';
         this.level = 'moderate'; // easy, moderate, hard, expert
-        this.codeLanguage = 'python';
+        this.codeLanguage = 'python'; // python, javascript, html, css, sql, java, c, cpp
         this.mode = 'timed'; // 'timed', 'accuracy', 'survival', 'adaptive', 'daily', 'custom'
         this.retryTestId = null;
         this.isRankedEligible = true;
+
+        // Survival Challenge: Exactly 5 Shield Cells
+        this.shieldLives = 5;
+        this.maxShields = 5;
 
         // Behavioral Defaults
         this.blindModeActive = true; // Blind Mode: ON by default
@@ -29,13 +34,16 @@ class TypingEngine {
         this.ghostProgress = 0;
         this.ghostInterval = null;
 
+        // Keystroke Error Telemetry
+        this.totalMistakes = 0; // Cumulative mistakes made
+        this.uncorrectedErrors = 0; // Red spans remaining
+        this.streak = 0;
+
         // Runtime Lifecycle
         this.isFinished = false;
         this.isPaused = false;
         this.pausedAt = 0;
         this.totalPausedDuration = 0;
-        this.streak = 0;
-        this.errors = 0;
         this.handledByKeyDown = false;
 
         // DOM References
@@ -51,6 +59,8 @@ class TypingEngine {
         this.pauseModal = document.getElementById('pause-modal');
         this.mobileProxy = document.getElementById('mobile-text-proxy');
         this.rankNoticeBadge = document.getElementById('rank-eligibility-badge');
+        this.survivalHud = document.getElementById('survival-shield-hud');
+        this.manualFinishWrap = document.getElementById('manual-finish-wrap');
 
         this.bindEvents();
         this.parseUrlParameters();
@@ -71,6 +81,9 @@ class TypingEngine {
         const levelParam = params.get('level');
         if (levelParam) this.level = levelParam;
 
+        const langParam = params.get('code_lang') || params.get('lang');
+        if (langParam) this.codeLanguage = langParam.toLowerCase();
+
         const retryParam = params.get('retry_test_id');
         if (retryParam) this.retryTestId = retryParam;
 
@@ -79,7 +92,6 @@ class TypingEngine {
             this.loadGhostRace(ghostParam);
         }
 
-        // Custom Mode Storage Overrides
         if (this.mode === 'custom') {
             this.contentType = 'custom';
             const storedDur = sessionStorage.getItem('typesphere_custom_duration');
@@ -104,18 +116,17 @@ class TypingEngine {
     }
 
     updateRankedEligibility() {
-        // Ranked eligible ONLY if: standard timed test with standard English content
         const isStandardTime = [15, 30, 60, 120].includes(this.durationLimit);
         const isStandardContent = ['words', 'paragraphs', 'quotes'].includes(this.contentType);
-        this.isRankedEligible = isStandardTime && isStandardContent && (this.mode !== 'custom');
+        this.isRankedEligible = isStandardTime && isStandardContent && (this.mode === 'timed');
 
         if (this.rankNoticeBadge) {
             if (this.isRankedEligible) {
                 this.rankNoticeBadge.innerHTML = `<span style="color:var(--success);">● Ranked Match</span>`;
-                this.rankNoticeBadge.title = "Eligible for Global Leaderboards and Personal Records.";
+                this.rankNoticeBadge.title = "Eligible for Global Leaderboards and Verified Flight Wings.";
             } else {
-                this.rankNoticeBadge.innerHTML = `<span style="color:var(--text-muted);">○ Practice Only</span>`;
-                this.rankNoticeBadge.title = "Custom content or irregular parameters will not affect public leaderboards.";
+                this.rankNoticeBadge.innerHTML = `<span style="color:var(--text-muted);">○ Practice / Unranked</span>`;
+                this.rankNoticeBadge.title = "Specialized parameters or custom text are excluded from ranked standings.";
             }
         }
     }
@@ -128,6 +139,10 @@ class TypingEngine {
             if (!window.location.search.includes('level=')) this.level = prefs.default_level || 'moderate';
             this.blindModeActive = prefs.blind_mode !== undefined ? prefs.blind_mode : true;
             this.ghostEnabled = prefs.ghost_mode !== undefined ? prefs.ghost_mode : false;
+
+            if (this.container && prefs.typing_area_style) {
+                this.container.className = `typing-container focus-ring style-${prefs.typing_area_style}`;
+            }
         }
         this.updateControlsUI();
     }
@@ -136,12 +151,16 @@ class TypingEngine {
         const tSel = document.getElementById('cfg-time-select');
         const cSel = document.getElementById('cfg-type-select');
         const dSel = document.getElementById('cfg-diff-select');
+        const lSel = document.getElementById('cfg-code-lang-select');
         const bBtn = document.getElementById('btn-blind');
         const gBtn = document.getElementById('btn-ghost');
+        const codeWrap = document.getElementById('cfg-code-lang-wrap');
 
         if (tSel) tSel.value = this.durationLimit.toString();
         if (cSel) cSel.value = this.contentType;
         if (dSel) dSel.value = this.level;
+        if (lSel) lSel.value = this.codeLanguage;
+        if (codeWrap) codeWrap.style.display = (this.contentType === 'code') ? 'flex' : 'none';
 
         if (bBtn) {
             bBtn.textContent = `Blind: ${this.blindModeActive ? 'ON' : 'OFF'}`;
@@ -151,17 +170,42 @@ class TypingEngine {
             gBtn.textContent = `Ghost: ${this.ghostEnabled ? 'ON' : 'OFF'}`;
             gBtn.classList.toggle('active-choice', this.ghostEnabled);
         }
+
+        // Display 5-Shield HUD only in Survival Mode
+        if (this.survivalHud) {
+            this.survivalHud.style.display = (this.mode === 'survival') ? 'block' : 'none';
+        }
+
         this.updateRankedEligibility();
     }
 
+    updateShieldHUD() {
+        if (this.mode !== 'survival') return;
+        const statusText = document.getElementById('shield-status-text');
+        const pct = Math.round((this.shieldLives / this.maxShields) * 100);
+
+        if (statusText) {
+            statusText.textContent = `${pct}% STABILITY (${this.shieldLives}/${this.maxShields} CELLS)`;
+            statusText.style.color = (this.shieldLives <= 1) ? 'var(--danger)' : ((this.shieldLives <= 3) ? 'var(--warning)' : 'var(--accent)');
+        }
+
+        for (let i = 1; i <= this.maxShields; i++) {
+            const cell = document.getElementById(`sc-${i}`);
+            if (cell) {
+                cell.className = (i <= this.shieldLives) ? 'shield-cell' : 'shield-cell depleted';
+                if (this.shieldLives === 1 && i === 1) cell.classList.add('critical');
+            }
+        }
+    }
+
     async loadPrompt(append = false) {
-        // 1. Custom Text Practice
+        // 1. Custom Text Practice (Never loops or duplicates)
         if (this.contentType === 'custom' || this.mode === 'custom') {
             const stored = sessionStorage.getItem('typesphere_custom_text');
             if (stored && stored.trim().length > 0) {
-                this.targetText = append ? `${this.targetText} ${stored.trim()}` : stored.trim();
-                this.renderText(append);
-                if (!append) this.reset();
+                this.targetText = stored.trim();
+                this.renderText(false);
+                this.reset();
                 return;
             }
         }
@@ -190,7 +234,7 @@ class TypingEngine {
             } catch {}
         }
 
-        // 4. Standard Flowing / Retry Generation
+        // 4. Standard Dynamic Streams / Retry Prompts
         try {
             let url = `/typing/api/text?content_type=${encodeURIComponent(this.contentType)}&level=${encodeURIComponent(this.level)}&code_lang=${encodeURIComponent(this.codeLanguage)}&batch_size=75`;
             if (this.retryTestId) {
@@ -263,8 +307,10 @@ class TypingEngine {
         this.pausedAt = 0;
         this.totalPausedDuration = 0;
         this.streak = 0;
-        this.errors = 0;
+        this.totalMistakes = 0;
+        this.uncorrectedErrors = 0;
         this.ghostProgress = 0;
+        this.shieldLives = 5;
 
         if (this.container) {
             this.container.scrollTop = 0;
@@ -274,15 +320,20 @@ class TypingEngine {
         const floatBar = document.getElementById('paused-floating-bar');
         if (floatBar) floatBar.style.display = 'none';
 
+        if (this.manualFinishWrap) {
+            this.manualFinishWrap.style.display = 'none';
+        }
+
         this.hudWpm.textContent = '0';
         this.hudAcc.textContent = '100%';
         this.hudErrors.textContent = '0';
         this.updateSpeedometer(0);
+        this.updateShieldHUD();
 
         if (this.durationLimit > 0) {
             this.hudTime.textContent = this.formatTimeDisplay(this.durationLimit);
         } else {
-            this.hudTime.textContent = '0s (No Limit)';
+            this.hudTime.textContent = '0s (Open Stopwatch)';
         }
 
         const spans = this.display.querySelectorAll('.char');
@@ -321,6 +372,13 @@ class TypingEngine {
                 }
                 document.body.classList.toggle('focus-mode');
                 return;
+            }
+            if (e.key === 'Enter' && (this.durationLimit === 0 || this.mode === 'custom')) {
+                if (this.currentIndex >= this.targetText.length - 5) {
+                    e.preventDefault();
+                    this.finishTest();
+                    return;
+                }
             }
 
             this.handledByKeyDown = true;
@@ -401,17 +459,23 @@ class TypingEngine {
         if (this.currentIndex >= spans.length) return;
         const expectedChar = this.targetText[this.currentIndex];
 
-        // Backspace Handling: Disabled if Blind Mode is ON
+        // Backspace Handling: Blocked if Blind Mode is ON
         if (key === 'Backspace') {
             if (originalEvent) originalEvent.preventDefault();
-            if (this.blindModeActive) return; // Strict blind mode enforcement
+            if (this.blindModeActive) return;
+
             if (this.currentIndex > 0) {
                 this.currentIndex--;
+                if (spans[this.currentIndex].classList.contains('incorrect')) {
+                    this.uncorrectedErrors = Math.max(0, this.uncorrectedErrors - 1);
+                }
                 spans[this.currentIndex].className = 'char';
                 this.updateCaretPosition();
+
                 if (window.virtualKeyboard && this.currentIndex < spans.length) {
                     window.virtualKeyboard.updateCurrentExpectedKey(this.targetText[this.currentIndex]);
                 }
+                this.updateLiveStats(now);
             }
             return;
         }
@@ -427,16 +491,28 @@ class TypingEngine {
         } else {
             spans[this.currentIndex].className = 'char incorrect';
             this.streak = 0;
-            this.errors++;
+            this.totalMistakes++;
+            this.uncorrectedErrors++;
             if (window.soundEngine) window.soundEngine.playKey(true);
+
+            // Survival Challenge 5-Shield Integrity Overload
+            if (this.mode === 'survival') {
+                this.shieldLives--;
+                this.updateShieldHUD();
+                if (this.shieldLives <= 0) {
+                    this.finishSurvivalFail();
+                    return;
+                }
+            }
+
+            // Accuracy Gauntlet Elimination
             if (this.mode === 'accuracy') {
-                alert("Zero-Error Gauntlet breached. 100% accuracy required.");
+                alert("Accuracy Gauntlet Breached: 100% precision required.");
                 this.reset();
                 return;
             }
         }
 
-        // Synchronize keystroke to virtual biometric keyboard
         if (window.virtualKeyboard) {
             window.virtualKeyboard.highlightKey(expectedChar);
             window.virtualKeyboard.recordKeyMetric(expectedChar, key, isCorrect, latencyMs);
@@ -454,14 +530,23 @@ class TypingEngine {
         this.updateCaretPosition();
         this.updateLiveStats(now);
 
-        // Update finger guide for next target key
         if (window.virtualKeyboard && this.currentIndex < spans.length) {
             window.virtualKeyboard.updateCurrentExpectedKey(this.targetText[this.currentIndex]);
         }
 
-        // Continuous Infinite Content Pipeline: Stream more text before reaching boundary
-        if (this.currentIndex >= spans.length - 20) {
-            this.loadPrompt(true);
+        // Continuous Infinite Pipeline for Standard Timed Benchmarks
+        const isFiniteMode = (this.durationLimit === 0 || this.mode === 'custom');
+        if (!isFiniteMode) {
+            if (this.currentIndex >= spans.length - 20) {
+                this.loadPrompt(true);
+            }
+        } else {
+            // Natural completion for No Time Limit and Custom Passage
+            if (this.currentIndex >= spans.length) {
+                this.finishTest();
+            } else if (this.currentIndex >= spans.length - 10 && this.manualFinishWrap) {
+                this.manualFinishWrap.style.display = 'block';
+            }
         }
     }
 
@@ -479,7 +564,7 @@ class TypingEngine {
                     this.finishTest();
                 }
             } else {
-                this.hudTime.textContent = `${this.formatTimeDisplay(this.tickElapsed)} (No Limit)`;
+                this.hudTime.textContent = `${this.formatTimeDisplay(this.tickElapsed)} (Stopwatch)`;
             }
         }, 1000);
     }
@@ -512,7 +597,7 @@ class TypingEngine {
 
         this.hudWpm.textContent = netWpm;
         this.hudAcc.textContent = `${acc}%`;
-        this.hudErrors.textContent = this.errors;
+        this.hudErrors.textContent = this.totalMistakes;
         this.updateSpeedometer(netWpm);
 
         this.timeline.push({
@@ -536,7 +621,6 @@ class TypingEngine {
             this.caret.style.left = `${target.offsetLeft}px`;
             this.caret.style.top = `${target.offsetTop + 4}px`;
 
-            // Smooth Line-by-Line Auto-Centering
             const targetMid = target.offsetTop - (this.container.clientHeight / 2) + 25;
             if (Math.abs(this.container.scrollTop - targetMid) > 20) {
                 this.container.scrollTo({
@@ -549,6 +633,14 @@ class TypingEngine {
             this.caret.style.left = `${last.offsetLeft + last.offsetWidth}px`;
             this.caret.style.top = `${last.offsetTop + 4}px`;
         }
+    }
+
+    finishSurvivalFail() {
+        this.isFinished = true;
+        clearInterval(this.timerInterval);
+        clearInterval(this.ghostInterval);
+        alert("💥 COCKPIT SHIELD BREACH! All 5 battery cells exhausted. Reactor containment compromised.");
+        this.reset();
     }
 
     async finishTest() {
@@ -565,10 +657,12 @@ class TypingEngine {
             timeline: this.timeline,
             duration: Math.max(1.0, duration),
             target_text: this.targetText.substring(0, this.currentIndex),
-            mode: this.durationLimit > 0 ? `timed_${this.durationLimit}` : 'no_limit',
+            mode: this.durationLimit > 0 ? `timed_${this.durationLimit}` : (this.mode || 'stopwatch'),
             is_ranked: this.isRankedEligible,
             content_category: this.contentType,
-            difficulty: this.level
+            difficulty: this.level,
+            total_mistakes: this.totalMistakes,
+            uncorrected_errors: this.uncorrectedErrors
         };
 
         try {

@@ -6,14 +6,19 @@ from app.models.settings import UserSettings
 settings_bp = Blueprint('settings', __name__)
 
 DEFAULT_SETTINGS = {
-    'theme': 'dark',
+    'theme': 'Dark',
     'font_family': 'JetBrains Mono',
     'font_size': 22,
     'caret_style': 'smooth',
+    'typing_area_style': 'modern',
+    'keyboard_display': 'heatmap',
     'sound_enabled': True,
     'sound_theme': 'mechanical',
     'sound_volume': 0.7,
+    'game_sound_volume': 0.7,
+    'game_sound_theme': 'retro',
     'show_keyboard': True,
+    'reduce_motion': False,
     'default_duration': 60,
     'default_content': 'words',
     'default_level': 'moderate',
@@ -45,17 +50,23 @@ def save_settings():
         settings.font_family = data.get('font_family', 'JetBrains Mono')
         settings.font_size = int(data.get('font_size', 22))
         settings.caret_style = data.get('caret_style', 'smooth')
+        settings.typing_area_style = data.get('typing_area_style', 'modern')
+        settings.keyboard_display = data.get('keyboard_display', 'heatmap')
+        settings.reduce_motion = bool(data.get('reduce_motion', False))
+
         settings.sound_enabled = bool(data.get('sound_enabled', True))
         settings.sound_theme = data.get('sound_theme', 'mechanical')
-        settings.sound_volume = float(data.get('sound_volume', 0.7))
-        settings.show_keyboard = bool(data.get('show_keyboard', True))
-        
+        settings.sound_volume = max(0.0, min(1.0, float(data.get('sound_volume', 0.7))))
+        settings.game_sound_volume = max(0.0, min(1.0, float(data.get('game_sound_volume', 0.7))))
+        settings.game_sound_theme = data.get('game_sound_theme', 'retro')
+
+        settings.show_keyboard = (settings.keyboard_display != 'hidden')
         settings.default_duration = int(data.get('default_duration', 60))
         settings.default_content = data.get('default_content', 'words')
         settings.default_level = data.get('default_level', 'moderate')
         settings.blind_mode = bool(data.get('blind_mode', True))
         settings.ghost_mode = bool(data.get('ghost_mode', False))
-        
+
         db.session.commit()
         return jsonify({'success': True, 'scope': 'user_profile'})
 
@@ -71,6 +82,8 @@ def reset_to_defaults():
         settings = UserSettings.query.filter_by(user_id=current_user.id).first()
         if settings:
             for k, v in DEFAULT_SETTINGS.items():
-                setattr(settings, k, v)
+                if hasattr(settings, k):
+                    setattr(settings, k, v)
             db.session.commit()
+            return jsonify({'success': True, 'defaults': DEFAULT_SETTINGS})
     return jsonify({'success': True, 'defaults': DEFAULT_SETTINGS})

@@ -1,111 +1,117 @@
 {% extends 'base.html' %}
-
+{% block title %}Daily 24H Challenge: {{ challenge.title }} | TypeSphere{% endblock %}
 {% block content %}
-<div class="card">
-  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
-    <div>
-      <div style="display: flex; align-items: center; gap: 0.75rem;">
-        <h1 style="font-size: 1.8rem; font-weight: 700; margin: 0;">Daily Challenge: {{ challenge.title }}</h1>
-        <span style="background: var(--accent); color: #fff; font-size: 0.75rem; font-weight: 700; padding: 0.2rem 0.55rem; border-radius: 4px;">
-          OFFICIAL 24H BENCHMARK
-        </span>
-      </div>
-      <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.35rem;">
-        {{ challenge.target_date.strftime('%A, %B %d, %Y') }} &bull; One synchronized passage worldwide.
-      </p>
+<div class="card" style="max-width: 1040px; margin: 0 auto;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem; border-bottom:1px solid var(--border-color); padding-bottom:1.25rem;">
+        <div>
+            <div style="display:flex; align-items:center; gap:0.6rem;">
+                <h1 style="font-size:1.8rem; font-weight:800; margin:0;">Daily Challenge: {{ challenge.title }}</h1>
+                <span style="background:var(--accent); color:#04101e; font-size:0.75rem; font-weight:800; padding:0.2rem 0.6rem; border-radius:4px; text-transform:uppercase;">
+                    OFFICIAL 24H BENCHMARK
+                </span>
+            </div>
+            <p style="color:var(--text-secondary); font-size:0.85rem; margin-top:0.35rem;">
+                {{ challenge.target_date.strftime('%A, %B %d, %Y') }} (Indian Standard Time) &bull; Synchronized worldwide for all typists.
+            </p>
+        </div>
+        <button onclick="startDailyChallenge()" class="btn btn-primary" style="padding:0.75rem 1.75rem; font-size:1rem; font-weight:800;">
+            Engage Daily Flight &rarr;
+        </button>
     </div>
-    <button onclick="startDailyChallenge()" class="btn btn-primary" style="padding: 0.75rem 1.5rem; font-size: 1rem;">
-      Start Official Daily Run &rarr;
-    </button>
-  </div>
 
-  <!-- Today's Passage Preview -->
-  <div style="background: var(--bg-card); padding: 1.75rem; border-radius: var(--radius); margin-bottom: 2rem; border-left: 4px solid var(--accent); font-family: var(--font-mono); font-size: 1.15rem; line-height: 1.9; color: var(--text-primary);">
-    "{{ challenge.content }}"
-  </div>
+    <!-- Synchronized Daily Text Card -->
+    <div style="background:var(--bg-card); padding:1.75rem; border-radius:var(--radius); margin-bottom:2rem; border-left:4px solid var(--accent); font-family:var(--font-mono); font-size:1.15rem; line-height:1.95; color:var(--text-primary);">
+        "{{ challenge.content }}"
+    </div>
 
-  <!-- Today's Leaderboard -->
-  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-    <h3 style="font-size: 1.15rem; margin: 0;">Today's Verified Leaderboard</h3>
-    <span style="font-size: 0.8rem; color: var(--text-muted);">Updated in real-time</span>
-  </div>
+    <!-- Today's Verified Standings -->
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+        <h3 style="font-size:1.15rem; margin:0;">Today's Verified IST Leaderboard</h3>
+        <span style="font-size:0.8rem; color:var(--text-muted);">Auto-resets at 00:00 IST</span>
+    </div>
 
-  <table style="width: 100%; border-collapse: collapse; text-align: left; margin-bottom: 3rem;">
-    <thead>
-      <tr style="border-bottom: 1px solid var(--border-color); color: var(--text-muted); font-size: 0.85rem;">
-        <th style="padding: 0.75rem;">Rank</th>
-        <th style="padding: 0.75rem;">Typist</th>
-        <th style="padding: 0.75rem;">Speed</th>
-        <th style="padding: 0.75rem;">Accuracy</th>
-        <th style="padding: 0.75rem;">Consistency</th>
-        <th style="padding: 0.75rem;">Verified Time</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for test in leaderboard %}
-      <tr style="border-bottom: 1px solid var(--border-color); font-size: 0.9rem;">
-        <td style="padding: 0.85rem; font-weight: 800; color: {{ '#f59e0b' if loop.index == 1 else ('#94a3b8' if loop.index == 2 else ('#b45309' if loop.index == 3 else 'var(--text-muted)')) }};">
-          #{{ loop.index }}
-        </td>
-        <td style="padding: 0.85rem; font-weight: 600;">
-          {{ test.user.username if test.user else 'Verified Guest' }}
-        </td>
-        <td style="padding: 0.85rem; font-family: var(--font-mono); font-weight: 800; color: var(--accent);">
-          {{ test.wpm }} WPM
-        </td>
-        <td style="padding: 0.85rem;">{{ test.accuracy }}%</td>
-        <td style="padding: 0.85rem;">{{ test.consistency }}%</td>
-        <td style="padding: 0.85rem; color: var(--text-muted); font-size: 0.8rem;">
-          {{ test.completed_at.strftime('%H:%M:%S') }}
-        </td>
-      </tr>
-      {% else %}
-      <tr>
-        <td colspan="6" style="padding: 2.5rem; text-align: center; color: var(--text-muted);">
-          No verified entries logged yet for today. Be the first to set today's record!
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+    <div class="table-responsive-container" style="margin-bottom:2.5rem;">
+        <table style="width:100%; text-align:left;">
+            <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>Pilot</th>
+                    <th>Net Speed</th>
+                    <th>Accuracy</th>
+                    <th>Consistency</th>
+                    <th>Verified Time (IST)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for test in leaderboard %}
+                <tr>
+                    <td style="font-weight:800; color:{{ '#f59e0b' if loop.index == 1 else ('#94a3b8' if loop.index == 2 else ('#d97706' if loop.index == 3 else 'var(--text-muted)')) }};">
+                        #{{ loop.index }}
+                    </td>
+                    <td style="font-weight:700;">
+                        {% if test.user %}
+                            <a href="{{ url_for('dashboard.public_profile', username=test.user.username) }}" style="color:var(--text-primary); text-decoration:none;">
+                                {{ test.user.username }}
+                            </a>
+                        {% else %}
+                            Verified Guest
+                        {% endif %}
+                    </td>
+                    <td style="font-family:var(--font-mono); font-weight:800; color:var(--accent);">
+                        {{ test.wpm }} WPM
+                    </td>
+                    <td>{{ test.accuracy }}%</td>
+                    <td>{{ test.consistency }}%</td>
+                    <td style="color:var(--text-muted); font-size:0.82rem;">
+                        {{ to_ist(test.completed_at).strftime('%H:%M:%S') }} IST
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" style="padding:2.5rem; text-align:center; color:var(--text-muted);">
+                        No runs logged yet for today's challenge window. Be the first to establish today's benchmark!
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 
-  <!-- Historic Archive of Past Daily Challenges -->
-  <div style="border-top: 1px solid var(--border-color); padding-top: 2rem;">
-    <h3 style="font-size: 1.15rem; margin-bottom: 1rem;">Past Daily Challenges History</h3>
-    <table style="width: 100%; border-collapse: collapse; text-align: left;">
-      <thead>
-        <tr style="border-bottom: 1px solid var(--border-color); color: var(--text-muted); font-size: 0.85rem;">
-          <th style="padding: 0.65rem;">Date</th>
-          <th style="padding: 0.65rem;">Title</th>
-          <th style="padding: 0.65rem;">Passage Excerpt</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for h in history %}
-        <tr style="border-bottom: 1px solid var(--border-color); font-size: 0.85rem;">
-          <td style="padding: 0.75rem; font-weight: 600; color: var(--accent);">{{ h.target_date.strftime('%b %d, %Y') }}</td>
-          <td style="padding: 0.75rem; font-weight: 600;">{{ h.title }}</td>
-          <td style="padding: 0.75rem; color: var(--text-muted); max-width: 400px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-mono);">
-            {{ h.content }}
-          </td>
-        </tr>
-        {% else %}
-        <tr>
-          <td colspan="3" style="padding: 1.5rem; text-align: center; color: var(--text-muted);">
-            Past challenges will archive here daily.
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
+    <!-- Historical Archives -->
+    <div style="border-top:1px solid var(--border-color); padding-top:1.5rem;">
+        <h3 style="font-size:1.1rem; margin-bottom:1rem;">Past Daily Flight Archives</h3>
+        <div class="table-responsive-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Title</th>
+                        <th>Passage Excerpt</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for h in history %}
+                    <tr>
+                        <td style="font-weight:700; color:var(--accent);">{{ h.target_date.strftime('%b %d, %Y') }}</td>
+                        <td style="font-weight:600;">{{ h.title }}</td>
+                        <td style="color:var(--text-secondary); max-width:420px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-family:var(--font-mono); font-size:0.85rem;">
+                            {{ h.content }}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="3" style="text-align:center; padding:1.5rem; color:var(--text-muted);">Historical challenges will archive here daily.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
 function startDailyChallenge() {
-  window.location.href = "{{ url_for('typing.test_page') }}?mode=daily";
+    window.location.href = "{{ url_for('typing.test_page') }}?mode=daily";
 }
 </script>
 {% endblock %}

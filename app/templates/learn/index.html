@@ -1,79 +1,116 @@
 {% extends 'base.html' %}
-
+{% block title %}Touch Typing Academy & Flight Tracks | TypeSphere{% endblock %}
 {% block content %}
-<div class="card" style="max-width:1080px; margin:0 auto;">
-  <!-- Header with Placement Assessment -->
-  <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:1.25rem; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
-    <div>
-      <h1 style="font-size:1.8rem; font-weight:800; margin:0;">TypeSphere Academy</h1>
-      <p style="color:var(--text-secondary); font-size:0.88rem; margin-top:0.25rem;">
-        Structured typing curriculum with multi-attempt mastery verification and skill tracks.
-      </p>
-    </div>
-    
-    <div style="display:flex; gap:0.6rem;">
-      <a href="{{ url_for('learn.skill_assessment') }}" class="btn" style="border-color:var(--accent); color:var(--accent); font-weight:700;">
-        🎯 Take Placement Assessment
-      </a>
-      <a href="{{ url_for('typing.test_page') }}" class="btn">&larr; Free Test Track</a>
-    </div>
-  </div>
-
-  <!-- Track Switcher Navigation -->
-  <div style="display:flex; gap:0.5rem; margin-bottom:2rem; flex-wrap:wrap;">
-    <a href="{{ url_for('learn.index', track='beginner') }}" class="btn {{ 'btn-primary' if active_track == 'beginner' else '' }}">
-      Beginner Track (0–40 WPM)
-    </a>
-    <a href="{{ url_for('learn.index', track='intermediate') }}" class="btn {{ 'btn-primary' if active_track == 'intermediate' else '' }}">
-      Intermediate Track (40–70 WPM)
-    </a>
-    <a href="{{ url_for('learn.index', track='advanced') }}" class="btn {{ 'btn-primary' if active_track == 'advanced' else '' }}">
-      Advanced Track (70–100 WPM)
-    </a>
-    <a href="{{ url_for('learn.index', track='expert') }}" class="btn {{ 'btn-primary' if active_track == 'expert' else '' }}">
-      Expert Track (100+ WPM)
-    </a>
-  </div>
-
-  <!-- Stage Cards Grid -->
-  <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(310px, 1fr)); gap:1.25rem;">
-    {% for st in stages %}
-      {% set prog = progress_map.get(st.id) %}
-      <div class="card" style="background:var(--bg-card); border:1px solid var(--border-color); margin-bottom:0; display:flex; flex-direction:column; justify-content:space-between;">
+<div class="card" style="max-width: 1100px; margin: 0 auto; padding: 2rem;">
+    <!-- Academy Header & Diagnostic Benchmark Banner -->
+    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:1.5rem; margin-bottom:2rem; flex-wrap:wrap; gap:1rem;">
         <div>
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.6rem;">
-            <span style="font-size:0.75rem; font-weight:800; color:var(--accent); background:var(--accent-glow); padding:0.15rem 0.5rem; border-radius:4px;">
-              STAGE {{ st.stage_number }}
-            </span>
-            {% if prog and prog.completed %}
-              <span style="font-size:0.75rem; font-weight:800; color:var(--success); background:var(--success-bg); padding:0.15rem 0.5rem; border-radius:4px;">
-                ✓ MASTERED
-              </span>
-            {% else %}
-              <span style="font-size:0.75rem; color:var(--text-muted);">
-                Req: {{ st.min_wpm_to_pass|int }} WPM / {{ st.min_accuracy_to_pass|int }}%
-              </span>
-            {% endif %}
-          </div>
-
-          <h3 style="font-size:1.15rem; font-weight:700; margin:0 0 0.4rem 0;">{{ st.title }}</h3>
-          <p style="color:var(--text-secondary); font-size:0.85rem; line-height:1.5; margin-bottom:1rem;">
-            {{ st.description }}
-          </p>
-        </div>
-
-        <div>
-          {% if prog %}
-            <div style="font-size:0.78rem; color:var(--text-muted); margin-bottom:0.75rem;">
-              Progress: <strong style="color:var(--accent);">{{ prog.successful_attempts }} / {{ st.required_attempts or 2 }} Verified Passes</strong> &bull; PB: {{ prog.best_wpm|int }} WPM
+            <div style="display:flex; align-items:center; gap:0.65rem;">
+                <span style="font-size:2rem;">🎓</span>
+                <div>
+                    <h1 style="font-size:1.85rem; font-weight:800; margin:0;">Touch Typing Academy</h1>
+                    <span style="font-size:0.78rem; font-weight:800; color:var(--accent); text-transform:uppercase; letter-spacing:0.06em;">Multi-Track Structured Flight Curriculum</span>
+                </div>
             </div>
-          {% endif %}
-          <a href="{{ url_for('learn.lesson', slug=st.slug) }}" class="btn btn-primary" style="width:100%; justify-content:center; padding:0.65rem; font-weight:700;">
-            Practice Stage {{ st.stage_number }} &rarr;
-          </a>
+            <p style="color:var(--text-secondary); font-size:0.9rem; margin-top:0.4rem; line-height:1.55;">
+                From baseline Home Row resting anchors to advanced programming brackets. Each stage requires multi-attempt verified completion to guarantee genuine muscle memory retention.
+            </p>
         </div>
-      </div>
-    {% endfor %}
-  </div>
+
+        <div style="display:flex; gap:0.6rem; flex-wrap:wrap;">
+            <a href="{{ url_for('learn.skill_assessment') }}" class="btn btn-primary" style="font-weight:800; padding:0.65rem 1.4rem; box-shadow:0 0 16px var(--accent-glow);">
+                🎯 Take 60s Placement Diagnostic &rarr;
+            </a>
+            <a href="{{ url_for('typing.test_page') }}" class="btn btn-sm">&larr; Free Benchmark</a>
+        </div>
+    </div>
+
+    <!-- Skill Track Navigation Pills -->
+    <div style="display:flex; gap:0.5rem; margin-bottom:2rem; flex-wrap:wrap;">
+        <a href="{{ url_for('learn.index', track='beginner') }}" class="btn {{ 'btn-primary active-choice' if active_track == 'beginner' else '' }}" style="padding:0.55rem 1.15rem; font-weight:700;">
+            🌱 Beginner Track (0–40 WPM)
+        </a>
+        <a href="{{ url_for('learn.index', track='intermediate') }}" class="btn {{ 'btn-primary active-choice' if active_track == 'intermediate' else '' }}" style="padding:0.55rem 1.15rem; font-weight:700;">
+            🚀 Intermediate Track (40–70 WPM)
+        </a>
+        <a href="{{ url_for('learn.index', track='advanced') }}" class="btn {{ 'btn-primary active-choice' if active_track == 'advanced' else '' }}" style="padding:0.55rem 1.15rem; font-weight:700;">
+            ⚡ Advanced Track (70–100 WPM)
+        </a>
+        <a href="{{ url_for('learn.index', track='expert') }}" class="btn {{ 'btn-primary active-choice' if active_track == 'expert' else '' }}" style="padding:0.55rem 1.15rem; font-weight:700;">
+            👑 Expert Grandmaster (100+ WPM)
+        </a>
+    </div>
+
+    <!-- Active Track Description Card -->
+    <div class="card" style="background:var(--bg-card); border-left:4px solid var(--accent); padding:1rem 1.25rem; margin-bottom:2rem;">
+        <div style="font-size:0.88rem; color:var(--text-secondary); line-height:1.55;">
+            {% if active_track == 'beginner' %}
+                <strong>Beginner Flight Track:</strong> Establishes foundational muscle memory. Focuses exclusively on Home Row tactile resting points, vertical finger stretches to the top row, and downward bottom row tucks without lifting palms off the desk.
+            {% elif active_track == 'intermediate' %}
+                <strong>Intermediate Flight Track:</strong> Transitions individual strokes into continuous phrase cadence. Drills contralateral Shift synchronization, top 100 high-frequency English vocabulary, and numeric row stretches.
+            {% elif active_track == 'advanced' %}
+                <strong>Advanced Flight Track:</strong> Developer brackets, nested syntax punctuation, high-speed n-gram bursts (the, ing, tion), and zero-error precision gauntlets demanding $\ge 98\%$ accuracy.
+            {% else %}
+                <strong>Expert Grandmaster Track:</strong> Sustained cognitive endurance sprints (95–105+ WPM) simulating rapid executive briefings, legal documentation, and complex technical reports.
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Stages Grid -->
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:1.5rem;">
+        {% for st in stages %}
+        {% set prog = progress_map.get(st.id) %}
+        <div class="card" style="background:var(--bg-card); margin-bottom:0; display:flex; flex-direction:column; justify-content:space-between; border-color:{{ 'var(--success)' if prog and prog.completed else 'var(--border-color)' }};">
+            <div>
+                <!-- Stage Number & Pass Badge -->
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+                    <span style="font-size:0.72rem; font-weight:800; color:var(--accent); background:var(--accent-glow); padding:0.2rem 0.6rem; border-radius:4px; text-transform:uppercase; letter-spacing:0.06em;">
+                        Stage {{ st.stage_number }} &bull; {{ st.track|upper }}
+                    </span>
+                    {% if prog and prog.completed %}
+                        <span style="font-size:0.72rem; font-weight:800; color:var(--success); background:var(--success-bg); padding:0.2rem 0.55rem; border-radius:4px;">
+                            ✓ MASTERED
+                        </span>
+                    {% else %}
+                        <span style="font-size:0.72rem; color:var(--text-muted); font-weight:700;">
+                            Req: {{ st.min_wpm_to_pass|int }} WPM / {{ st.min_accuracy_to_pass|int }}% Acc
+                        </span>
+                    {% endif %}
+                </div>
+
+                <h3 style="font-size:1.15rem; font-weight:800; margin:0 0 0.4rem 0; color:var(--text-primary);">
+                    {{ st.title }}
+                </h3>
+                
+                {% if st.focus_keys %}
+                <div style="font-family:var(--font-mono); font-size:0.8rem; color:var(--warning); font-weight:700; margin-bottom:0.6rem;">
+                    Focus Keys: {{ st.focus_keys }}
+                </div>
+                {% endif %}
+
+                <p style="color:var(--text-secondary); font-size:0.86rem; line-height:1.55; margin-bottom:1.25rem;">
+                    {{ st.description }}
+                </p>
+            </div>
+
+            <div>
+                <!-- Progress Status -->
+                {% if prog %}
+                <div style="background:var(--bg-secondary); padding:0.5rem 0.75rem; border-radius:var(--radius-sm); margin-bottom:0.85rem; font-size:0.78rem; display:flex; justify-content:space-between; align-items:center;">
+                    <span style="color:var(--text-muted);">Mastery Progress:</span>
+                    <strong>
+                        <span style="color:{{ 'var(--success)' if prog.completed else 'var(--accent)' }};">{{ prog.successful_attempts }}</span> / {{ st.required_attempts or 2 }} Passes
+                        {% if prog.best_wpm > 0 %}&bull; PB: {{ prog.best_wpm|round|int }} WPM{% endif %}
+                    </strong>
+                </div>
+                {% endif %}
+
+                <a href="{{ url_for('learn.lesson', slug=st.slug) }}" class="btn btn-primary" style="width:100%; justify-content:center; padding:0.65rem; font-weight:800;">
+                    Practice Stage {{ st.stage_number }} &rarr;
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
 </div>
 {% endblock %}

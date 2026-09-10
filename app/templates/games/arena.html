@@ -1,227 +1,215 @@
 {% extends 'base.html' %}
-
+{% block title %}Flight Arena: {{ game.title }} | TypeSphere{% endblock %}
 {% block content %}
 <div class="card" style="max-width:1080px; margin:0 auto; padding:1.25rem 1.75rem;">
-  
-  <!-- =========================================================
-       PHASE 1: PRE-GAME SETUP SUITE
-       ========================================================= -->
-  <div id="game-setup-screen">
-    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:1rem; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
-      <div style="display:flex; align-items:center; gap:0.75rem;">
-        <span style="font-size:2.5rem;">{{ game.icon }}</span>
-        <div>
-          <h1 style="font-size:1.8rem; font-weight:800; margin:0;">{{ game.title }}</h1>
-          <span style="font-size:0.8rem; color:var(--accent); font-weight:700; text-transform:uppercase;">{{ game.category }} &bull; Game Setup</span>
-        </div>
-      </div>
-      <a href="{{ url_for('games.index') }}" class="btn btn-sm">&larr; Return to Arcade</a>
-    </div>
-
-    <!-- Objective Summary Card -->
-    <div class="card" style="background:var(--bg-card); border-left:4px solid var(--accent); margin-bottom:1.5rem; padding:1rem 1.25rem;">
-      <h4 style="font-size:0.88rem; text-transform:uppercase; color:var(--accent); margin-bottom:0.4rem; letter-spacing:0.05em;">Win / Loss Criteria</h4>
-      <div style="font-size:0.9rem; line-height:1.5; color:var(--text-primary); margin-bottom:0.25rem;">
-        <strong>WIN:</strong> {{ game.win_condition }}
-      </div>
-      <div style="font-size:0.9rem; line-height:1.5; color:var(--danger);">
-        <strong>LOSE:</strong> {{ game.lose_condition }}
-      </div>
-    </div>
-
-    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:1.25rem; margin-bottom:2rem;">
-      <!-- 1. Play Mode Selector -->
-      <div class="card" style="background:var(--bg-card); margin-bottom:0;">
-        <h3 style="font-size:0.95rem; font-weight:700; margin-bottom:0.75rem;">1. Select Play Mode</h3>
-        <div style="display:flex; flex-direction:column; gap:0.5rem;" id="setup-play-modes">
-          <button onclick="setPlayMode('solo_practice', this)" class="btn" style="justify-content:flex-start;">
-            🎯 Solo Practice (No Opponent)
-          </button>
-          <button onclick="setPlayMode('solo_ai', this)" class="btn active-choice" style="justify-content:flex-start;">
-            🤖 Play vs AI Typist
-          </button>
-          {% if '1v1' in game.supports|join(' ') %}
-          <button onclick="setPlayMode('1v1_private', this)" class="btn" style="justify-content:flex-start;">
-            🔒 1v1 Private Room Challenge
-          </button>
-          {% endif %}
-          {% if 'Multiplayer' in game.supports|join(' ') %}
-          <button onclick="setPlayMode('multiplayer', this)" class="btn" style="justify-content:flex-start;">
-            🌐 Multi-Racer Room
-          </button>
-          {% endif %}
-        </div>
-      </div>
-
-      <!-- 2. Difficulty & AI Configuration -->
-      <div class="card" style="background:var(--bg-card); margin-bottom:0;">
-        <h3 style="font-size:0.95rem; font-weight:700; margin-bottom:0.75rem;">2. Difficulty & Opponents</h3>
-        <div style="display:flex; flex-direction:column; gap:0.85rem;">
-          <div>
-            <label style="display:block; font-size:0.75rem; text-transform:uppercase; color:var(--text-muted); font-weight:700; margin-bottom:0.3rem;">Difficulty Tier</label>
-            <select id="setup-difficulty" class="form-select" style="width:100%;">
-              <option value="easy">Easy (Slower pacing, simple lexicon)</option>
-              <option value="moderate" selected>Moderate (Standard human speed)</option>
-              <option value="hard">Hard (Rapid pace, advanced vocabulary)</option>
-              <option value="expert">Expert (Esports velocity, complex targets)</option>
-            </select>
-          </div>
-
-          <div id="setup-objective-wrap">
-            <label style="display:block; font-size:0.75rem; text-transform:uppercase; color:var(--text-muted); font-weight:700; margin-bottom:0.3rem;">Target Objective</label>
-            <select id="setup-objective-val" class="form-select" style="width:100%;">
-              {% for opt in game.objective_options %}
-              <option value="{{ opt.val }}" {% if loop.first %}selected{% endif %}>{{ opt.label }}</option>
-              {% endfor %}
-            </select>
-          </div>
-
-          <div id="setup-room-code-wrap" style="display:none;">
-            <label style="display:block; font-size:0.75rem; text-transform:uppercase; color:var(--text-muted); font-weight:700; margin-bottom:0.3rem;">Room Code</label>
-            <input type="text" id="setup-room-code" placeholder="ENTER 4-DIGIT CODE" style="width:100%; padding:0.5rem; background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:4px; font-family:var(--font-mono); text-transform:uppercase;">
-          </div>
-        </div>
-      </div>
-
-      <!-- 3. Typing Mechanics (Blind Mode & Backspace) -->
-      <div class="card" style="background:var(--bg-card); margin-bottom:0;">
-        <h3 style="font-size:0.95rem; font-weight:700; margin-bottom:0.75rem;">3. Typing Controls</h3>
-        <div style="display:flex; flex-direction:column; gap:0.75rem;">
-          <div style="display:flex; justify-content:space-between; align-items:center; padding:0.4rem 0;">
-            <div>
-              <div style="font-weight:700; font-size:0.85rem;">Blind Mode</div>
-              <div style="font-size:0.75rem; color:var(--text-muted);">Disables visual error masking</div>
+    <!-- =========================================================
+         PHASE 1: PRE-GAME SETUP SUITE
+         ========================================================= -->
+    <div id="game-setup-screen">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:1rem; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
+            <div style="display:flex; align-items:center; gap:0.75rem;">
+                <span style="font-size:2.5rem;">{{ game.icon }}</span>
+                <div>
+                    <h1 style="font-size:1.8rem; font-weight:800; margin:0;">{{ game.title }}</h1>
+                    <span style="font-size:0.8rem; color:var(--accent); font-weight:700; text-transform:uppercase;">{{ game.category }} &bull; Pre-Flight Calibration</span>
+                </div>
             </div>
-            <button onclick="toggleSetupToggle('blind')" id="toggle-blind-btn" class="btn btn-sm">OFF</button>
-          </div>
-
-          <div style="display:flex; justify-content:space-between; align-items:center; padding:0.4rem 0; border-top:1px solid var(--border-color);">
-            <div>
-              <div style="font-weight:700; font-size:0.85rem;">Backspace Allowance</div>
-              <div style="font-size:0.75rem; color:var(--text-muted);">Allow correcting typos</div>
-            </div>
-            <button onclick="toggleSetupToggle('backspace')" id="toggle-backspace-btn" class="btn btn-sm active-choice">ON</button>
-          </div>
-
-          {% if game.slug == 'bubble_pop' %}
-          <div style="border-top:1px solid var(--border-color); padding-top:0.6rem;">
-            <label style="display:block; font-size:0.75rem; text-transform:uppercase; color:var(--text-muted); font-weight:700; margin-bottom:0.3rem;">Target Character Category</label>
-            <select id="setup-bubble-char-mode" class="form-select" style="width:100%;">
-              <option value="letters">Lowercase Letters (a-z)</option>
-              <option value="uppercase">Uppercase Letters (A-Z)</option>
-              <option value="numbers">Numeric Digits (0-9)</option>
-              <option value="symbols">Symbols & Punctuation (!@#$...)</option>
-              <option value="letters_numbers">Letters + Numbers</option>
-              <option value="mixed_all">Mixed All Characters</option>
-              {% if weak_keys %}<option value="weak_keys">Target My Weak Keys ({{ weak_keys|join(', ') }})</option>{% endif %}
-            </select>
-          </div>
-          {% endif %}
+            <a href="{{ url_for('games.index') }}" class="btn btn-sm">&larr; Return to Arcade</a>
         </div>
-      </div>
+
+        <!-- Objective Rules Card -->
+        <div class="card" style="background:var(--bg-card); border-left:4px solid var(--accent); margin-bottom:1.5rem; padding:1rem 1.25rem;">
+            <h4 style="font-size:0.85rem; text-transform:uppercase; color:var(--accent); margin-bottom:0.4rem; letter-spacing:0.06em;">Flight Objectives & Outcome Conditions</h4>
+            <div style="font-size:0.9rem; line-height:1.5; color:var(--text-primary); margin-bottom:0.25rem;">
+                <strong>VICTORY:</strong> {{ game.win_condition }}
+            </div>
+            <div style="font-size:0.9rem; line-height:1.5; color:var(--danger);">
+                <strong>DEFEAT:</strong> {{ game.lose_condition }}
+            </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:1.25rem; margin-bottom:2rem;">
+            <!-- 1. Play Mode Selector -->
+            <div class="card" style="background:var(--bg-card); margin-bottom:0;">
+                <h3 style="font-size:0.95rem; font-weight:700; margin-bottom:0.75rem;">1. Select Flight Mode</h3>
+                <div style="display:flex; flex-direction:column; gap:0.5rem;" id="setup-play-modes">
+                    <button type="button" onclick="setPlayMode('solo_practice', this)" class="btn" style="justify-content:flex-start;">
+                        🎯 Solo Practice (Open Simulation)
+                    </button>
+                    <button type="button" onclick="setPlayMode('solo_ai', this)" class="btn active-choice" style="justify-content:flex-start;">
+                        🤖 Solo vs CyberBot (AI Pacer)
+                    </button>
+                    {% if '1v1' in game.supports|join(' ') %}
+                    <button type="button" onclick="setPlayMode('1v1_private', this)" class="btn" style="justify-content:flex-start;">
+                        🔒 1v1 Room Challenge
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- 2. Difficulty & Objective Target -->
+            <div class="card" style="background:var(--bg-card); margin-bottom:0;">
+                <h3 style="font-size:0.95rem; font-weight:700; margin-bottom:0.75rem;">2. Pacing & Parameters</h3>
+                <div style="display:flex; flex-direction:column; gap:0.85rem;">
+                    <div>
+                        <label style="display:block; font-size:0.75rem; text-transform:uppercase; color:var(--text-muted); font-weight:700; margin-bottom:0.3rem;">Bot Difficulty Tier</label>
+                        <select id="setup-difficulty" class="form-select" style="width:100%;">
+                            <option value="easy">Easy (35 WPM / Gentle)</option>
+                            <option value="moderate" selected>Moderate (65 WPM / Standard)</option>
+                            <option value="hard">Hard (95 WPM / Aggressive)</option>
+                            <option value="expert">Expert (130 WPM / Master)</option>
+                        </select>
+                    </div>
+                    <div id="setup-objective-wrap">
+                        <label style="display:block; font-size:0.75rem; text-transform:uppercase; color:var(--text-muted); font-weight:700; margin-bottom:0.3rem;">Flight Target / Distance</label>
+                        <select id="setup-objective-val" class="form-select" style="width:100%;">
+                            {% for opt in game.objective_options %}
+                            <option value="{{ opt.val }}" {% if loop.first %}selected{% endif %}>{{ opt.label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div id="setup-room-code-wrap" style="display:none;">
+                        <label style="display:block; font-size:0.75rem; text-transform:uppercase; color:var(--text-muted); font-weight:700; margin-bottom:0.3rem;">Room Passcode</label>
+                        <input type="text" id="setup-room-code" placeholder="ENTER ROOM CODE" style="width:100%; padding:0.5rem; background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:4px; font-family:var(--font-mono); text-transform:uppercase;">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. Cockpit Controls -->
+            <div class="card" style="background:var(--bg-card); margin-bottom:0;">
+                <h3 style="font-size:0.95rem; font-weight:700; margin-bottom:0.75rem;">3. Flight Controls</h3>
+                <div style="display:flex; flex-direction:column; gap:0.75rem;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; padding:0.3rem 0;">
+                        <div>
+                            <div style="font-weight:700; font-size:0.85rem;">Blind Flight Mode</div>
+                            <div style="font-size:0.75rem; color:var(--text-muted);">Disables backspace correction</div>
+                        </div>
+                        <button type="button" onclick="toggleSetupToggle('blind')" id="toggle-blind-btn" class="btn btn-sm">OFF</button>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; padding:0.3rem 0; border-top:1px solid var(--border-color);">
+                        <div>
+                            <div style="font-weight:700; font-size:0.85rem;">Backspace Allowance</div>
+                            <div style="font-size:0.75rem; color:var(--text-muted);">Allow correcting typos</div>
+                        </div>
+                        <button type="button" onclick="toggleSetupToggle('backspace')" id="toggle-backspace-btn" class="btn btn-sm active-choice">ON</button>
+                    </div>
+                    {% if game.slug == 'bubble_pop' %}
+                    <div style="border-top:1px solid var(--border-color); padding-top:0.6rem;">
+                        <label style="display:block; font-size:0.75rem; text-transform:uppercase; color:var(--text-muted); font-weight:700; margin-bottom:0.3rem;">Character Bank</label>
+                        <select id="setup-bubble-char-mode" class="form-select" style="width:100%;">
+                            <option value="letters">Lowercase English (a-z)</option>
+                            <option value="uppercase">Uppercase English (A-Z)</option>
+                            <option value="numbers">Numeric Digits (0-9)</option>
+                            <option value="symbols">Punctuation & Symbols (!@#$...)</option>
+                            <option value="letters_numbers">Letters + Numbers</option>
+                            <option value="mixed_all">Mixed All Characters</option>
+                        </select>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div style="text-align:center;">
+            <button type="button" onclick="initiateCountdownAndLaunch()" class="btn btn-primary" style="padding:0.85rem 3.5rem; font-size:1.1rem; font-weight:800; box-shadow:0 0 25px var(--accent-glow);">
+                ⚡ Launch Flight Arena (3..2..1)
+            </button>
+        </div>
     </div>
 
-    <!-- Ready Screen Summary & Launch -->
-    <div style="text-align:center;">
-      <button onclick="startArcadeCountdown()" class="btn btn-primary" style="padding:0.85rem 3.5rem; font-size:1.1rem; font-weight:800; box-shadow:0 0 25px var(--accent-glow);">
-        ⚡ Enter Arena & Start (3..2..1)
-      </button>
-    </div>
-  </div>
+    <!-- =========================================================
+         PHASE 2: LIVE FLIGHT ARENA & 3..2..1 COUNTDOWN
+         ========================================================= -->
+    <div id="game-active-arena" style="display:none;">
+        <!-- Synchronized 3-2-1 Countdown Overlay -->
+        <div id="arena-launch-countdown-banner" style="display:none; text-align:center; padding:2rem; background:var(--bg-card); border:2px solid var(--accent); border-radius:var(--radius); margin-bottom:1.5rem;">
+            <div style="font-size:0.85rem; font-weight:800; text-transform:uppercase; letter-spacing:0.12em; color:var(--text-muted);">Synchronizing Cockpit Sensors</div>
+            <div id="arena-countdown-display" style="font-size:5rem; font-family:var(--font-mono); font-weight:900; color:var(--accent); line-height:1.2;">3</div>
+        </div>
 
-  <!-- =========================================================
-       PHASE 2: LIVE GAMEPLAY CANVAS & OPPONENT TRACKS
-       ========================================================= -->
-  <div id="game-active-arena" style="display:none;">
-    <!-- Live Match Telemetry Header -->
-    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:0.75rem; margin-bottom:1rem; flex-wrap:wrap; gap:0.5rem;">
-      <div style="display:flex; align-items:center; gap:0.6rem;">
-        <span style="font-size:1.6rem;">{{ game.icon }}</span>
-        <strong id="live-header-title" style="font-size:1.15rem;">{{ game.title }}</strong>
-      </div>
+        <!-- Live Telemetry Ribbon -->
+        <div id="arena-live-content-wrap" style="display:none;">
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:0.75rem; margin-bottom:1rem; flex-wrap:wrap; gap:0.5rem;">
+                <div style="display:flex; align-items:center; gap:0.6rem;">
+                    <span style="font-size:1.6rem;">{{ game.icon }}</span>
+                    <strong style="font-size:1.15rem;">{{ game.title }}</strong>
+                </div>
+                <div style="display:flex; gap:1.5rem; align-items:center; font-size:0.88rem;">
+                    <div>You: <strong id="live-my-stat" style="color:var(--accent); font-family:var(--font-mono);">0 pts</strong> (<span id="live-my-wpm">0 WPM</span>)</div>
+                    <div id="live-opp-wrapper">Opponent: <strong id="live-opp-stat" style="color:var(--warning); font-family:var(--font-mono);">0 pts</strong> (<span id="live-opp-wpm">0 WPM</span>)</div>
+                </div>
+                <button type="button" onclick="abortCurrentGame()" class="btn btn-sm btn-danger">&times; Abort Flight</button>
+            </div>
 
-      <!-- Live Opponents Progress -->
-      <div id="live-opponents-roster" style="display:flex; gap:1.25rem; align-items:center; font-size:0.88rem;">
-        <div>You: <strong id="live-my-stat" style="color:var(--accent); font-family:var(--font-mono);">0 pts</strong> (<span id="live-my-wpm">0 WPM</span>)</div>
-        <div id="live-opp-wrapper">Opponent: <strong id="live-opp-stat" style="color:var(--warning); font-family:var(--font-mono);">0 pts</strong> (<span id="live-opp-wpm">0 WPM</span>)</div>
-      </div>
+            <!-- The Game Viewport -->
+            <div id="arcade-viewport" tabindex="0"></div>
 
-      <button onclick="abortCurrentGame()" class="btn btn-sm btn-danger">&times; Abort Game</button>
-    </div>
-
-    <!-- Dynamic Game Viewport -->
-    <div id="arcade-viewport" tabindex="0"></div>
-
-    <!-- Feedback & Combo Tracker -->
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.75rem; font-size:0.82rem; color:var(--text-muted);">
-      <span id="gameplay-objective-hint">WIN: {{ game.win_condition }}</span>
-      <span>Streak Combo: <strong id="live-combo-badge" style="color:var(--accent); font-family:var(--font-mono); font-size:0.95rem;">0x</strong></span>
-    </div>
-  </div>
-
-  <!-- =========================================================
-       PHASE 3: DEFINITIVE RESULTS SYSTEM
-       ========================================================= -->
-  <div id="game-results-screen" style="display:none; text-align:center; padding:1.5rem 0;">
-    <div id="res-outcome-badge" style="display:inline-block; font-size:1rem; font-weight:900; padding:0.35rem 1rem; border-radius:6px; margin-bottom:0.5rem; text-transform:uppercase;">
-      FINISHED
-    </div>
-    
-    <div id="res-trophy-symbol" style="font-size:4rem; margin-bottom:0.25rem;">🏁</div>
-    <h2 id="res-headline-title" style="font-size:2rem; font-weight:800; color:var(--accent); margin-bottom:0.25rem;">Match Concluded</h2>
-    <p id="res-motivational-text" style="color:var(--text-secondary); font-size:0.95rem; max-width:620px; margin:0 auto 1.5rem; line-height:1.5;">
-      Game session completed.
-    </p>
-
-    <!-- Essential Result Statistics -->
-    <div class="stats-hud" style="grid-template-columns:repeat(auto-fit, minmax(120px, 1fr)); max-width:840px; margin:0 auto 1.75rem;">
-      <div class="stat-box">
-        <div class="stat-label">Final Score</div>
-        <div class="stat-value" id="res-score" style="color:var(--accent);">0</div>
-      </div>
-      <div class="stat-box">
-        <div class="stat-label">Net Speed</div>
-        <div class="stat-value" id="res-wpm">0 WPM</div>
-      </div>
-      <div class="stat-box">
-        <div class="stat-label">Accuracy</div>
-        <div class="stat-value" id="res-acc">100%</div>
-      </div>
-      <div class="stat-box">
-        <div class="stat-label">Errors</div>
-        <div class="stat-value" id="res-errors" style="color:var(--danger);">0</div>
-      </div>
-      <div class="stat-box">
-        <div class="stat-label">Max Combo</div>
-        <div class="stat-value" id="res-combo" style="color:var(--warning);">0x</div>
-      </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.75rem; font-size:0.82rem; color:var(--text-muted);">
+                <span>VICTORY: {{ game.win_condition }}</span>
+                <span>Streak Multiplier: <strong id="live-combo-badge" style="color:var(--accent); font-family:var(--font-mono); font-size:0.95rem;">0x</strong></span>
+            </div>
+        </div>
     </div>
 
-    <!-- Game-Specific Telemetry Box -->
-    <div class="card" style="background:var(--bg-card); max-width:680px; margin:0 auto 1.75rem; text-align:left; padding:1rem 1.25rem;">
-      <h4 style="font-size:0.85rem; text-transform:uppercase; color:var(--accent); margin-bottom:0.6rem; letter-spacing:0.05em;">Telemetry Audit</h4>
-      <div id="res-specific-stats" style="display:flex; flex-direction:column; gap:0.4rem; font-size:0.88rem;"></div>
-    </div>
+    <!-- =========================================================
+         PHASE 3: DEFINITIVE OUTCOME RESULTS SCREEN
+         ========================================================= -->
+    <div id="game-results-screen" style="display:none; text-align:center; padding:1.5rem 0;">
+        <div id="res-outcome-badge" style="display:inline-block; font-size:1rem; font-weight:900; padding:0.35rem 1.25rem; border-radius:6px; margin-bottom:0.5rem; text-transform:uppercase;">
+            FINISHED
+        </div>
+        <div id="res-trophy-symbol" style="font-size:4rem; margin-bottom:0.25rem;">🏁</div>
+        <h2 id="res-headline-title" style="font-size:2rem; font-weight:800; color:var(--accent); margin-bottom:0.25rem;">Discipline Concluded</h2>
+        <p id="res-motivational-text" style="color:var(--text-secondary); font-size:0.95rem; max-width:620px; margin:0 auto 1.5rem; line-height:1.55;">
+            Flight telemetry recorded.
+        </p>
 
-    <!-- Actions -->
-    <div style="display:flex; justify-content:center; gap:0.75rem; flex-wrap:wrap;">
-      <button onclick="startArcadeCountdown()" class="btn btn-primary" style="padding:0.75rem 1.75rem; font-weight:800;">
-        🔄 Play Again (Space)
-      </button>
-      <button onclick="openPreGameSetup()" class="btn" style="padding:0.75rem 1.25rem;">
-        ⚙️ Modify Rules
-      </button>
-      <a href="{{ url_for('games.index') }}" class="btn" style="padding:0.75rem 1.25rem;">
-        Arcade Directory
-      </a>
-      {% if current_user.is_authenticated %}
-      <a href="{{ url_for('typing.practice_page') }}" class="btn" style="border-color:var(--accent); color:var(--accent); padding:0.75rem 1.25rem;">
-        Train Weaknesses &rarr;
-      </a>
-      {% endif %}
-    </div>
-  </div>
+        <!-- Stats Matrix -->
+        <div class="stats-hud" style="grid-template-columns:repeat(auto-fit, minmax(120px, 1fr)); max-width:840px; margin:0 auto 1.75rem;">
+            <div class="stat-box">
+                <div class="stat-label">Final Score</div>
+                <div class="stat-value" id="res-score" style="color:var(--accent);">0</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Net Speed</div>
+                <div class="stat-value" id="res-wpm">0 WPM</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Accuracy</div>
+                <div class="stat-value" id="res-acc">100%</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Errors</div>
+                <div class="stat-value" id="res-errors" style="color:var(--danger);">0</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Peak Multiplier</div>
+                <div class="stat-value" id="res-combo" style="color:var(--warning);">0x</div>
+            </div>
+        </div>
 
+        <div class="card" style="background:var(--bg-card); max-width:680px; margin:0 auto 1.75rem; text-align:left; padding:1rem 1.25rem;">
+            <h4 style="font-size:0.85rem; text-transform:uppercase; color:var(--accent); margin-bottom:0.6rem; letter-spacing:0.06em;">Flight Telemetry Log</h4>
+            <div id="res-specific-stats" style="display:flex; flex-direction:column; gap:0.4rem; font-size:0.88rem;"></div>
+        </div>
+
+        <div style="display:flex; justify-content:center; gap:0.75rem; flex-wrap:wrap;">
+            <button type="button" onclick="initiateCountdownAndLaunch()" class="btn btn-primary" style="padding:0.75rem 1.75rem; font-weight:800;">
+                🔄 Re-engage Discipline (Space)
+            </button>
+            <button type="button" onclick="openPreGameSetup()" class="btn" style="padding:0.75rem 1.25rem;">
+                ⚙️ Recalibrate Parameters
+            </button>
+            <a href="{{ url_for('games.index') }}" class="btn" style="padding:0.75rem 1.25rem;">
+                Arcade Directory
+            </a>
+            {% if current_user.is_authenticated %}
+            <a href="{{ url_for('typing.practice_page') }}" class="btn" style="border-color:var(--accent); color:var(--accent); padding:0.75rem 1.25rem;">
+                Train Weaknesses &rarr;
+            </a>
+            {% endif %}
+        </div>
+    </div>
 </div>
 
 <link rel="stylesheet" href="{{ url_for('static', filename='css/arcade.css') }}">
@@ -237,61 +225,86 @@ let isBlindMode = false;
 let isBackspaceAllowed = true;
 
 function setPlayMode(mode, btn) {
-  selectedPlayMode = mode;
-  document.querySelectorAll('#setup-play-modes .btn').forEach(b => b.classList.remove('active-choice'));
-  btn.classList.add('active-choice');
-  
-  const roomWrap = document.getElementById('setup-room-code-wrap');
-  const oppWrap = document.getElementById('live-opp-wrapper');
-  if (roomWrap) roomWrap.style.display = (mode === '1v1_private' || mode === 'multiplayer') ? 'block' : 'none';
-  if (oppWrap) oppWrap.style.display = (mode === 'solo_practice') ? 'none' : 'block';
+    selectedPlayMode = mode;
+    document.querySelectorAll('#setup-play-modes .btn').forEach(b => b.classList.remove('active-choice'));
+    btn.classList.add('active-choice');
+
+    const roomWrap = document.getElementById('setup-room-code-wrap');
+    const oppWrap = document.getElementById('live-opp-wrapper');
+    if (roomWrap) roomWrap.style.display = (mode === '1v1_private') ? 'block' : 'none';
+    if (oppWrap) oppWrap.style.display = (mode === 'solo_practice') ? 'none' : 'block';
 }
 
 function toggleSetupToggle(type) {
-  if (type === 'blind') {
-    isBlindMode = !isBlindMode;
-    const btn = document.getElementById('toggle-blind-btn');
-    btn.textContent = isBlindMode ? 'ON' : 'OFF';
-    btn.classList.toggle('active-choice', isBlindMode);
-  } else if (type === 'backspace') {
-    isBackspaceAllowed = !isBackspaceAllowed;
-    const btn = document.getElementById('toggle-backspace-btn');
-    btn.textContent = isBackspaceAllowed ? 'ON' : 'OFF';
-    btn.classList.toggle('active-choice', isBackspaceAllowed);
-  }
+    if (type === 'blind') {
+        isBlindMode = !isBlindMode;
+        const btn = document.getElementById('toggle-blind-btn');
+        btn.textContent = isBlindMode ? 'ON' : 'OFF';
+        btn.classList.toggle('active-choice', isBlindMode);
+    } else if (type === 'backspace') {
+        isBackspaceAllowed = !isBackspaceAllowed;
+        const btn = document.getElementById('toggle-backspace-btn');
+        btn.textContent = isBackspaceAllowed ? 'ON' : 'OFF';
+        btn.classList.toggle('active-choice', isBackspaceAllowed);
+    }
 }
 
 function openPreGameSetup() {
-  document.getElementById('game-setup-screen').style.display = 'block';
-  document.getElementById('game-active-arena').style.display = 'none';
-  document.getElementById('game-results-screen').style.display = 'none';
+    document.getElementById('game-setup-screen').style.display = 'block';
+    document.getElementById('game-active-arena').style.display = 'none';
+    document.getElementById('game-results-screen').style.display = 'none';
 }
 
-function startArcadeCountdown() {
-  const diff = document.getElementById('setup-difficulty').value;
-  const objVal = document.getElementById('setup-objective-val') ? document.getElementById('setup-objective-val').value : '60';
-  const charMode = document.getElementById('setup-bubble-char-mode') ? document.getElementById('setup-bubble-char-mode').value : 'letters';
-  const code = document.getElementById('setup-room-code') ? document.getElementById('setup-room-code').value.trim() : '';
+function initiateCountdownAndLaunch() {
+    const diff = document.getElementById('setup-difficulty').value;
+    const objVal = document.getElementById('setup-objective-val') ? document.getElementById('setup-objective-val').value : '60';
+    const charMode = document.getElementById('setup-bubble-char-mode') ? document.getElementById('setup-bubble-char-mode').value : 'letters';
+    const code = document.getElementById('setup-room-code') ? document.getElementById('setup-room-code').value.trim() : '';
 
-  document.getElementById('game-setup-screen').style.display = 'none';
-  document.getElementById('game-results-screen').style.display = 'none';
-  document.getElementById('game-active-arena').style.display = 'block';
+    document.getElementById('game-setup-screen').style.display = 'none';
+    document.getElementById('game-results-screen').style.display = 'none';
+    document.getElementById('game-active-arena').style.display = 'block';
 
-  window.arcadeEngine.start({
-    slug: GAME_SLUG,
-    playMode: selectedPlayMode,
-    difficulty: diff,
-    objectiveVal: objVal,
-    blindMode: isBlindMode,
-    backspaceAllowed: isBackspaceAllowed,
-    charMode: charMode,
-    roomCode: code
-  });
+    const cdBanner = document.getElementById('arena-launch-countdown-banner');
+    const cdDisplay = document.getElementById('arena-countdown-display');
+    const liveContent = document.getElementById('arena-live-content-wrap');
+
+    cdBanner.style.display = 'block';
+    liveContent.style.display = 'none';
+
+    let count = 3;
+    cdDisplay.textContent = count;
+
+    const interval = setInterval(() => {
+        count--;
+        if (count > 0) {
+            cdDisplay.textContent = count;
+        } else if (count === 0) {
+            cdDisplay.textContent = 'GO!';
+            cdDisplay.style.color = 'var(--success)';
+        } else {
+            clearInterval(interval);
+            cdBanner.style.display = 'none';
+            liveContent.style.display = 'block';
+            cdDisplay.style.color = 'var(--accent)';
+
+            window.arcadeEngine.start({
+                slug: GAME_SLUG,
+                playMode: selectedPlayMode,
+                difficulty: diff,
+                objectiveVal: objVal,
+                blindMode: isBlindMode,
+                backspaceAllowed: isBackspaceAllowed,
+                charMode: charMode,
+                roomCode: code
+            });
+        }
+    }, 900);
 }
 
 function abortCurrentGame() {
-  window.arcadeEngine.stop();
-  openPreGameSetup();
+    window.arcadeEngine.stop();
+    openPreGameSetup();
 }
 </script>
 {% endblock %}

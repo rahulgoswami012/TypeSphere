@@ -4,13 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>{% block title %}TypeSphere | Next-Generation Typing Intelligence & Biometrics{% endblock %}</title>
-    <meta name="description" content="TypeSphere is a next-generation typing ecosystem featuring real-world content, touch typing curriculum, 1v1 multiplayer duels, and biometric Typing DNA.">
-    <meta name="keywords" content="typing test, WPM speed test, typing DNA, learn typing, typing games, multiplayer typing">
+    <meta name="description" content="TypeSphere is India's next-generation typing intelligence platform, touch typing academy, competitive 1v1 arena, and biometric telemetry engine.">
+    <meta name="keywords" content="typing test, WPM speed test, typing DNA, learn touch typing, typing games, multiplayer typing, SSC typing test">
 
-    <!-- Fonts -->
+    <!-- Aeronautical Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700;800&display=swap" rel="stylesheet">
 
     <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/typing.css') }}">
@@ -20,14 +20,16 @@
 <body>
     <div id="user-auth-meta" data-authenticated="{{ 'true' if current_user.is_authenticated else 'false' }}" style="display:none;"></div>
 
-    <!-- Top Navigation -->
+    <!-- Top Cockpit Flight Navigation -->
     <nav class="navbar">
         <div class="nav-header-row">
             <a href="{{ url_for('typing.test_page') }}" class="brand">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <path d="M12 6v6l4 2"></path>
-                </svg>
+                <span class="brand-sphere-icon">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <path d="M12 6v6l4 2"></path>
+                    </svg>
+                </span>
                 TypeSphere
             </a>
             <button class="mobile-nav-toggle" onclick="toggleMobileNav()" aria-label="Toggle navigation">
@@ -35,31 +37,32 @@
             </button>
         </div>
 
-        <!-- Direct Navigation Links -->
+        <!-- Global Navigation Items -->
         <ul class="nav-links" id="main-nav-links">
-            <li><a href="{{ url_for('typing.test_page') }}" class="nav-link">Test</a></li>
-            <li><a href="{{ url_for('learn.index') }}" class="nav-link" style="color:var(--accent); font-weight:700;">Learn</a></li>
-            <li><a href="{{ url_for('games.index') }}" class="nav-link" style="color:var(--warning); font-weight:700;">Games</a></li>
-            <li><a href="{{ url_for('typing.practice_page') }}" class="nav-link">Train Weakness</a></li>
-            <li><a href="{{ url_for('challenges.index') }}" class="nav-link">Challenges</a></li>
-            <li><a href="{{ url_for('leaderboard.index') }}" class="nav-link">Leaderboard</a></li>
-            <li><a href="{{ url_for('multiplayer.index') }}" class="nav-link">Multiplayer</a></li>
-            <li><a href="{{ url_for('feedback.ratings') }}" class="nav-link">Reviews</a></li>
-            <li><a href="{{ url_for('settings.index') }}" class="nav-link">Settings</a></li>
+            <li><a href="{{ url_for('typing.test_page') }}" class="nav-link">⚡ Benchmark</a></li>
+            <li><a href="{{ url_for('learn.index') }}" class="nav-link" style="color:var(--accent); font-weight:700;">🎓 Academy</a></li>
+            <li><a href="{{ url_for('games.index') }}" class="nav-link" style="color:var(--warning); font-weight:700;">🕹️ Arcade</a></li>
+            <li><a href="{{ url_for('typing.practice_page') }}" class="nav-link">🎯 AI Coach</a></li>
+            <li><a href="{{ url_for('challenges.index') }}" class="nav-link">🔥 Challenges</a></li>
+            <li><a href="{{ url_for('leaderboard.index') }}" class="nav-link">🏆 Standings</a></li>
+            <li><a href="{{ url_for('multiplayer.index') }}" class="nav-link">🏎️ Multiplayer</a></li>
+            <li><a href="{{ url_for('feedback.ratings') }}" class="nav-link">⭐ Reviews</a></li>
+<li><a href="{{ url_for('typing.help_page') }}" class="nav-link">📖 Flight Guide</a></li>
+            <li><a href="{{ url_for('settings.index') }}" class="nav-link">⚙️ Settings</a></li>
             {% if current_user.is_authenticated %}
-                <li><a href="{{ url_for('dashboard.index') }}" class="nav-link">Dashboard</a></li>
+                <li><a href="{{ url_for('dashboard.index') }}" class="nav-link" style="font-weight:700;">👤 {{ current_user.username }}</a></li>
                 {% if current_user.is_admin %}
-                    <li><a href="{{ url_for('admin.index') }}" class="nav-link" style="color: var(--warning); font-weight: 700;">Admin</a></li>
+                    <li><a href="{{ url_for('admin.index') }}" class="nav-link" style="color:var(--warning); font-weight:700;">🛡️ Admin</a></li>
                 {% endif %}
-                <li><a href="{{ url_for('auth.logout') }}" class="btn btn-sm">Logout ({{ current_user.username }})</a></li>
+                <li><a href="{{ url_for('auth.logout') }}" class="btn btn-sm">Sign Out</a></li>
             {% else %}
                 <li><a href="{{ url_for('auth.login') }}" class="nav-link">Sign In</a></li>
-                <li><a href="{{ url_for('auth.register') }}" class="btn btn-primary btn-sm">Join Free</a></li>
+                <li><a href="{{ url_for('auth.register') }}" class="btn btn-primary btn-sm">Join Free </a></li>
             {% endif %}
         </ul>
     </nav>
 
-    <!-- Notification Flash Area -->
+    <!-- Notification Alert Ribbon -->
     <div class="container">
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
@@ -77,24 +80,23 @@
         {% block content %}{% endblock %}
     </div>
 
-    <!-- Professional Footer -->
+    <!-- Cockpit Telemetry Footer -->
     <footer class="app-footer">
         <div class="footer-container">
             <div class="footer-grid">
                 <div class="footer-brand-col">
                     <div class="footer-brand-title">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <path d="M12 6v6l4 2"></path>
-                        </svg>
-                        TypeSphere
+                        <span class="brand-sphere-icon" style="width:20px; height:20px;">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                        </span>
+                        TypeSphere Cockpit
                     </div>
                     <p class="footer-tagline">
-                        Next-Generation Typing Ecosystem & Biometric Telemetry Engine.
+                        Next-Generation Typing Intelligence & Biometric Telemetry Engine. Standardized for Indian typists, students, competitive racers, and examination benchmarks.
                     </p>
                     <div class="footer-status-pill">
                         <span class="status-dot"></span>
-                        <span>All Systems Operational &bull; Production v2.3</span>
+                        <span>Systems Nominal &bull; Official IST Zone (UTC+05:30)</span>
                     </div>
                 </div>
 
@@ -103,29 +105,29 @@
                     <ul>
                         <li><a href="{{ url_for('typing.test_page') }}">Speed Benchmark</a></li>
                         <li><a href="{{ url_for('learn.index') }}">Touch Typing Academy</a></li>
-                        <li><a href="{{ url_for('games.index') }}">Typing Arcade Games</a></li>
-                        <li><a href="{{ url_for('typing.practice_page') }}">AI Weakness Drills</a></li>
-                        <li><a href="{{ url_for('multiplayer.index') }}">Multiplayer Grid</a></li>
+                        <li><a href="{{ url_for('games.index') }}">Arcade Flight Modules</a></li>
+                        <li><a href="{{ url_for('typing.practice_page') }}">AI Weakness Prescriptions</a></li>
+                        <li><a href="{{ url_for('multiplayer.index') }}">1v1 Multiplayer Grid</a></li>
                     </ul>
                 </div>
 
                 <div class="footer-links-col">
-                    <h4>Community & Support</h4>
+                    <h4>Assistance & Reviews</h4>
                     <ul>
-                        <li><a href="{{ url_for('feedback.ratings') }}">Ratings & Reviews</a></li>
-                        <li><a href="{{ url_for('feedback.submit_feedback') }}">Submit Feedback</a></li>
-                        <li><a href="{{ url_for('feedback.contact') }}">Contact Engineers</a></li>
-                        <li><a href="{{ url_for('settings.index') }}">Ergonomics & Themes</a></li>
+                        <li><a href="{{ url_for('feedback.ratings') }}">Pilot Reviews & Ratings</a></li>
+                        <li><a href="{{ url_for('feedback.submit_feedback') }}">Submit Engineering Feedback</a></li>
+                        <li><a href="{{ url_for('feedback.contact') }}">Contact Dispatch</a></li>
+                        <li><a href="{{ url_for('settings.index') }}">Ergonomics, Themes & HUD</a></li>
                     </ul>
                 </div>
             </div>
 
             <div class="footer-bottom-bar">
                 <div>&copy; 2026 TypeSphere. All rights reserved. Registered Trademark &reg;.</div>
-                <div class="footer-meta-links">
-                    <span>Non-Medical Biometrics</span>
-                    <span>&bull;</span>
+                <div style="display:flex; gap:0.6rem; align-items:center;">
                     <span>Anti-Cheat Certified</span>
+                    <span>&bull;</span>
+                    <span>Biometric Keystroke Dynamics</span>
                 </div>
             </div>
         </div>
@@ -134,7 +136,7 @@
     <script>
         function toggleMobileNav() {
             const nav = document.getElementById('main-nav-links');
-            nav.classList.toggle('mobile-open');
+            if (nav) nav.classList.toggle('mobile-open');
         }
 
         function dismissAlert(btn) {

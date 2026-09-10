@@ -1,0 +1,280 @@
+{% extends 'base.html' %}
+{% block title %}Flight Operations Manual & User Guide | TypeSphere{% endblock %}
+{% block content %}
+<div class="card" style="max-width: 1040px; margin: 0 auto; padding: 2rem;">
+    <!-- Manual Header -->
+    <div style="border-bottom: 1.5px solid var(--border-color); padding-bottom: 1.5rem; margin-bottom: 2rem;">
+        <div style="display: flex; align-items: center; gap: 0.65rem; margin-bottom: 0.4rem;">
+            <span style="font-size: 2.2rem;">📖</span>
+            <div>
+                <h1 style="font-size: 1.85rem; font-weight: 800; margin: 0;">TypeSphere Flight Operations Manual</h1>
+                <span style="font-size: 0.78rem; font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: 0.06em;">Comprehensive Pilot Protocol & Telemetry Guide</span>
+            </div>
+        </div>
+        <p style="color: var(--text-secondary); font-size: 0.92rem; line-height: 1.6; margin-top: 0.5rem;">
+            Welcome to the TypeSphere cockpit. Whether you are preparing for Indian administrative typing examinations (SSC CGL, CHSL, RRB, High Court), sharpening developer syntax, or competing in 1v1 multiplayer duels, this manual explains every system.
+        </p>
+    </div>
+
+    <!-- Quick Navigation Matrix -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 2.5rem;">
+        <a href="#sec-telemetry" class="btn" style="justify-content: flex-start;">📊 Speed & Accuracy Formulas</a>
+        <a href="#sec-modes" class="btn" style="justify-content: flex-start;">🛡️ Blind & Survival Modes</a>
+        <a href="#sec-ranks" class="btn" style="justify-content: flex-start;">🏆 Elo MMR & Divisions</a>
+        <a href="#sec-certs" class="btn" style="justify-content: flex-start;">🪽 Flight Wings & Certificates</a>
+        <a href="#sec-arcade" class="btn" style="justify-content: flex-start;">🕹️ Arcade Disciplines</a>
+        <a href="#sec-shortcuts" class="btn" style="justify-content: flex-start;">⌨️ Cockpit Key Shortcuts</a>
+    </div>
+
+    <!-- Section 1: Telemetry & Formulas -->
+    <section id="sec-telemetry" style="margin-bottom: 2.5rem; scroll-margin-top: 80px;">
+        <h2 style="font-size: 1.35rem; font-weight: 800; color: var(--accent); margin-bottom: 0.75rem;">
+            1. Speed, Precision & Cadence Mathematics
+        </h2>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.25rem;">
+            <div class="card" style="background: var(--bg-card); margin-bottom: 0;">
+                <h4 style="color: var(--text-primary); margin-bottom: 0.5rem;">Net WPM (Words Per Minute)</h4>
+                <p style="color: var(--text-secondary); font-size: 0.88rem; line-height: 1.6;">
+                    The official velocity standard: <strong>1 Word = Exactly 5 Keystrokes</strong> (including spaces). Net WPM accounts strictly for verified correct strokes over active minutes elapsed:
+                    <br><code style="color:var(--accent); font-family:var(--font-mono); font-size:0.8rem;">Net WPM = (Correct Characters / 5) / Elapsed Minutes</code>
+                </p>
+            </div>
+            <div class="card" style="background: var(--bg-card); margin-bottom: 0;">
+                <h4 style="color: var(--text-primary); margin-bottom: 0.5rem;">Accuracy & Total Mistakes</h4>
+                <p style="color: var(--text-secondary); font-size: 0.88rem; line-height: 1.6;">
+                    Accuracy represents the percentage of correct strikes versus total keys pressed. TypeSphere tracks both <strong>Cumulative Keystroke Mistakes</strong> (all mistypes made) and <strong>Uncorrected Errors</strong> remaining at run conclusion.
+                </p>
+            </div>
+            <div class="card" style="background: var(--bg-card); margin-bottom: 0;">
+                <h4 style="color: var(--text-primary); margin-bottom: 0.5rem;">Rhythm Consistency</h4>
+                <p style="color: var(--text-secondary); font-size: 0.88rem; line-height: 1.6;">
+                    Measures interval variance between consecutive keystrokes. Higher consistency (85%+) indicates smooth, uninterrupted muscle memory without cognitive hesitation stalls.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section 2: Modes & Survival -->
+    <section id="sec-modes" style="margin-bottom: 2.5rem; scroll-margin-top: 80px;">
+        <h2 style="font-size: 1.35rem; font-weight: 800; color: var(--accent); margin-bottom: 0.75rem;">
+            2. Flight Modes: Blind, Ghost & 5-Shield Survival
+        </h2>
+        <div style="display: flex; flex-direction: column; gap: 1rem;">
+            <div style="background: var(--bg-card); border-left: 3px solid var(--accent); padding: 1rem 1.25rem; border-radius: var(--radius-sm);">
+                <strong>Blind Flight Mode (Default: ON):</strong> Restricts backspace corrections to train forward velocity and cognitive flow. Typists learn not to stutter on errors, developing immediate kinetic rhythm.
+            </div>
+            <div style="background: var(--bg-card); border-left: 3px solid #ec4899; padding: 1rem 1.25rem; border-radius: var(--radius-sm);">
+                <strong>Ghost Pacer Competitor (Default: OFF):</strong> A dynamic luminous pink pacer that glides across the text at your target pace, allowing you to visually pace yourself against your personal best or rivals.
+            </div>
+            <div style="background: var(--bg-card); border-left: 3px solid var(--danger); padding: 1rem 1.25rem; border-radius: var(--radius-sm);">
+                <strong>5-Shield Survival Protocol:</strong> The ultimate stress benchmark. You begin with 5 Cockpit Battery Cells (100% Shield Integrity). Each typo causes a battery overload. Exhausting all 5 cells triggers a hull breach and immediate flight termination.
+            </div>
+        </div>
+    </section>
+
+    <!-- Section 3: Elo MMR & Divisions -->
+    <section id="sec-ranks" style="margin-bottom: 2.5rem; scroll-margin-top: 80px;">
+        <h2 style="font-size: 1.35rem; font-weight: 800; color: var(--accent); margin-bottom: 0.75rem;">
+            3. Competitive 1v1 Elo Ratings & Flight Divisions
+        </h2>
+        <p style="color: var(--text-secondary); font-size: 0.9rem; line-height: 1.6; margin-bottom: 1rem;">
+            Pilots start with an initial 1000 MMR. Participating in 1v1 duels applies authoritative chess-grade Elo adjustments ($K=32$) upon race conclusion.
+        </p>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.85rem;">
+            <div class="card" style="background: var(--bg-card); text-align: center; margin: 0;">
+                <div style="font-size: 1.8rem;">👑</div>
+                <div style="font-weight: 800; color: #ec4899;">Grandmaster</div>
+                <div style="font-size: 0.8rem; color: var(--text-muted);">1900+ MMR</div>
+            </div>
+            <div class="card" style="background: var(--bg-card); text-align: center; margin: 0;">
+                <div style="font-size: 1.8rem;">💎</div>
+                <div style="font-weight: 800; color: #38bdf8;">Diamond</div>
+                <div style="font-size: 0.8rem; color: var(--text-muted);">1700–1899 MMR</div>
+            </div>
+            <div class="card" style="background: var(--bg-card); text-align: center; margin: 0;">
+                <div style="font-size: 1.8rem;">⚡</div>
+                <div style="font-weight: 800; color: #10b981;">Platinum</div>
+                <div style="font-size: 0.8rem; color: var(--text-muted);">1500–1699 MMR</div>
+            </div>
+            <div class="card" style="background: var(--bg-card); text-align: center; margin: 0;">
+                <div style="font-size: 1.8rem;">🏆</div>
+                <div style="font-weight: 800; color: #f59e0b;">Gold</div>
+                <div style="font-size: 0.8rem; color: var(--text-muted);">1300–1499 MMR</div>
+            </div>
+            <div class="card" style="background: var(--bg-card); text-align: center; margin: 0;">
+                <div style="font-size: 1.8rem;">🥈</div>
+                <div style="font-weight: 800; color: #94a3b8;">Silver</div>
+                <div style="font-size: 0.8rem; color: var(--text-muted);">1100–1299 MMR</div>
+            </div>
+            <div class="card" style="background: var(--bg-card); text-align: center; margin: 0;">
+                <div style="font-size: 1.8rem;">🥉</div>
+                <div style="font-weight: 800; color: #d97706;">Bronze</div>
+                <div style="font-size: 0.8rem; color: var(--text-muted);">&lt; 1100 MMR</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section 4: Flight Certificates -->
+    <section id="sec-certs" style="margin-bottom: 2.5rem; scroll-margin-top: 80px;">
+        <h2 style="font-size: 1.35rem; font-weight: 800; color: var(--accent); margin-bottom: 0.75rem;">
+            4. Official Flight Certificates & Anti-Cheat Standards
+        </h2>
+        <p style="color: var(--text-secondary); font-size: 0.9rem; line-height: 1.6; margin-bottom: 1rem;">
+            Official Flight Certificates represent verified competence and include a unique SHA-256 anti-tamper hash. Only registered pilots who achieve verified benchmarks without anti-cheat flags are eligible to generate certificates.
+        </p>
+        <div class="table-responsive-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Classification</th>
+                        <th>Minimum Net Speed</th>
+                        <th>Accuracy Threshold</th>
+                        <th>Eligibility Criteria</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong style="color: #f59e0b;">Gold Flight Wings</strong></td>
+                        <td>70+ WPM</td>
+                        <td>98.0%+ Accuracy</td>
+                        <td>Standard Timed Benchmark &bull; Verified Account</td>
+                    </tr>
+                    <tr>
+                        <td><strong style="color: #94a3b8;">Silver Flight Wings</strong></td>
+                        <td>50+ WPM</td>
+                        <td>92.0%+ Accuracy</td>
+                        <td>Standard Timed Benchmark &bull; Verified Account</td>
+                    </tr>
+                    <tr>
+                        <td><strong style="color: #d97706;">Bronze Flight Wings</strong></td>
+                        <td>35+ WPM</td>
+                        <td>90.0%+ Accuracy</td>
+                        <td>Standard Timed Benchmark &bull; Verified Account</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- Section 5: Arcade Flight Disciplines -->
+    <section id="sec-arcade" style="margin-bottom: 2.5rem; scroll-margin-top: 80px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
+            <h2 style="font-size: 1.35rem; font-weight: 800; color: var(--accent); margin: 0;">
+                5. Arcade Flight Disciplines & Mechanics
+            </h2>
+            <a href="{{ url_for('games.index') }}" class="btn btn-primary btn-sm" style="font-weight: 800;">
+                Launch Arcade Flight Modules &rarr;
+            </a>
+        </div>
+        <p style="color: var(--text-secondary); font-size: 0.9rem; line-height: 1.6; margin-bottom: 1.25rem;">
+            Each educational arcade module isolates a distinct biomechanical reflex — from peripheral vision and single-key precision to latency reaction:
+        </p>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem;">
+            <div class="card" style="background: var(--bg-card); margin-bottom: 0;">
+                <h4 style="color: var(--accent); margin-bottom: 0.35rem;">🏎️ Speed Racer</h4>
+                <p style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5;">
+                    <strong>Discipline:</strong> Momentum & Recoil Sprint.<br>
+                    Correct strokes accelerate your vehicle; typos trigger backward recoil without locking the input. Beat the pace bot across the finish line.
+                </p>
+            </div>
+            <div class="card" style="background: var(--bg-card); margin-bottom: 0;">
+                <h4 style="color: var(--accent); margin-bottom: 0.35rem;">🫧 Bubble Pop</h4>
+                <p style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5;">
+                    <strong>Discipline:</strong> Single-Key Tactile Precision.<br>
+                    Floating bubbles contain isolated target characters. Pop targets before they collide with the ceiling line within the active countdown.
+                </p>
+            </div>
+            <div class="card" style="background: var(--bg-card); margin-bottom: 0;">
+                <h4 style="color: var(--accent); margin-bottom: 0.35rem;">🔨 Whack-A-Word</h4>
+                <p style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5;">
+                    <strong>Discipline:</strong> Spatial Reaction Latency.<br>
+                    Targets pop up in a 3x3 reaction grid with shrinking exposure windows. Measures millisecond reaction speed before targets retract.
+                </p>
+            </div>
+            <div class="card" style="background: var(--bg-card); margin-bottom: 0;">
+                <h4 style="color: var(--accent); margin-bottom: 0.35rem;">⚔️ Zombie Duel</h4>
+                <p style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5;">
+                    <strong>Discipline:</strong> Head-to-Head 100 HP Combat.<br>
+                    Rapid typing casts attack projectiles against your rival; typos trigger defensive shield overload and recoil damage.
+                </p>
+            </div>
+            <div class="card" style="background: var(--bg-card); margin-bottom: 0;">
+                <h4 style="color: var(--accent); margin-bottom: 0.35rem;">💻 Cipher Hacker</h4>
+                <p style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5;">
+                    <strong>Discipline:</strong> Layered Cryptographic Breach.<br>
+                    Decrypt progressive security tiers (hexadecimal dumps, authentication tokens, system commands) before the firewall countdown expires.
+                </p>
+            </div>
+            <div class="card" style="background: var(--bg-card); margin-bottom: 0;">
+                <h4 style="color: var(--accent); margin-bottom: 0.35rem;">☄️ Falling Words / Space Defender</h4>
+                <p style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5;">
+                    <strong>Discipline:</strong> Multi-Wave Orbital Defense.<br>
+                    Lock onto descending phrases and incoming space debris across 5 successive waves before they breach defensive barriers.
+                </p>
+            </div>
+            <div class="card" style="background: var(--bg-card); margin-bottom: 0;">
+                <h4 style="color: var(--accent); margin-bottom: 0.35rem;">💣 Bomb Defuse</h4>
+                <p style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5;">
+                    <strong>Discipline:</strong> Sequential Pressure Cracking.<br>
+                    Crack sequential multi-character cryptograms against a strict 40-second digital countdown before detonation.
+                </p>
+            </div>
+            <div class="card" style="background: var(--bg-card); margin-bottom: 0;">
+                <h4 style="color: var(--accent); margin-bottom: 0.35rem;">🧠 Memory Type</h4>
+                <p style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5;">
+                    <strong>Discipline:</strong> Working Cognitive Recall.<br>
+                    Sequences flash for 1.5 seconds then mask. Reproduce the target sequence strictly from mental recall across rounds.
+                </p>
+            </div>
+            <div class="card" style="background: var(--bg-card); margin-bottom: 0;">
+                <h4 style="color: var(--accent); margin-bottom: 0.35rem;">🗺️ Keyboard Quest</h4>
+                <p style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5;">
+                    <strong>Discipline:</strong> Ergonomic Keyboard Progression.<br>
+                    Train progressive finger reaches: Home Row resting anchors, upper row reaches, bottom row tucks, and top number stretches.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section 6: Keyboard Shortcuts -->
+    <section id="sec-shortcuts" style="scroll-margin-top: 80px;">
+        <h2 style="font-size: 1.35rem; font-weight: 800; color: var(--accent); margin-bottom: 0.75rem;">
+            6. Essential Cockpit Key Shortcuts
+        </h2>
+        <div class="table-responsive-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Shortcut</th>
+                        <th>Action</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><kbd class="kbd-badge">Tab</kbd></td>
+                        <td>Quick Restart</td>
+                        <td>Instantly restarts the active benchmark run.</td>
+                    </tr>
+                    <tr>
+                        <td><kbd class="kbd-badge">Esc</kbd></td>
+                        <td>Pause or Focus Mode</td>
+                        <td>Pauses active typing run; toggles distraction-free focus mode when idle.</td>
+                    </tr>
+                    <tr>
+                        <td><kbd class="kbd-badge">Ctrl + K</kbd></td>
+                        <td>Universal Command Palette</td>
+                        <td>Instant navigation to modes, themes, academy stages, and settings.</td>
+                    </tr>
+                    <tr>
+                        <td><kbd class="kbd-badge">Enter</kbd></td>
+                        <td>Complete Run</td>
+                        <td>Finishes passage mode runs when near the final character.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+{% endblock %}

@@ -15,6 +15,7 @@ from app.services.profile_analyzer import ProfileAnalyzer
 from app.services.weakness_coach import WeaknessCoach
 from app.services.achievement_service import AchievementService
 from app.services.content_engine import ContentEngine
+from app.utils.timezone import now_utc, get_ist_hour, ist_today
 
 typing_bp = Blueprint('typing', __name__)
 
@@ -61,13 +62,13 @@ def practice_page():
 
 @typing_bp.route('/api/daily-text')
 def get_daily_text():
-    today = date.today()
+    today = ist_today()
     challenge = DailyChallenge.query.filter_by(target_date=today).first()
     if not challenge:
         challenge = DailyChallenge(
             target_date=today,
             title="The Kinetic Discipline",
-            content="True velocity is not rushed chaos; it is calm, deliberate movement free of hesitation and unnecessary recoil."
+            content="True velocity is not rushed chaos; it is calm, deliberate movement free of hesitation and unnecessary recoil. Keep your hands balanced and let cadence carry your speed across the keyboard."
         )
         db.session.add(challenge)
         db.session.commit()
@@ -131,11 +132,14 @@ def get_text():
     )
 
     category_title = f"{test_type.replace('_', ' ').title()} ({difficulty.title()})"
+    if test_type in ['code', 'coding', 'programming']:
+        category_title = f"Code Syntax ({code_lang.upper()})"
+
     return jsonify({
         'id': 0,
         'content': content,
         'category': category_title,
-        'is_code': test_type in ['code', 'coding']
+        'is_code': test_type in ['code', 'coding', 'programming']
     })
 
 @typing_bp.route('/api/adaptive-drill')
@@ -155,6 +159,8 @@ def submit_test():
         is_ranked = bool(data.get('is_ranked', False))
         content_category = data.get('content_category', 'General')
         difficulty = data.get('difficulty', 'moderate')
+        total_mistakes = int(data.get('total_mistakes', 0))
+        uncorrected_errors = int(data.get('uncorrected_errors', 0))
 
         metrics = TypingAnalyzer.calculate_metrics(events, target_text, duration)
         is_suspicious, reason = AntiCheatSystem.evaluate(events, duration, metrics['wpm'], metrics['accuracy'])
@@ -171,11 +177,15 @@ def submit_test():
             accuracy=metrics['accuracy'],
             consistency=metrics['consistency'],
             rhythm_score=metrics['rhythm_score'],
-            errors=metrics['incorrect_chars'],
+            errors=uncorrected_errors if uncorrected_errors > 0 else metrics['incorrect_chars'],
+            total_mistakes=max(total_mistakes, metrics['incorrect_chars']),
+            uncorrected_errors=uncorrected_errors,
             correct_chars=metrics['correct_chars'],
             incorrect_chars=metrics['incorrect_chars'],
             extra_chars=metrics['extra_chars'],
             missed_chars=metrics['missed_chars'],
+            time_of_day_ist=get_ist_hour(),
+            completed_at=now_utc(),
             suspicious=is_suspicious,
             suspicion_reason=reason,
             timeline_data=json.dumps(data.get('timeline', [])),
@@ -223,7 +233,7 @@ def result_page(test_id):
     wpm = test.wpm
     if wpm >= 100:
         skill_tier = "Olympian Master"
-        tier_color = "#a371f7"
+        tier_color = "#ec4899"
     elif wpm >= 75:
         skill_tier = "Pro Typist"
         tier_color = "var(--accent)"
@@ -267,6 +277,9 @@ def result_page(test_id):
     coach_data = WeaknessCoach.analyze_and_recommend(test.user_id)
     recommendation = coach_data.get('recommendation')
 
+    # Eligible for certificate only if authenticated, verified, and not suspicious
+    certificate_eligible = (test.user_id is not None) and (not test.suspicious) and (test.wpm >= 35.0) and (test.accuracy >= 90.0)
+
     return render_template(
         'typing/result.html',
         test=test,
@@ -279,31 +292,48 @@ def result_page(test_id):
         hesitations=top_hesitations,
         target_text=reconstructed_text,
         events_json=json.dumps(events),
-        recommendation=recommendation
+        recommendation=recommendation,
+        certificate_eligible=certificate_eligible
     )
 
 @typing_bp.route('/certificate/<int:test_id>')
 def certificate_page(test_id):
     test = TypingTest.query.get_or_404(test_id)
-    if current_user.is_authenticated:
-        AchievementService.award_code(current_user, 'certified_typist')
+
+    # Gate: Authenticated users only
+    if not test.user_id or not current_user.is_authenticated:
+        return render_template(
+            'typing/certificate_ineligible.html',
+            message="Sign in with an active TypeSphere account to earn official verified certificates.",
+            test=test
+        )
+
+    # Gate: Anti-cheat and baseline thresholds
+    if test.suspicious or test.wpm < 35.0 or test.accuracy < 90.0:
+        return render_template(
+            'typing/certificate_ineligible.html',
+            message="This typing run does not meet official certification criteria (Minimum 35 WPM, 90% accuracy, verified telemetry).",
+            test=test
+        )
+
+    AchievementService.award_code(current_user, 'certified_typist')
 
     if test.wpm >= 70 and test.accuracy >= 98.0:
-        cert_tier = "Gold Certificate"
+        cert_tier = "Gold Flight Wings"
         tier_badge = "GOLD"
         tier_color = "#f59e0b"
-    elif test.wpm >= 50 and test.accuracy >= 90.0:
-        cert_tier = "Silver Certificate"
+    elif test.wpm >= 50 and test.accuracy >= 92.0:
+        cert_tier = "Silver Flight Wings"
         tier_badge = "SILVER"
         tier_color = "#94a3b8"
     else:
-        cert_tier = "Bronze Certificate"
+        cert_tier = "Bronze Flight Wings"
         tier_badge = "BRONZE"
-        tier_color = "#b45309"
+        tier_color = "#d97706"
 
-    cert_hash_input = f"{test.id}-{test.wpm}-{test.accuracy}-{test.completed_at}"
+    cert_hash_input = f"{test.id}-{test.user_id}-{test.wpm}-{test.accuracy}-{test.completed_at.isoformat()}"
     cert_code = "TS-" + hashlib.sha256(cert_hash_input.encode()).hexdigest()[:10].upper()
-    candidate_name = test.user.username if test.user else "Verified Guest Typist"
+    candidate_name = test.user.username
 
     return render_template(
         'typing/certificate.html',
@@ -363,3 +393,8 @@ CURRICULUM_LESSONS = {
         'content': "the there that other their they these them then another rather whether together furthermore therefore the there that"
     }
 }
+
+@typing_bp.route('/help')
+@typing_bp.route('/guide')
+def help_page():
+    return render_template('help/index.html')

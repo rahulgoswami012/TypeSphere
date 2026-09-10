@@ -1,356 +1,329 @@
 {% extends 'base.html' %}
-
+{% block title %}Cockpit Multiplayer Grid & 1v1 Duels | TypeSphere{% endblock %}
 {% block content %}
-<div class="card" style="max-width: 1060px; margin: 0 auto;">
-  
-  <!-- =========================================================
-       1. PERSISTENT THREE-MODE TOP BAR (ALWAYS ACCESSIBLE)
-       ========================================================= -->
-  <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 1.25rem; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
-    <div>
-      <h1 style="font-size: 1.75rem; font-weight: 800; margin: 0;">
-        Multiplayer Arena
-      </h1>
-      <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.2rem;">
-        Synchronized competitive typing across Public Rooms, Quick Match, or Private 1v1.
-      </p>
-    </div>
-
-    <!-- Mode Switcher Navigation Pills (Instant In-Page Switching) -->
-    <div style="display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap;">
-      <button onclick="switchModeTab('public')" id="tab-pill-public" class="btn btn-primary" style="padding: 0.45rem 0.9rem; font-size: 0.85rem; font-weight: 700;">
-        🌐 Public Rooms
-      </button>
-      <button onclick="switchModeTab('quick')" id="tab-pill-quick" class="btn" style="padding: 0.45rem 0.9rem; font-size: 0.85rem; font-weight: 700;">
-        ⚡ Quick Match (1v1)
-      </button>
-      <button onclick="switchModeTab('private')" id="tab-pill-private" class="btn" style="padding: 0.45rem 0.9rem; font-size: 0.85rem; font-weight: 700;">
-        🔒 Private 1v1
-      </button>
-
-      <!-- Connection Status Badge -->
-      <div id="socket-conn-badge" style="display: inline-flex; align-items: center; gap: 0.45rem; background: var(--bg-card); border: 1px solid var(--border-color); padding: 0.35rem 0.75rem; border-radius: 20px; font-size: 0.78rem; margin-left: 0.5rem;">
-        <span id="socket-conn-dot" style="width: 8px; height: 8px; border-radius: 50%; background: var(--warning);"></span>
-        <span id="socket-conn-text" style="color: var(--text-muted);">Connecting...</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- =========================================================
-       VIEW 1: MULTIPLAYER HUB (Mode Selection Cards & Directory)
-       ========================================================= -->
-  <div id="view-hub">
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.25rem; margin-bottom: 2rem;">
-      
-      <!-- 1. Public Rooms Card -->
-      <div class="card" id="card-mode-public" style="background: var(--bg-card); border: 1.5px solid var(--accent); margin-bottom: 0; display: flex; flex-direction: column; justify-content: space-between;">
+<div class="card" style="max-width: 1080px; margin: 0 auto;">
+    <!-- =========================================================
+         1. PERSISTENT MODE SWITCHER & PILOT MMR HUD
+         ========================================================= -->
+    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:1.25rem; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
         <div>
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-            <h3 style="margin: 0; color: var(--accent); font-size: 1.2rem;">🌐 Public Rooms</h3>
-            <span style="font-size: 0.7rem; font-weight: 800; background: var(--accent); color: #fff; padding: 0.15rem 0.5rem; border-radius: 4px;">OPEN</span>
-          </div>
-          <p style="color: var(--text-muted); font-size: 0.85rem; line-height: 1.5; margin-bottom: 1.25rem;">
-            Browse open rooms or create your own with custom player limits (up to 8), test durations, and custom passages.
-          </p>
+            <div style="display:flex; align-items:center; gap:0.6rem;">
+                <h1 style="font-size:1.8rem; font-weight:800; margin:0;">Multiplayer Flight Grid</h1>
+                <span style="font-size:0.75rem; font-weight:800; padding:0.2rem 0.6rem; border-radius:4px; background:{{ user_badge.bg }}; color:{{ user_badge.color }}; text-transform:uppercase;">
+                    {{ user_badge.icon }} {{ user_division }} &bull; {{ user_elo }} MMR
+                </span>
+            </div>
+            <p style="color:var(--text-secondary); font-size:0.85rem; margin-top:0.25rem;">
+                Competitive Record: <strong style="color:var(--success);">{{ wins }}W</strong> - <strong style="color:var(--danger);">{{ losses }}L</strong> ({{ draws }}D) &bull; Synchronized authoritatively via WebSockets.
+            </p>
         </div>
-        <button onclick="openCreateModal('public')" class="btn btn-primary" style="width: 100%; justify-content: center; font-weight: 700;">
-          + Create Public Room
-        </button>
-      </div>
 
-      <!-- 2. Quick Match 1v1 Card -->
-      <div class="card" id="card-mode-quick" style="background: var(--bg-card); border: 1px solid var(--border-color); margin-bottom: 0; display: flex; flex-direction: column; justify-content: space-between;">
-        <div>
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-            <h3 style="margin: 0; font-size: 1.2rem;">⚡ Quick Match</h3>
-            <span style="font-size: 0.7rem; font-weight: 800; background: var(--success); color: #fff; padding: 0.15rem 0.5rem; border-radius: 4px;">AUTOMATIC</span>
-          </div>
-          <p style="color: var(--text-muted); font-size: 0.85rem; line-height: 1.5; margin-bottom: 1.25rem;">
-            Instant pairing. Enter the waiting queue and automatically duel another available pilot without sharing links.
-          </p>
-        </div>
-        <button onclick="startQuickMatchQueue()" class="btn" style="width: 100%; justify-content: center; font-weight: 700; border-color: var(--success); color: var(--success);">
-          Enter 1v1 Queue
-        </button>
-      </div>
-
-      <!-- 3. Private 1v1 Card -->
-      <div class="card" id="card-mode-private" style="background: var(--bg-card); border: 1px solid var(--border-color); margin-bottom: 0; display: flex; flex-direction: column; justify-content: space-between;">
-        <div>
-          <h3 style="margin: 0 0 0.5rem 0; font-size: 1.2rem;">🔒 Private 1v1</h3>
-          <p style="color: var(--text-muted); font-size: 0.85rem; line-height: 1.5; margin-bottom: 1.25rem;">
-            Generate an exclusive room code or invite link. Strictly 2 players. Both must be ready before match initiation.
-          </p>
-        </div>
-        <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-          <button onclick="openCreateModal('private')" class="btn" style="width: 100%; justify-content: center; font-weight: 700;">
-            Create Private 1v1
-          </button>
-          <div style="display: flex; gap: 0.4rem;">
-            <input type="text" id="join-code-input" placeholder="Room Code (1V1-XXXX)" style="flex: 1; padding: 0.55rem 0.75rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary); font-family: var(--font-mono); font-size: 0.85rem; text-transform: uppercase;">
-            <button onclick="joinRoomByCodeInput()" class="btn btn-primary" style="padding: 0.55rem 1rem;">Join</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Public Rooms Live Directory -->
-    <div id="public-directory-section" style="border-top: 1px solid var(--border-color); padding-top: 1.5rem;">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
-        <h3 style="font-size: 1.15rem; margin: 0;">Open Public Rooms</h3>
-        <button onclick="requestPublicRooms()" class="btn btn-sm">
-          🔄 Refresh Directory
-        </button>
-      </div>
-
-      <div class="table-responsive-container">
-        <table style="width: 100%; border-collapse: collapse; text-align: left;">
-          <thead>
-            <tr>
-              <th>Code</th>
-              <th>Room Title</th>
-              <th>Host</th>
-              <th>Racers</th>
-              <th>Duration</th>
-              <th>Status</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody id="public-rooms-tbody">
-            <tr>
-              <td colspan="7" style="padding: 2.5rem; text-align: center; color: var(--text-muted);">
-                Searching for active public rooms...
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-
-  <!-- =========================================================
-       VIEW 2: QUICK MATCH SEARCHING MODAL
-       ========================================================= -->
-  <div id="modal-quick-searching" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 2500; align-items: center; justify-content: center; backdrop-filter: blur(8px); padding: 1rem;">
-    <div class="card" style="width: 100%; max-width: 440px; text-align: center; border-color: var(--accent); padding: 2.5rem 2rem;">
-      <div style="font-size: 3rem; margin-bottom: 1rem; animation: pulse 1.2s infinite;">⚡</div>
-      <h2 style="font-size: 1.5rem; font-weight: 800; color: var(--accent); margin-bottom: 0.5rem;">Quick Match Queue</h2>
-      <p style="color: var(--text-muted); font-size: 0.9rem; line-height: 1.5; margin-bottom: 2rem;">
-        Searching for an opponent... You will be automatically transferred to the starting grid once paired.
-      </p>
-      <button onclick="cancelQuickMatchQueue()" class="btn btn-danger" style="padding: 0.65rem 1.5rem; font-weight: 700;">
-        Cancel Queue
-      </button>
-    </div>
-  </div>
-
-  <!-- =========================================================
-       VIEW 3: CREATE ROOM CONFIGURATION MODAL
-       ========================================================= -->
-  <div id="modal-create-room" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 2500; align-items: center; justify-content: center; backdrop-filter: blur(8px); padding: 1rem;">
-    <div class="card" style="width: 100%; max-width: 520px; border-color: var(--accent); padding: 2rem; max-height: 90vh; overflow-y: auto;">
-      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem; margin-bottom: 1.25rem;">
-        <h3 id="create-modal-title" style="margin: 0; font-size: 1.3rem; font-weight: 800; color: var(--accent);">Create Room</h3>
-        <button onclick="closeCreateModal()" class="btn btn-sm">&times;</button>
-      </div>
-
-      <div style="margin-bottom: 1.25rem;">
-        <label style="display: block; font-size: 0.8rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-bottom: 0.35rem;">Room Title</label>
-        <input type="text" id="create-room-name" value="Speed Sprint" style="width: 100%; padding: 0.65rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary); font-family: inherit;">
-      </div>
-
-      <div style="margin-bottom: 1.25rem;">
-        <label style="display: block; font-size: 0.8rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-bottom: 0.35rem;">Duration</label>
-        <div style="display: flex; gap: 0.4rem; flex-wrap: wrap;" id="create-dur-group">
-          <button type="button" class="btn btn-sm" onclick="selectCreateDur(30, this)">30s</button>
-          <button type="button" class="btn btn-sm active-choice" onclick="selectCreateDur(60, this)">60s</button>
-          <button type="button" class="btn btn-sm" onclick="selectCreateDur(120, this)">120s</button>
-          <button type="button" class="btn btn-sm" onclick="selectCreateDur(300, this)">300s</button>
-          <button type="button" class="btn btn-sm" onclick="selectCreateDur(600, this)">600s</button>
-        </div>
-      </div>
-
-      <div id="create-players-wrap" style="margin-bottom: 1.25rem;">
-        <label style="display: block; font-size: 0.8rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-bottom: 0.35rem;">Maximum Racers</label>
-        <select id="create-max-players" style="width: 100%; padding: 0.65rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary); font-family: inherit;">
-          <option value="2">2 Players (1v1)</option>
-          <option value="4" selected>4 Players</option>
-          <option value="6">6 Players</option>
-          <option value="8">8 Players</option>
-        </select>
-      </div>
-
-      <div style="margin-bottom: 1.5rem;">
-        <label style="display: block; font-size: 0.8rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-bottom: 0.35rem;">Custom Passage (Optional)</label>
-        <textarea id="create-custom-text" rows="3" placeholder="Leave blank to use curated passages, or paste custom text..." style="width: 100%; padding: 0.65rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary); font-family: var(--font-mono); font-size: 0.85rem; line-height: 1.5;"></textarea>
-      </div>
-
-      <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
-        <button type="button" onclick="closeCreateModal()" class="btn">Cancel</button>
-        <button type="button" onclick="submitCreateRoom()" class="btn btn-primary" style="font-weight: 800; padding: 0.65rem 1.5rem;">
-          Launch Room &rarr;
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- =========================================================
-       VIEW 4: WAITING ROOM / LOBBY
-       ========================================================= -->
-  <div id="view-waiting" style="display: none;">
-    <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1.5rem;">
-      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 1rem;">
-        <div>
-          <span style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted);">Active Room Code</span>
-          <div style="display: flex; align-items: center; gap: 0.6rem; margin-top: 0.2rem;">
-            <span id="waiting-room-code" style="font-size: 1.5rem; font-family: var(--font-mono); font-weight: 800; color: var(--accent);">ROOM-CODE</span>
-            <button onclick="copyLobbyInvite()" id="btn-copy-lobby" class="btn btn-sm">
-              📋 Copy Link
+        <div style="display:flex; gap:0.4rem; align-items:center; flex-wrap:wrap;">
+            <button onclick="switchModeTab('public')" id="tab-pill-public" class="btn btn-primary" style="padding:0.45rem 0.9rem; font-size:0.85rem; font-weight:700;">
+                🌐 Public Rooms
             </button>
-          </div>
+            <button onclick="switchModeTab('quick')" id="tab-pill-quick" class="btn" style="padding:0.45rem 0.9rem; font-size:0.85rem; font-weight:700;">
+                ⚡ Ranked 1v1 Queue
+            </button>
+            <button onclick="switchModeTab('private')" id="tab-pill-private" class="btn" style="padding:0.45rem 0.9rem; font-size:0.85rem; font-weight:700;">
+                🔒 Private 1v1
+            </button>
+            <div id="socket-conn-badge" style="display:inline-flex; align-items:center; gap:0.45rem; background:var(--bg-card); border:1px solid var(--border-color); padding:0.35rem 0.75rem; border-radius:20px; font-size:0.78rem; margin-left:0.35rem;">
+                <span id="socket-conn-dot" style="width:8px; height:8px; border-radius:50%; background:var(--warning);"></span>
+                <span id="socket-conn-text" style="color:var(--text-muted);">Connecting...</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- =========================================================
+         VIEW 1: MULTIPLAYER HUB
+         ========================================================= -->
+    <div id="view-hub">
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:1.25rem; margin-bottom:2rem;">
+            <!-- Public Card -->
+            <div class="card" id="card-mode-public" style="background:var(--bg-card); border:1.5px solid var(--accent); margin-bottom:0; display:flex; flex-direction:column; justify-content:space-between;">
+                <div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+                        <h3 style="margin:0; color:var(--accent); font-size:1.2rem;">🌐 Public Rooms</h3>
+                        <span style="font-size:0.7rem; font-weight:800; background:var(--accent); color:#04101e; padding:0.15rem 0.5rem; border-radius:4px;">OPEN GRID</span>
+                    </div>
+                    <p style="color:var(--text-secondary); font-size:0.85rem; line-height:1.55; margin-bottom:1.25rem;">
+                        Open grid lobbies with custom durations up to 10 minutes and custom passage support.
+                    </p>
+                </div>
+                <button onclick="openCreateModal('public')" class="btn btn-primary" style="width:100%; justify-content:center; font-weight:800;">
+                    + Create Public Room
+                </button>
+            </div>
+
+            <!-- Quick Match Card -->
+            <div class="card" id="card-mode-quick" style="background:var(--bg-card); border:1px solid var(--border-color); margin-bottom:0; display:flex; flex-direction:column; justify-content:space-between;">
+                <div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+                        <h3 style="margin:0; font-size:1.2rem;">⚡ Ranked 1v1 Queue</h3>
+                        <span style="font-size:0.7rem; font-weight:800; background:var(--success); color:#04101e; padding:0.15rem 0.5rem; border-radius:4px;">ELO MATCH</span>
+                    </div>
+                    <p style="color:var(--text-secondary); font-size:0.85rem; line-height:1.55; margin-bottom:1.25rem;">
+                        Instant pairing. Challenge an available pilot with official Elo MMR stakes and division ranking.
+                    </p>
+                </div>
+                <button onclick="startQuickMatchQueue()" class="btn" style="width:100%; justify-content:center; font-weight:800; border-color:var(--success); color:var(--success);">
+                    Find 1v1 Opponent
+                </button>
+            </div>
+
+            <!-- Private Room Card -->
+            <div class="card" id="card-mode-private" style="background:var(--bg-card); border:1px solid var(--border-color); margin-bottom:0; display:flex; flex-direction:column; justify-content:space-between;">
+                <div>
+                    <h3 style="margin:0 0 0.5rem 0; font-size:1.2rem;">🔒 Private Flight Duel</h3>
+                    <p style="color:var(--text-secondary); font-size:0.85rem; line-height:1.55; margin-bottom:1.25rem;">
+                        Direct invite code. 2 pilots only. Both must be ready before match countdown initiates.
+                    </p>
+                </div>
+                <div style="display:flex; flex-direction:column; gap:0.5rem;">
+                    <button onclick="openCreateModal('private')" class="btn" style="width:100%; justify-content:center; font-weight:700;">
+                        Host Private Duel
+                    </button>
+                    <div style="display:flex; gap:0.4rem;">
+                        <input type="text" id="join-code-input" placeholder="CODE (1V1-XXXX)" style="flex:1; padding:0.55rem 0.75rem; background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:var(--radius-sm); color:var(--text-primary); font-family:var(--font-mono); font-size:0.85rem; text-transform:uppercase;">
+                        <button onclick="joinRoomByCodeInput()" class="btn btn-primary" style="padding:0.55rem 1rem;">Join</button>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <div style="text-align: right; font-size: 0.85rem; color: var(--text-muted);">
-          <div>Type: <strong id="waiting-room-type" style="color: var(--text-primary);">PUBLIC</strong></div>
-          <div>Duration: <strong id="waiting-room-dur" style="color: var(--text-primary);">60s</strong></div>
+        <!-- Public Rooms Directory -->
+        <div id="public-directory-section" style="border-top:1px solid var(--border-color); padding-top:1.5rem;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:0.5rem;">
+                <h3 style="font-size:1.15rem; margin:0;">Active Flight Lobbies</h3>
+                <button onclick="requestPublicRooms()" class="btn btn-sm">
+                    🔄 Refresh Directory
+                </button>
+            </div>
+            <div class="table-responsive-container">
+                <table style="width:100%; border-collapse:collapse; text-align:left;">
+                    <thead>
+                        <tr>
+                            <th>Callsign</th>
+                            <th>Lobby Name</th>
+                            <th>Host Pilot</th>
+                            <th>Pilots</th>
+                            <th>Duration</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="public-rooms-tbody">
+                        <tr>
+                            <td colspan="7" style="padding:2.5rem; text-align:center; color:var(--text-muted);">
+                                Scanning grid for active flight rooms...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
-      </div>
+    </div>
 
-      <h3 style="font-size: 1.1rem; margin-bottom: 1rem;">Connected Racers</h3>
-      <div id="waiting-racers-list" style="display: flex; flex-direction: column; gap: 0.65rem; margin-bottom: 1.5rem;"></div>
-
-      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; border-top: 1px solid var(--border-color); padding-top: 1.25rem;">
-        <button onclick="safeLeaveRoom()" class="btn btn-danger">
-          &larr; Leave Room
-        </button>
-
-        <div style="display: flex; gap: 0.75rem; align-items: center;">
-          <button onclick="toggleMyReadyStatus()" id="btn-toggle-ready" class="btn" style="padding: 0.65rem 1.5rem; font-weight: 800;">
-            Mark Ready (✓)
-          </button>
-          <button onclick="hostStartMatch()" id="btn-host-start" class="btn btn-primary" style="background: var(--success); border-color: var(--success); font-weight: 800; padding: 0.65rem 1.75rem;">
-            🏁 Start Match
-          </button>
+    <!-- =========================================================
+         VIEW 2: QUICK MATCH SEARCHING MODAL
+         ========================================================= -->
+    <div id="modal-quick-searching" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:2500; align-items:center; justify-content:center; backdrop-filter:blur(8px); padding:1rem;">
+        <div class="card" style="width:100%; max-width:440px; text-align:center; border-color:var(--accent); padding:2.5rem 2rem;">
+            <div style="font-size:3rem; margin-bottom:1rem;">⚡</div>
+            <h2 style="font-size:1.5rem; font-weight:800; color:var(--accent); margin-bottom:0.5rem;">Ranked 1v1 Queue</h2>
+            <p style="color:var(--text-muted); font-size:0.9rem; line-height:1.5; margin-bottom:2rem;">
+                Matching pilot with a nearby competitor... You will be transferred automatically once locked.
+            </p>
+            <button onclick="cancelQuickMatchQueue()" class="btn btn-danger" style="padding:0.65rem 1.5rem; font-weight:700;">
+                Cancel Queue
+            </button>
         </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- =========================================================
-       VIEW 5: ACTIVE RACE ARENA (Individual Finish & Spectate)
-       ========================================================= -->
-  <div id="view-arena" style="display: none;">
-    <!-- Synchronized 3-Second Countdown Overlay -->
-    <div id="arena-countdown-banner" style="display: none; text-align: center; margin-bottom: 1.5rem; background: var(--bg-card); border: 2px solid var(--accent); border-radius: var(--radius); padding: 1.5rem;">
-      <div style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted);">Synchronized Start</div>
-      <div id="arena-countdown-num" style="font-size: 4.5rem; font-family: var(--font-mono); font-weight: 900; color: var(--accent); margin: 0.2rem 0;">3</div>
     </div>
 
-    <!-- Finished Early Banner (Live Spectate Mode) -->
-    <div id="finished-spectate-banner" style="display: none; background: var(--success-bg); border: 1.5px solid var(--success); border-radius: var(--radius); padding: 1rem 1.5rem; margin-bottom: 1.25rem; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
-      <div>
-        <div style="font-size: 1.15rem; font-weight: 800; color: var(--success);" id="spectate-title">
-          🏁 You finished! Position: #1
+    <!-- =========================================================
+         VIEW 3: CREATE ROOM MODAL
+         ========================================================= -->
+    <div id="modal-create-room" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:2500; align-items:center; justify-content:center; backdrop-filter:blur(8px); padding:1rem;">
+        <div class="card" style="width:100%; max-width:520px; border-color:var(--accent); padding:2rem; max-height:90vh; overflow-y:auto;">
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:0.75rem; margin-bottom:1.25rem;">
+                <h3 id="create-modal-title" style="margin:0; font-size:1.3rem; font-weight:800; color:var(--accent);">Configure Flight Room</h3>
+                <button onclick="closeCreateModal()" class="btn btn-sm">&times;</button>
+            </div>
+            <div style="margin-bottom:1.25rem;">
+                <label style="display:block; font-size:0.8rem; text-transform:uppercase; color:var(--text-muted); font-weight:700; margin-bottom:0.35rem;">Room Title</label>
+                <input type="text" id="create-room-name" value="Supersonic Sprint" style="width:100%; padding:0.65rem; background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:var(--radius-sm); color:var(--text-primary);">
+            </div>
+            <div style="margin-bottom:1.25rem;">
+                <label style="display:block; font-size:0.8rem; text-transform:uppercase; color:var(--text-muted); font-weight:700; margin-bottom:0.35rem;">Match Duration</label>
+                <div style="display:flex; gap:0.4rem; flex-wrap:wrap;" id="create-dur-group">
+                    <button type="button" class="btn btn-sm" onclick="selectCreateDur(30, this)">30s</button>
+                    <button type="button" class="btn btn-sm active-choice" onclick="selectCreateDur(60, this)">60s</button>
+                    <button type="button" class="btn btn-sm" onclick="selectCreateDur(120, this)">120s</button>
+                    <button type="button" class="btn btn-sm" onclick="selectCreateDur(300, this)">300s (5m)</button>
+                    <button type="button" class="btn btn-sm" onclick="selectCreateDur(600, this)">600s (10m)</button>
+                </div>
+            </div>
+            <div id="create-players-wrap" style="margin-bottom:1.25rem;">
+                <label style="display:block; font-size:0.8rem; text-transform:uppercase; color:var(--text-muted); font-weight:700; margin-bottom:0.35rem;">Pilot Capacity</label>
+                <select id="create-max-players" style="width:100%; padding:0.65rem; background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:var(--radius-sm); color:var(--text-primary);">
+                    <option value="2">2 Pilots (Duel)</option>
+                    <option value="4" selected>4 Pilots</option>
+                    <option value="6">6 Pilots</option>
+                    <option value="8">8 Pilots</option>
+                </select>
+            </div>
+            <div style="margin-bottom:1.5rem;">
+                <label style="display:block; font-size:0.8rem; text-transform:uppercase; color:var(--text-muted); font-weight:700; margin-bottom:0.35rem;">Custom Passage (Optional)</label>
+                <textarea id="create-custom-text" rows="3" placeholder="Leave blank to use curated synchronized passages, or paste custom text..." style="width:100%; padding:0.65rem; background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:var(--radius-sm); color:var(--text-primary); font-family:var(--font-mono); font-size:0.85rem; line-height:1.5;"></textarea>
+            </div>
+            <div style="display:flex; justify-content:flex-end; gap:0.75rem;">
+                <button type="button" onclick="closeCreateModal()" class="btn">Cancel</button>
+                <button type="button" onclick="submitCreateRoom()" class="btn btn-primary" style="font-weight:800; padding:0.65rem 1.5rem;">
+                    Launch Lobby &rarr;
+                </button>
+            </div>
         </div>
-        <div style="font-size: 0.85rem; color: var(--text-muted);" id="spectate-subtext">
-          Other racers are still on track. You are now spectating live.
+    </div>
+
+    <!-- =========================================================
+         VIEW 4: WAITING LOBBY
+         ========================================================= -->
+    <div id="view-waiting" style="display:none;">
+        <div style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--radius); padding:1.5rem; margin-bottom:1.5rem;">
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:1rem; margin-bottom:1.25rem; flex-wrap:wrap; gap:1rem;">
+                <div>
+                    <span style="font-size:0.75rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-muted);">Flight Callcode</span>
+                    <div style="display:flex; align-items:center; gap:0.6rem; margin-top:0.2rem;">
+                        <span id="waiting-room-code" style="font-size:1.5rem; font-family:var(--font-mono); font-weight:800; color:var(--accent);">ROOM-CODE</span>
+                        <button onclick="copyLobbyInvite()" id="btn-copy-lobby" class="btn btn-sm">
+                            📋 Copy Link
+                        </button>
+                    </div>
+                </div>
+                <div style="text-align:right; font-size:0.85rem; color:var(--text-muted);">
+                    <div>Type: <strong id="waiting-room-type" style="color:var(--text-primary);">PUBLIC</strong></div>
+                    <div>Target: <strong id="waiting-room-dur" style="color:var(--text-primary);">60s</strong></div>
+                </div>
+            </div>
+            <h3 style="font-size:1.1rem; margin-bottom:1rem;">Flight Roster</h3>
+            <div id="waiting-racers-list" style="display:flex; flex-direction:column; gap:0.65rem; margin-bottom:1.5rem;"></div>
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; border-top:1px solid var(--border-color); padding-top:1.25rem;">
+                <button onclick="safeLeaveRoom()" class="btn btn-danger">
+                    &larr; Leave Room
+                </button>
+                <div style="display:flex; gap:0.75rem; align-items:center;">
+                    <button onclick="toggleMyReadyStatus()" id="btn-toggle-ready" class="btn" style="padding:0.65rem 1.5rem; font-weight:800;">
+                        Mark Ready (✓)
+                    </button>
+                    <button onclick="hostStartMatch()" id="btn-host-start" class="btn btn-primary" style="background:var(--success); border-color:var(--success); font-weight:800; padding:0.65rem 1.75rem;">
+                        🏁 Start Match
+                    </button>
+                </div>
+            </div>
         </div>
-      </div>
-      <div style="display: flex; gap: 0.6rem;">
-        <button onclick="leaveEarlyAfterFinish()" class="btn btn-sm">
-          🚪 Leave Race (Save Place)
-        </button>
-      </div>
     </div>
 
-    <!-- Live Progress Tracks -->
-    <div style="margin-bottom: 1.5rem;">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
-        <h3 style="font-size: 1.15rem; margin: 0;">Live Race Tracks</h3>
-        <span id="arena-status-badge" style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">Race in progress...</span>
-      </div>
-      <div id="arena-tracks-container" style="display: flex; flex-direction: column; gap: 0.75rem;"></div>
+    <!-- =========================================================
+         VIEW 5: ACTIVE FLIGHT ARENA
+         ========================================================= -->
+    <div id="view-arena" style="display:none;">
+        <div id="arena-countdown-banner" style="display:none; text-align:center; margin-bottom:1.5rem; background:var(--bg-card); border:2px solid var(--accent); border-radius:var(--radius); padding:1.5rem;">
+            <div style="font-size:0.85rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--text-muted);">Synchronized Launch</div>
+            <div id="arena-countdown-num" style="font-size:4.5rem; font-family:var(--font-mono); font-weight:900; color:var(--accent); margin:0.2rem 0;">3</div>
+        </div>
+
+        <div id="finished-spectate-banner" style="display:none; background:var(--success-bg); border:1.5px solid var(--success); border-radius:var(--radius); padding:1rem 1.5rem; margin-bottom:1.25rem; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:1rem;">
+            <div>
+                <div style="font-size:1.15rem; font-weight:800; color:var(--success);" id="spectate-title">
+                    🏁 You crossed the finish line! Position: #1
+                </div>
+                <div style="font-size:0.85rem; color:var(--text-muted);" id="spectate-subtext">
+                    Remaining pilots are on track. You are now spectating live.
+                </div>
+            </div>
+            <button onclick="leaveEarlyAfterFinish()" class="btn btn-sm">
+                🚪 Conclude & Record
+            </button>
+        </div>
+
+        <div style="margin-bottom:1.5rem;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+                <h3 style="font-size:1.15rem; margin:0;">Live Pilot Telemetry Tracks</h3>
+                <span id="arena-status-badge" style="font-size:0.85rem; color:var(--text-muted); font-weight:600;">Race active...</span>
+            </div>
+            <div id="arena-tracks-container" style="display:flex; flex-direction:column; gap:0.75rem;"></div>
+        </div>
+
+        <div style="margin-bottom:1rem;">
+            <div id="arena-passage-box" class="typing-container focus-ring" style="min-height:140px; max-height:220px; overflow-y:auto; scroll-behavior:smooth; position:relative;">
+                <div id="arena-caret" class="caret caret-block"></div>
+                <div id="arena-passage-text" class="typing-text-display"></div>
+            </div>
+        </div>
+
+        <div>
+            <input type="text" id="arena-cockpit-input" placeholder="Type here when race begins (Space advances)..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="width:100%; padding:0.95rem 1.15rem; background:var(--bg-card); border:2px solid var(--border-color); border-radius:var(--radius-sm); color:var(--text-primary); font-family:var(--font-mono); font-size:1.1rem; outline:none;">
+            <div style="text-align:center; margin-top:0.5rem; font-size:0.8rem; color:var(--text-muted);">
+                Active line centers smoothly in the cockpit viewport.
+            </div>
+        </div>
     </div>
 
-    <!-- Smooth Auto-Centering Passage Box -->
-    <div style="margin-bottom: 1rem;">
-      <div id="arena-passage-box" class="typing-container focus-ring" style="min-height: 140px; max-height: 220px; overflow-y: auto; scroll-behavior: smooth; position: relative;">
-        <div id="arena-caret" class="caret caret-block"></div>
-        <div id="arena-passage-text" class="typing-text-display"></div>
-      </div>
+    <!-- =========================================================
+         VIEW 6: OUTCOME RESULTS & ELO SHIFTS
+         ========================================================= -->
+    <div id="view-results" style="display:none; text-align:center;">
+        <div class="card" id="results-card-container" style="background:var(--bg-card); border-color:var(--accent); padding:2.5rem 2rem;">
+            <div id="results-trophy-icon" style="font-size:4rem; margin-bottom:0.4rem;">🏆</div>
+            <h2 id="results-headline-title" style="font-size:2.1rem; font-weight:800; color:var(--accent); margin-bottom:0.4rem;">
+                Flight Duel Concluded
+            </h2>
+            <div id="results-motivational-banner" style="background:var(--accent-glow); border:1px solid var(--accent); border-radius:var(--radius-sm); padding:0.85rem 1.25rem; max-width:680px; margin:0 auto 1.75rem; font-size:0.95rem; font-weight:600; line-height:1.5;">
+                Match complete!
+            </div>
+
+            <div class="table-responsive-container" style="margin-bottom:2rem;">
+                <table style="width:100%; text-align:left;">
+                    <thead>
+                        <tr>
+                            <th>Position</th>
+                            <th>Pilot</th>
+                            <th>Net Speed</th>
+                            <th>Accuracy</th>
+                            <th>Errors</th>
+                            <th>MMR Shift</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="results-standings-tbody"></tbody>
+                </table>
+            </div>
+
+            <div style="display:flex; justify-content:center; gap:0.85rem; flex-wrap:wrap;">
+                <button onclick="requestRematch()" id="btn-results-rematch" class="btn btn-primary" style="background:var(--success); border-color:var(--success); font-weight:800; padding:0.75rem 1.75rem; font-size:1rem;">
+                    🔄 Rematch (Same Pilots)
+                </button>
+                <button onclick="switchModeTab('quick')" class="btn btn-primary" style="font-weight:800; padding:0.75rem 1.5rem;">
+                    ⚡ Find Another Duel
+                </button>
+                <button onclick="switchModeTab('public')" class="btn" style="padding:0.75rem 1.25rem;">
+                    🌐 Public Lobbies
+                </button>
+                <button onclick="safeLeaveRoom()" class="btn" style="padding:0.75rem 1.25rem;">
+                    🏠 Return to Hub
+                </button>
+            </div>
+        </div>
     </div>
-
-    <!-- Universal Cockpit Input -->
-    <div>
-      <input type="text" id="arena-cockpit-input" placeholder="Type here when race begins (Space advances)..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="width: 100%; padding: 0.95rem 1.15rem; background: var(--bg-card); border: 2px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary); font-family: var(--font-mono); font-size: 1.1rem; outline: none; transition: border-color var(--transition-fast);">
-      <div style="text-align: center; margin-top: 0.5rem; font-size: 0.8rem; color: var(--text-muted);">
-        Active line auto-centers smoothly as you type.
-      </div>
-    </div>
-  </div>
-
-  <!-- =========================================================
-       VIEW 6: FINAL RESULTS SCREEN (Celebration & Motivation)
-       ========================================================= -->
-  <div id="view-results" style="display: none; text-align: center;">
-    <div class="card" id="results-card-container" style="background: var(--bg-card); border-color: var(--accent); padding: 2.5rem 2rem;">
-      
-      <div id="results-trophy-icon" style="font-size: 4rem; margin-bottom: 0.4rem;">🏆</div>
-      <h2 id="results-headline-title" style="font-size: 2.1rem; font-weight: 800; color: var(--accent); margin-bottom: 0.4rem;">
-        Race Concluded
-      </h2>
-
-      <div id="results-motivational-banner" style="background: var(--accent-glow); border: 1px solid var(--accent); border-radius: var(--radius-sm); padding: 0.85rem 1.25rem; max-width: 680px; margin: 0 auto 1.75rem; font-size: 0.95rem; font-weight: 600; line-height: 1.5;">
-        Great race everyone!
-      </div>
-
-      <!-- Standings Table -->
-      <div class="table-responsive-container" style="margin-bottom: 2rem;">
-        <table style="width: 100%; text-align: left;">
-          <thead>
-            <tr>
-              <th>Position</th>
-              <th>Pilot</th>
-              <th>Net Speed</th>
-              <th>Accuracy</th>
-              <th>Errors</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody id="results-standings-tbody"></tbody>
-        </table>
-      </div>
-
-      <!-- Actions -->
-      <div style="display: flex; justify-content: center; gap: 0.85rem; flex-wrap: wrap;">
-        <button onclick="requestRematch()" id="btn-results-rematch" class="btn btn-primary" style="background: var(--success); border-color: var(--success); font-weight: 800; padding: 0.75rem 1.75rem; font-size: 1rem;">
-          🔄 Rematch (Same Racers)
-        </button>
-        <button onclick="switchModeTab('quick')" class="btn btn-primary" style="font-weight: 800; padding: 0.75rem 1.5rem; font-size: 0.95rem;">
-          ⚡ Quick Match Another
-        </button>
-        <button onclick="switchModeTab('public')" class="btn" style="padding: 0.75rem 1.25rem;">
-          🌐 Public Rooms
-        </button>
-        <button onclick="safeLeaveRoom()" class="btn" style="padding: 0.75rem 1.25rem;">
-          🏠 Return to Hub
-        </button>
-      </div>
-    </div>
-  </div>
-
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 <script>
-// ==========================================
-// Master Multiplayer Controller
-// ==========================================
 let socket = null;
 let mySid = null;
-
 const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
 const platformTag = isMobile ? "Phone" : "PC";
 const authUsername = "{{ current_user.username if current_user.is_authenticated else '' }}";
@@ -364,680 +337,607 @@ let isCountingDown = false;
 let raceStartTime = null;
 let clientRaceTimer = null;
 let hasLocallyFinished = false;
-
 let creationSelectedDur = 60;
 let creationType = 'public';
 const trackElements = {};
 
 document.addEventListener('DOMContentLoaded', () => {
-  initSocket();
-
-  const params = new URLSearchParams(window.location.search);
-  const joinParam = params.get('join') || params.get('room');
-  if (joinParam) {
-    setTimeout(() => {
-      socket.emit('join_room', { code: joinParam.trim().toUpperCase(), player_name: myPlayerName });
-    }, 450);
-  }
-
-  bindArenaInput();
-  highlightActiveNavPill('public');
+    initSocket();
+    const params = new URLSearchParams(window.location.search);
+    const joinParam = params.get('join') || params.get('room');
+    if (joinParam) {
+        setTimeout(() => {
+            socket.emit('join_room', { code: joinParam.trim().toUpperCase(), player_name: myPlayerName });
+        }, 450);
+    }
+    bindArenaInput();
+    highlightActiveNavPill('public');
 });
 
 function initSocket() {
-  socket = io();
+    socket = io();
+    socket.on('connect', () => {
+        mySid = socket.id;
+        document.getElementById('socket-conn-dot').style.background = 'var(--success)';
+        document.getElementById('socket-conn-text').textContent = `Online as ${myPlayerName}`;
+        requestPublicRooms();
+    });
 
-  socket.on('connect', () => {
-    mySid = socket.id;
-    document.getElementById('socket-conn-dot').style.background = 'var(--success)';
-    document.getElementById('socket-conn-text').textContent = `Online as ${myPlayerName}`;
-    requestPublicRooms();
-  });
+    socket.on('disconnect', () => {
+        document.getElementById('socket-conn-dot').style.background = 'var(--danger)';
+        document.getElementById('socket-conn-text').textContent = 'Disconnected. Reconnecting...';
+    });
 
-  socket.on('disconnect', () => {
-    document.getElementById('socket-conn-dot').style.background = 'var(--danger)';
-    document.getElementById('socket-conn-text').textContent = 'Disconnected. Reconnecting...';
-  });
+    socket.on('public_rooms_update', (data) => {
+        renderPublicRooms(data.rooms || []);
+    });
 
-  socket.on('public_rooms_update', (data) => {
-    renderPublicRooms(data.rooms || []);
-  });
+    socket.on('room_joined', (data) => {
+        mySid = data.your_sid;
+        activeRoomData = data.room;
+        currentPassage = data.room.text;
+        hasLocallyFinished = false;
+        showView('waiting');
+        renderWaitingLobby();
+    });
 
-  socket.on('room_joined', (data) => {
-    mySid = data.your_sid;
-    activeRoomData = data.room;
-    currentPassage = data.room.text;
-    hasLocallyFinished = false;
-    showView('waiting');
-    renderWaitingLobby();
-  });
+    socket.on('room_state_updated', (data) => {
+        activeRoomData = data.room;
+        currentPassage = data.room.text;
+        if (activeRoomData.status === 'waiting') {
+            renderWaitingLobby();
+        }
+    });
 
-  socket.on('room_state_updated', (data) => {
-    activeRoomData = data.room;
-    currentPassage = data.room.text;
-    if (activeRoomData.status === 'waiting') {
-      renderWaitingLobby();
-    }
-  });
+    socket.on('join_error', (data) => { alert(data.message || 'Unable to join flight room.'); });
+    socket.on('action_error', (data) => { alert(data.message || 'Action restricted.'); });
 
-  socket.on('join_error', (data) => {
-    alert(data.message || 'Unable to join room.');
-  });
+    socket.on('quick_queue_waiting', () => {
+        document.getElementById('modal-quick-searching').style.display = 'flex';
+    });
+    socket.on('quick_queue_cancelled', () => {
+        document.getElementById('modal-quick-searching').style.display = 'none';
+    });
 
-  socket.on('action_error', (data) => {
-    alert(data.message || 'Action failed.');
-  });
+    socket.on('quick_match_paired', (data) => {
+        document.getElementById('modal-quick-searching').style.display = 'none';
+        mySid = data.your_sid;
+        activeRoomData = data.room;
+        currentPassage = data.room.text;
+        hasLocallyFinished = false;
+        showView('waiting');
+        renderWaitingLobby();
+    });
 
-  socket.on('quick_queue_waiting', () => {
-    document.getElementById('modal-quick-searching').style.display = 'flex';
-  });
+    socket.on('match_countdown_started', (data) => {
+        currentPassage = data.text;
+        hasLocallyFinished = false;
+        showView('arena');
+        executeCountdown(data.duration || 60);
+    });
 
-  socket.on('quick_queue_cancelled', () => {
-    document.getElementById('modal-quick-searching').style.display = 'none';
-  });
+    socket.on('room_progress_update', (data) => {
+        renderArenaTracks(data.players || []);
+    });
 
-  socket.on('quick_match_paired', (data) => {
-    document.getElementById('modal-quick-searching').style.display = 'none';
-    mySid = data.your_sid;
-    activeRoomData = data.room;
-    currentPassage = data.room.text;
-    hasLocallyFinished = false;
-    showView('waiting');
-    renderWaitingLobby();
-  });
+    socket.on('individual_player_finished', (data) => {
+        const finishedPlayer = data.player;
+        const isMe = (finishedPlayer.sid === mySid);
+        if (isMe) {
+            hasLocallyFinished = true;
+            document.getElementById('finished-spectate-banner').style.display = 'flex';
+            const medal = (finishedPlayer.place === 1) ? '🥇 1st' : ((finishedPlayer.place === 2) ? '🥈 2nd' : '🥉 3rd');
+            document.getElementById('spectate-title').textContent = `🏁 Flight Completed: ${medal} (${Math.round(finishedPlayer.wpm)} WPM)`;
+            document.getElementById('spectate-subtext').textContent = data.remaining_count > 0 
+                ? `${data.remaining_count} pilot(s) still on course. You are now spectating live.`
+                : 'All pilots finished!';
+        }
 
-  socket.on('match_countdown_started', (data) => {
-    currentPassage = data.text;
-    hasLocallyFinished = false;
-    showView('arena');
-    executeCountdown(data.duration || 60);
-  });
+        if (data.all_finished) {
+            setTimeout(() => {
+                showResultsView(data.standings);
+            }, 900);
+        }
+    });
 
-  socket.on('room_progress_update', (data) => {
-    renderArenaTracks(data.players || []);
-  });
+    socket.on('race_concluded', (data) => {
+        clearInterval(clientRaceTimer);
+        setTimeout(() => {
+            showResultsView(data.standings);
+        }, 900);
+    });
 
-  socket.on('individual_player_finished', (data) => {
-    const finishedPlayer = data.player;
-    const isMe = (finishedPlayer.sid === mySid);
+    socket.on('rematch_accepted', (data) => {
+        activeRoomData = data.room;
+        currentPassage = data.room.text;
+        hasLocallyFinished = false;
+        showView('waiting');
+        renderWaitingLobby();
+    });
 
-    if (isMe) {
-      hasLocallyFinished = true;
-      document.getElementById('finished-spectate-banner').style.display = 'flex';
-      const medal = (finishedPlayer.place === 1) ? '🥇 1st' : ((finishedPlayer.place === 2) ? '🥈 2nd' : '🥉 3rd');
-      document.getElementById('spectate-title').textContent = `🏁 You finished! Position: ${medal} (${Math.round(finishedPlayer.wpm)} WPM)`;
-      document.getElementById('spectate-subtext').textContent = data.remaining_count > 0 
-        ? `${data.remaining_count} racer(s) still on track. You are now spectating live.`
-        : 'All racers finished!';
-    }
-
-    if (data.all_finished) {
-      setTimeout(() => {
-        showResultsView(data.standings);
-      }, 900);
-    }
-  });
-
-  socket.on('race_concluded', (data) => {
-    clearInterval(clientRaceTimer);
-    setTimeout(() => {
-      showResultsView(data.standings);
-    }, 900);
-  });
-
-  socket.on('rematch_accepted', (data) => {
-    activeRoomData = data.room;
-    currentPassage = data.room.text;
-    hasLocallyFinished = false;
-    showView('waiting');
-    renderWaitingLobby();
-  });
-
-  socket.on('left_room_confirmed', () => {
-    activeRoomData = null;
-    hasLocallyFinished = false;
-    clearInterval(clientRaceTimer);
-    showView('hub');
-    requestPublicRooms();
-  });
+    socket.on('left_room_confirmed', () => {
+        activeRoomData = null;
+        hasLocallyFinished = false;
+        clearInterval(clientRaceTimer);
+        showView('hub');
+        requestPublicRooms();
+    });
 }
 
-// ==========================================
-// Mode Switching & Safety Guards
-// ==========================================
 function switchModeTab(targetMode) {
-  if (activeRoomData && (activeRoomData.status === 'in_progress' || activeRoomData.status === 'countdown') && !hasLocallyFinished) {
-    const confirmLeave = confirm("You are currently inside an active race! Switching modes will record you as DNF. Continue?");
-    if (!confirmLeave) return;
-  }
+    if (activeRoomData && (activeRoomData.status === 'in_progress' || activeRoomData.status === 'countdown') && !hasLocallyFinished) {
+        if (!confirm("You are in an active match. Leaving will record a DNF penalty. Proceed?")) return;
+    }
+    if (activeRoomData) socket.emit('leave_room_voluntary');
+    cancelQuickMatchQueue();
+    highlightActiveNavPill(targetMode);
+    showView('hub');
 
-  if (activeRoomData) {
-    socket.emit('leave_room_voluntary');
-  }
-  cancelQuickMatchQueue();
-
-  highlightActiveNavPill(targetMode);
-  showView('hub');
-
-  if (targetMode === 'quick') {
-    startQuickMatchQueue();
-  } else if (targetMode === 'private') {
-    openCreateModal('private');
-  } else {
-    const dir = document.getElementById('public-directory-section');
-    if (dir) dir.scrollIntoView({ behavior: 'smooth' });
-    requestPublicRooms();
-  }
+    if (targetMode === 'quick') {
+        startQuickMatchQueue();
+    } else if (targetMode === 'private') {
+        openCreateModal('private');
+    } else {
+        requestPublicRooms();
+    }
 }
 
 function highlightActiveNavPill(activeMode) {
-  const pPub = document.getElementById('tab-pill-public');
-  const pQck = document.getElementById('tab-pill-quick');
-  const pPrv = document.getElementById('tab-pill-private');
-
-  pPub.className = (activeMode === 'public') ? 'btn btn-primary' : 'btn';
-  pQck.className = (activeMode === 'quick') ? 'btn btn-primary' : 'btn';
-  pPrv.className = (activeMode === 'private') ? 'btn btn-primary' : 'btn';
-
-  const cPub = document.getElementById('card-mode-public');
-  const cQck = document.getElementById('card-mode-quick');
-  const cPrv = document.getElementById('card-mode-private');
-  if (cPub) cPub.style.borderColor = (activeMode === 'public') ? 'var(--accent)' : 'var(--border-color)';
-  if (cQck) cQck.style.borderColor = (activeMode === 'quick') ? 'var(--accent)' : 'var(--border-color)';
-  if (cPrv) cPrv.style.borderColor = (activeMode === 'private') ? 'var(--accent)' : 'var(--border-color)';
+    const pPub = document.getElementById('tab-pill-public');
+    const pQck = document.getElementById('tab-pill-quick');
+    const pPrv = document.getElementById('tab-pill-private');
+    pPub.className = (activeMode === 'public') ? 'btn btn-primary' : 'btn';
+    pQck.className = (activeMode === 'quick') ? 'btn btn-primary' : 'btn';
+    pPrv.className = (activeMode === 'private') ? 'btn btn-primary' : 'btn';
 }
 
 function showView(viewName) {
-  document.getElementById('view-hub').style.display = (viewName === 'hub') ? 'block' : 'none';
-  document.getElementById('view-waiting').style.display = (viewName === 'waiting') ? 'block' : 'none';
-  document.getElementById('view-arena').style.display = (viewName === 'arena') ? 'block' : 'none';
-  document.getElementById('view-results').style.display = (viewName === 'results') ? 'block' : 'none';
+    document.getElementById('view-hub').style.display = (viewName === 'hub') ? 'block' : 'none';
+    document.getElementById('view-waiting').style.display = (viewName === 'waiting') ? 'block' : 'none';
+    document.getElementById('view-arena').style.display = (viewName === 'arena') ? 'block' : 'none';
+    document.getElementById('view-results').style.display = (viewName === 'results') ? 'block' : 'none';
 }
 
 function safeLeaveRoom() {
-  if (activeRoomData && (activeRoomData.status === 'in_progress' || activeRoomData.status === 'countdown') && !hasLocallyFinished) {
-    if (!confirm("Are you sure you want to abandon this race?")) return;
-  }
-  socket.emit('leave_room_voluntary');
+    if (activeRoomData && (activeRoomData.status === 'in_progress' || activeRoomData.status === 'countdown') && !hasLocallyFinished) {
+        if (!confirm("Abandon this flight match?")) return;
+    }
+    socket.emit('leave_room_voluntary');
 }
 
 function leaveEarlyAfterFinish() {
-  socket.emit('leave_race_after_finish');
+    socket.emit('leave_race_after_finish');
 }
 
-// ==========================================
-// Hub Directory
-// ==========================================
 function requestPublicRooms() {
-  if (socket && socket.connected) {
-    socket.emit('request_public_rooms');
-  }
+    if (socket && socket.connected) {
+        socket.emit('request_public_rooms');
+    }
 }
 
 function renderPublicRooms(rooms) {
-  const tbody = document.getElementById('public-rooms-tbody');
-  if (!tbody) return;
-  tbody.innerHTML = '';
+    const tbody = document.getElementById('public-rooms-tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
 
-  if (rooms.length === 0) {
-    tbody.innerHTML = `
-      <tr>
-        <td colspan="7" style="padding: 2.5rem; text-align: center; color: var(--text-muted);">
-          No public rooms waiting. Click <strong>"+ Create Public Room"</strong> to host!
-        </td>
-      </tr>
-    `;
-    return;
-  }
+    if (rooms.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="7" style="padding: 2.5rem; text-align: center; color: var(--text-muted);">
+                    No open flight rooms waiting. Click <strong>"+ Create Public Room"</strong> to host!
+                </td>
+            </tr>
+        `;
+        return;
+    }
 
-  rooms.forEach(r => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td style="font-family: var(--font-mono); font-weight: 700; color: var(--accent);">${r.code}</td>
-      <td style="font-weight: 600;">${r.name}</td>
-      <td>${r.host_name}</td>
-      <td>${r.current_players} / ${r.max_players}</td>
-      <td>${r.duration}s</td>
-      <td>
-        <span style="background: var(--success-bg); color: var(--success); padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 700;">WAITING</span>
-      </td>
-      <td>
-        <button onclick="joinRoomByCode('${r.code}')" class="btn btn-primary btn-sm">
-          Join Room
-        </button>
-      </td>
-    `;
-    tbody.appendChild(tr);
-  });
+    rooms.forEach(r => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td style="font-family: var(--font-mono); font-weight: 700; color: var(--accent);">${r.code}</td>
+            <td style="font-weight: 600;">${r.name}</td>
+            <td>${r.host_name}</td>
+            <td>${r.current_players} / ${r.max_players}</td>
+            <td>${r.duration}s</td>
+            <td>
+                <span style="background: var(--success-bg); color: var(--success); padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 700;">WAITING</span>
+            </td>
+            <td>
+                <button onclick="joinRoomByCode('${r.code}')" class="btn btn-primary btn-sm">
+                    Join Flight
+                </button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
 }
 
 function joinRoomByCode(code) {
-  socket.emit('join_room', { code: code, player_name: myPlayerName });
+    socket.emit('join_room', { code: code, player_name: myPlayerName });
 }
 
 function joinRoomByCodeInput() {
-  const input = document.getElementById('join-code-input');
-  const code = input.value.trim().toUpperCase();
-  if (!code) {
-    alert('Please enter a room code.');
-    return;
-  }
-  joinRoomByCode(code);
+    const input = document.getElementById('join-code-input');
+    const code = input.value.trim().toUpperCase();
+    if (!code) {
+        alert('Please enter a room code.');
+        return;
+    }
+    joinRoomByCode(code);
 }
 
 function startQuickMatchQueue() {
-  socket.emit('join_quick_queue', { name: myPlayerName });
+    socket.emit('join_quick_queue', { name: myPlayerName });
 }
 
 function cancelQuickMatchQueue() {
-  socket.emit('cancel_quick_queue');
-  highlightActiveNavPill('public');
+    socket.emit('cancel_quick_queue');
+    highlightActiveNavPill('public');
 }
 
 function openCreateModal(type) {
-  creationType = type;
-  document.getElementById('create-modal-title').textContent = (type === 'private') ? "Create Private 1v1 Room" : "Create Public Room";
-  document.getElementById('create-players-wrap').style.display = (type === 'private') ? 'none' : 'block';
-  document.getElementById('modal-create-room').style.display = 'flex';
+    creationType = type;
+    document.getElementById('create-modal-title').textContent = (type === 'private') ? "Host Private Flight Duel" : "Configure Public Room";
+    document.getElementById('create-players-wrap').style.display = (type === 'private') ? 'none' : 'block';
+    document.getElementById('modal-create-room').style.display = 'flex';
 }
 
 function closeCreateModal() {
-  document.getElementById('modal-create-room').style.display = 'none';
+    document.getElementById('modal-create-room').style.display = 'none';
 }
 
 function selectCreateDur(dur, btn) {
-  creationSelectedDur = dur;
-  document.querySelectorAll('#create-dur-group .btn').forEach(b => b.classList.remove('active-choice'));
-  btn.classList.add('active-choice');
+    creationSelectedDur = dur;
+    document.querySelectorAll('#create-dur-group .btn').forEach(b => b.classList.remove('active-choice'));
+    btn.classList.add('active-choice');
 }
 
 function submitCreateRoom() {
-  const name = document.getElementById('create-room-name').value.trim() || 'Speed Duel';
-  const maxP = (creationType === 'private') ? 2 : parseInt(document.getElementById('create-max-players').value, 10);
-  const customText = document.getElementById('create-custom-text').value.trim();
+    const name = document.getElementById('create-room-name').value.trim() || 'Flight Duel';
+    const maxP = (creationType === 'private') ? 2 : parseInt(document.getElementById('create-max-players').value, 10);
+    const customText = document.getElementById('create-custom-text').value.trim();
 
-  socket.emit('create_room', {
-    type: creationType,
-    name: name,
-    player_name: myPlayerName,
-    duration: creationSelectedDur,
-    max_players: maxP,
-    custom_text: customText
-  });
-
-  closeCreateModal();
+    socket.emit('create_room', {
+        type: creationType,
+        name: name,
+        player_name: myPlayerName,
+        duration: creationSelectedDur,
+        max_players: maxP,
+        custom_text: customText
+    });
+    closeCreateModal();
 }
 
-// ==========================================
-// Waiting Room / Lobby
-// ==========================================
 function renderWaitingLobby() {
-  if (!activeRoomData) return;
+    if (!activeRoomData) return;
+    document.getElementById('waiting-room-code').textContent = activeRoomData.code;
+    document.getElementById('waiting-room-type').textContent = activeRoomData.type.toUpperCase();
+    document.getElementById('waiting-room-dur').textContent = `${activeRoomData.duration}s`;
 
-  document.getElementById('waiting-room-code').textContent = activeRoomData.code;
-  document.getElementById('waiting-room-type').textContent = activeRoomData.type.toUpperCase();
-  document.getElementById('waiting-room-dur').textContent = `${activeRoomData.duration}s`;
+    const container = document.getElementById('waiting-racers-list');
+    container.innerHTML = '';
+    const players = Object.values(activeRoomData.players || {}).filter(p => !p.left_early);
+    let allReady = true;
 
-  const container = document.getElementById('waiting-racers-list');
-  container.innerHTML = '';
+    players.forEach(p => {
+        const isMe = (p.sid === mySid);
+        if (!p.ready) allReady = false;
 
-  const players = Object.values(activeRoomData.players || {}).filter(p => !p.left_early);
-  let allReady = true;
+        const div = document.createElement('div');
+        div.style.display = 'flex';
+        div.style.justifyContent = 'space-between';
+        div.style.alignItems = 'center';
+        div.style.background = isMe ? 'rgba(56, 189, 248, 0.12)' : 'var(--bg-secondary)';
+        div.style.border = isMe ? '1.5px solid var(--accent)' : '1px solid var(--border-color)';
+        div.style.padding = '0.75rem 1rem';
+        div.style.borderRadius = 'var(--radius-sm)';
+        div.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 0.6rem;">
+                <span style="font-size: 1.2rem;">🚀</span>
+                <strong style="font-size: 0.95rem;">${isMe ? `You (${p.name})` : p.name}</strong>
+                ${p.is_host ? '<span style="font-size: 0.7rem; background: var(--accent); color: #04101e; padding: 0.1rem 0.45rem; border-radius: 4px; font-weight: 700;">HOST</span>' : ''}
+            </div>
+            <div>
+                <span style="font-size: 0.8rem; font-weight: 700; padding: 0.25rem 0.65rem; border-radius: 4px; background: ${p.ready ? 'var(--success-bg)' : 'var(--warning-bg)'}; color: ${p.ready ? 'var(--success)' : 'var(--warning)'};">
+                    ${p.ready ? '✓ Armed & Ready' : '⏳ Calibrating'}
+                </span>
+            </div>
+        `;
+        container.appendChild(div);
+    });
 
-  players.forEach(p => {
-    const isMe = (p.sid === mySid);
-    if (!p.ready) allReady = false;
+    const amHost = (activeRoomData.host_sid === mySid);
+    const hostBtn = document.getElementById('btn-host-start');
+    const readyBtn = document.getElementById('btn-toggle-ready');
 
-    const div = document.createElement('div');
-    div.style.display = 'flex';
-    div.style.justifyContent = 'space-between';
-    div.style.alignItems = 'center';
-    div.style.background = isMe ? 'rgba(56, 189, 248, 0.12)' : 'var(--bg-secondary)';
-    div.style.border = isMe ? '1.5px solid var(--accent)' : '1px solid var(--border-color)';
-    div.style.padding = '0.75rem 1rem';
-    div.style.borderRadius = 'var(--radius-sm)';
+    if (amHost) {
+        hostBtn.style.display = 'inline-flex';
+        const canStart = (players.length >= 2 || activeRoomData.type === 'public') && allReady;
+        hostBtn.disabled = !canStart;
+        hostBtn.style.opacity = canStart ? '1' : '0.5';
+    } else {
+        hostBtn.style.display = 'none';
+    }
 
-    div.innerHTML = `
-      <div style="display: flex; align-items: center; gap: 0.6rem;">
-        <span style="font-size: 1.15rem;">🏎️</span>
-        <strong style="font-size: 0.95rem;">${isMe ? `You (${p.name})` : p.name}</strong>
-        ${p.is_host ? '<span style="font-size: 0.7rem; background: var(--accent); color: #04101e; padding: 0.1rem 0.45rem; border-radius: 4px; font-weight: 700;">HOST</span>' : ''}
-      </div>
-
-      <div>
-        <span style="font-size: 0.8rem; font-weight: 700; padding: 0.25rem 0.65rem; border-radius: 4px; background: ${p.ready ? 'var(--success-bg)' : 'var(--warning-bg)'}; color: ${p.ready ? 'var(--success)' : 'var(--warning)'};">
-          ${p.ready ? '✓ Ready' : '⏳ Not Ready'}
-        </span>
-      </div>
-    `;
-    container.appendChild(div);
-  });
-
-  const amHost = (activeRoomData.host_sid === mySid);
-  const hostBtn = document.getElementById('btn-host-start');
-  const readyBtn = document.getElementById('btn-toggle-ready');
-
-  if (amHost) {
-    hostBtn.style.display = 'inline-flex';
-    const canStart = (players.length >= 2 || activeRoomData.type === 'public') && allReady;
-    hostBtn.disabled = !canStart;
-    hostBtn.style.opacity = canStart ? '1' : '0.5';
-  } else {
-    hostBtn.style.display = 'none';
-  }
-
-  const myRecord = activeRoomData.players[mySid];
-  if (myRecord) {
-    readyBtn.textContent = myRecord.ready ? 'Cancel Ready' : 'Mark Ready (✓)';
-    readyBtn.className = myRecord.ready ? 'btn' : 'btn btn-primary';
-  }
+    const myRecord = activeRoomData.players[mySid];
+    if (myRecord) {
+        readyBtn.textContent = myRecord.ready ? 'Cancel Ready' : 'Mark Ready (✓)';
+        readyBtn.className = myRecord.ready ? 'btn' : 'btn btn-primary';
+    }
 }
 
 function copyLobbyInvite() {
-  if (!activeRoomData) return;
-  const link = `${window.location.origin}/multiplayer/?join=${encodeURIComponent(activeRoomData.code)}`;
-  navigator.clipboard.writeText(link).then(() => {
-    const btn = document.getElementById('btn-copy-lobby');
-    btn.textContent = 'Link Copied! ✓';
-    btn.style.color = 'var(--success)';
-    setTimeout(() => {
-      btn.textContent = '📋 Copy Link';
-      btn.style.color = '';
-    }, 2000);
-  });
+    if (!activeRoomData) return;
+    const link = `${window.location.origin}/multiplayer/?join=${encodeURIComponent(activeRoomData.code)}`;
+    navigator.clipboard.writeText(link).then(() => {
+        const btn = document.getElementById('btn-copy-lobby');
+        btn.textContent = 'Link Copied! ✓';
+        btn.style.color = 'var(--success)';
+        setTimeout(() => {
+            btn.textContent = '📋 Copy Link';
+            btn.style.color = '';
+        }, 2000);
+    });
 }
 
-function toggleMyReadyStatus() {
-  socket.emit('toggle_ready');
-}
+function toggleMyReadyStatus() { socket.emit('toggle_ready'); }
+function hostStartMatch() { socket.emit('start_match'); }
+function requestRematch() { socket.emit('rematch_request'); }
 
-function hostStartMatch() {
-  socket.emit('start_match');
-}
-
-function requestRematch() {
-  socket.emit('rematch_request');
-}
-
-// ==========================================
-// Race Arena Execution & Smooth Auto-Centering
-// ==========================================
 function executeCountdown(durationSec) {
-  isCountingDown = true;
-  raceActive = false;
-  currentInputIndex = 0;
-  raceStartTime = null;
-  hasLocallyFinished = false;
+    isCountingDown = true;
+    raceActive = false;
+    currentInputIndex = 0;
+    raceStartTime = null;
+    hasLocallyFinished = false;
+    document.getElementById('finished-spectate-banner').style.display = 'none';
 
-  document.getElementById('finished-spectate-banner').style.display = 'none';
-  const banner = document.getElementById('arena-countdown-banner');
-  const num = document.getElementById('arena-countdown-num');
-  const statusBadge = document.getElementById('arena-status-badge');
-  const input = document.getElementById('arena-cockpit-input');
+    const banner = document.getElementById('arena-countdown-banner');
+    const num = document.getElementById('arena-countdown-num');
+    const statusBadge = document.getElementById('arena-status-badge');
+    const input = document.getElementById('arena-cockpit-input');
 
-  banner.style.display = 'block';
-  statusBadge.textContent = 'Standby for countdown...';
-  input.value = '';
-  input.disabled = true;
+    banner.style.display = 'block';
+    statusBadge.textContent = 'Synchronizing starting grid...';
+    input.value = '';
+    input.disabled = true;
+    renderArenaPassage();
 
-  renderArenaPassage();
-
-  let count = 3;
-  num.textContent = count;
-
-  const cdTimer = setInterval(() => {
-    count--;
-    if (count > 0) {
-      num.textContent = count;
-    } else if (count === 0) {
-      num.textContent = 'GO!';
-      num.style.color = 'var(--success)';
-      statusBadge.textContent = 'RACE ACTIVE!';
-      raceActive = true;
-      isCountingDown = false;
-      raceStartTime = performance.now();
-      socket.emit('client_race_active');
-      input.disabled = false;
-      input.focus();
-
-      startClientRaceTimer(durationSec);
-    } else {
-      clearInterval(cdTimer);
-      banner.style.display = 'none';
-      num.style.color = 'var(--accent)';
-    }
-  }, 1000);
+    let count = 3;
+    num.textContent = count;
+    const cdTimer = setInterval(() => {
+        count--;
+        if (count > 0) {
+            num.textContent = count;
+        } else if (count === 0) {
+            num.textContent = 'GO!';
+            num.style.color = 'var(--success)';
+            statusBadge.textContent = 'ENGAGED!';
+            raceActive = true;
+            isCountingDown = false;
+            raceStartTime = performance.now();
+            socket.emit('client_race_active');
+            input.disabled = false;
+            input.focus();
+            startClientRaceTimer(durationSec);
+        } else {
+            clearInterval(cdTimer);
+            banner.style.display = 'none';
+            num.style.color = 'var(--accent)';
+        }
+    }, 1000);
 }
 
 function startClientRaceTimer(durationSec) {
-  clearInterval(clientRaceTimer);
-  let elapsed = 0;
-  clientRaceTimer = setInterval(() => {
-    if (!raceActive && hasLocallyFinished) return;
-    elapsed++;
-    const remaining = Math.max(0, durationSec - elapsed);
-    if (remaining > 0) {
-      document.getElementById('arena-status-badge').textContent = `Time Remaining: ${remaining}s`;
-    } else {
-      clearInterval(clientRaceTimer);
-      socket.emit('time_expired_finish');
-    }
-  }, 1000);
+    clearInterval(clientRaceTimer);
+    let elapsed = 0;
+    clientRaceTimer = setInterval(() => {
+        if (!raceActive && hasLocallyFinished) return;
+        elapsed++;
+        const remaining = Math.max(0, durationSec - elapsed);
+        if (remaining > 0) {
+            document.getElementById('arena-status-badge').textContent = `Time Remaining: ${remaining}s`;
+        } else {
+            clearInterval(clientRaceTimer);
+            socket.emit('time_expired_finish');
+        }
+    }, 1000);
 }
 
 function renderArenaPassage() {
-  const display = document.getElementById('arena-passage-text');
-  display.innerHTML = '';
-  for (let i = 0; i < currentPassage.length; i++) {
-    const span = document.createElement('span');
-    span.className = 'char';
-    span.textContent = currentPassage[i];
-    display.appendChild(span);
-  }
-  updateArenaCaret();
+    const display = document.getElementById('arena-passage-text');
+    display.innerHTML = '';
+    for (let i = 0; i < currentPassage.length; i++) {
+        const span = document.createElement('span');
+        span.className = 'char';
+        span.textContent = currentPassage[i];
+        display.appendChild(span);
+    }
+    updateArenaCaret();
 }
 
 function updateArenaCaret() {
-  const spans = document.querySelectorAll('#arena-passage-text .char');
-  const caret = document.getElementById('arena-caret');
-  const box = document.getElementById('arena-passage-box');
-  if (!caret || !box) return;
+    const spans = document.querySelectorAll('#arena-passage-text .char');
+    const caret = document.getElementById('arena-caret');
+    const box = document.getElementById('arena-passage-box');
+    if (!caret || !box) return;
 
-  if (currentInputIndex < spans.length) {
-    const target = spans[currentInputIndex];
-    caret.style.display = 'block';
-    caret.style.left = `${target.offsetLeft}px`;
-    caret.style.top = `${target.offsetTop + 4}px`;
-
-    const targetMid = target.offsetTop - (box.clientHeight / 2) + 25;
-    if (Math.abs(box.scrollTop - targetMid) > 20) {
-      box.scrollTo({
-        top: Math.max(0, targetMid),
-        behavior: 'smooth'
-      });
+    if (currentInputIndex < spans.length) {
+        const target = spans[currentInputIndex];
+        caret.style.display = 'block';
+        caret.style.left = `${target.offsetLeft}px`;
+        caret.style.top = `${target.offsetTop + 4}px`;
+        const targetMid = target.offsetTop - (box.clientHeight / 2) + 25;
+        if (Math.abs(box.scrollTop - targetMid) > 20) {
+            box.scrollTo({ top: Math.max(0, targetMid), behavior: 'smooth' });
+        }
+    } else if (spans.length > 0) {
+        const last = spans[spans.length - 1];
+        caret.style.left = `${last.offsetLeft + last.offsetWidth}px`;
+        caret.style.top = `${last.offsetTop + 4}px`;
     }
-  } else if (spans.length > 0) {
-    const last = spans[spans.length - 1];
-    caret.style.left = `${last.offsetLeft + last.offsetWidth}px`;
-    caret.style.top = `${last.offsetTop + 4}px`;
-  }
 }
 
 function renderArenaTracks(players) {
-  const container = document.getElementById('arena-tracks-container');
+    const container = document.getElementById('arena-tracks-container');
+    players.forEach(p => {
+        let track = trackElements[p.sid];
+        const isMe = (p.sid === mySid);
+        const label = isMe ? `🏎️ <strong>You</strong> <span style="color:var(--text-muted); font-size:0.75rem;">(${p.name})</span>` : `🏎️ <strong>${p.name}</strong>`;
 
-  players.forEach(p => {
-    let track = trackElements[p.sid];
-    const isMe = (p.sid === mySid);
-    const label = isMe ? `🏎️ <strong>You</strong> <span style="color:var(--text-muted); font-size:0.75rem;">(${p.name})</span>` : `🏎️ <strong>${p.name}</strong>`;
+        if (!track) {
+            track = document.createElement('div');
+            track.id = `arena-track-${p.sid}`;
+            track.style.background = 'var(--bg-card)';
+            track.style.padding = '0.75rem 1rem';
+            track.style.borderRadius = 'var(--radius-sm)';
+            track.style.border = isMe ? '1.5px solid var(--accent)' : '1px solid var(--border-color)';
+            track.innerHTML = `
+                <div style="display:flex; justify-content:space-between; font-size:0.85rem; margin-bottom:0.35rem;">
+                    <span>${label}</span>
+                    <span class="trk-speed-text" style="font-family:var(--font-mono); font-weight:700; color:${isMe ? 'var(--accent)' : 'var(--text-primary)'};">0 WPM (0%)</span>
+                </div>
+                <div style="background:var(--bg-secondary); height:10px; border-radius:5px; overflow:hidden;">
+                    <div class="trk-speed-bar" style="width:0%; height:100%; background:${isMe ? 'var(--accent)' : '#94a3b8'}; transition:width 0.15s ease;"></div>
+                </div>
+            `;
+            container.appendChild(track);
+            trackElements[p.sid] = track;
+        }
 
-    if (!track) {
-      track = document.createElement('div');
-      track.id = `arena-track-${p.sid}`;
-      track.style.background = 'var(--bg-card)';
-      track.style.padding = '0.75rem 1rem';
-      track.style.borderRadius = 'var(--radius-sm)';
-      track.style.border = isMe ? '1.5px solid var(--accent)' : '1px solid var(--border-color)';
-      track.innerHTML = `
-        <div style="display:flex; justify-content:space-between; font-size:0.85rem; margin-bottom:0.35rem;">
-          <span>${label}</span>
-          <span class="trk-speed-text" style="font-family:var(--font-mono); font-weight:700; color:${isMe ? 'var(--accent)' : 'var(--text-primary)'};">0 WPM (0%)</span>
-        </div>
-        <div style="background:var(--bg-secondary); height:10px; border-radius:5px; overflow:hidden;">
-          <div class="trk-speed-bar" style="width:0%; height:100%; background:${isMe ? 'var(--accent)' : '#94a3b8'}; transition:width 0.15s ease;"></div>
-        </div>
-      `;
-      container.appendChild(track);
-      trackElements[p.sid] = track;
-    }
+        const rankSuffix = p.place ? ` [Finished #${p.place}]` : '';
+        track.querySelector('.trk-speed-text').textContent = `${Math.round(p.wpm || 0)} WPM (${Math.round(p.progress || 0)}%)${rankSuffix}`;
+        const bar = track.querySelector('.trk-speed-bar');
+        bar.style.width = `${p.progress || 0}%`;
+        if (p.progress >= 100) bar.style.background = 'var(--success)';
+    });
 
-    const rankSuffix = p.place ? ` [Finished #${p.place}]` : '';
-    track.querySelector('.trk-speed-text').textContent = `${Math.round(p.wpm || 0)} WPM (${Math.round(p.progress || 0)}%)${rankSuffix}`;
-    const bar = track.querySelector('.trk-speed-bar');
-    bar.style.width = `${p.progress || 0}%`;
-    if (p.progress >= 100) {
-      bar.style.background = 'var(--success)';
-    }
-  });
-
-  const currentSids = new Set(players.map(p => p.sid));
-  Object.keys(trackElements).forEach(sid => {
-    if (!currentSids.has(sid)) {
-      trackElements[sid].remove();
-      delete trackElements[sid];
-    }
-  });
+    const currentSids = new Set(players.map(p => p.sid));
+    Object.keys(trackElements).forEach(sid => {
+        if (!currentSids.has(sid)) {
+            trackElements[sid].remove();
+            delete trackElements[sid];
+        }
+    });
 }
 
 function bindArenaInput() {
-  const input = document.getElementById('arena-cockpit-input');
-
-  input.addEventListener('input', () => {
-    if (!raceActive || hasLocallyFinished) {
-      input.value = '';
-      return;
-    }
-
-    const val = input.value;
-    const spans = document.querySelectorAll('#arena-passage-text .char');
-    currentInputIndex = Math.min(val.length, currentPassage.length);
-
-    let mistakes = 0;
-    for (let i = 0; i < spans.length; i++) {
-      if (i < val.length) {
-        if (val[i] === currentPassage[i]) {
-          spans[i].className = 'char correct';
-        } else {
-          spans[i].className = 'char incorrect';
-          mistakes++;
+    const input = document.getElementById('arena-cockpit-input');
+    input.addEventListener('input', () => {
+        if (!raceActive || hasLocallyFinished) {
+            input.value = '';
+            return;
         }
-      } else {
-        spans[i].className = 'char';
-      }
-    }
 
-    updateArenaCaret();
+        const val = input.value;
+        const spans = document.querySelectorAll('#arena-passage-text .char');
+        currentInputIndex = Math.min(val.length, currentPassage.length);
+        let mistakes = 0;
 
-    if (val.length > 0) {
-      const lastChar = val[val.length - 1];
-      const isCorrect = (val.length <= currentPassage.length) && (lastChar === currentPassage[val.length - 1]);
-      if (window.soundEngine) {
-        window.soundEngine.playKey(!isCorrect);
-      }
-    }
+        for (let i = 0; i < spans.length; i++) {
+            if (i < val.length) {
+                if (val[i] === currentPassage[i]) {
+                    spans[i].className = 'char correct';
+                } else {
+                    spans[i].className = 'char incorrect';
+                    mistakes++;
+                }
+            } else {
+                spans[i].className = 'char';
+            }
+        }
 
-    const progress = Math.min(100, Math.round((currentInputIndex / currentPassage.length) * 100));
-    const elapsedMin = (performance.now() - raceStartTime) / 60000;
-    const netWords = Math.max(0, (currentInputIndex - mistakes) / 5.0);
-    const wpm = elapsedMin > 0 ? Math.round(netWords / elapsedMin) : 0;
-    const accuracy = currentInputIndex > 0 ? Math.round(((currentInputIndex - mistakes) / currentInputIndex) * 100) : 100;
+        updateArenaCaret();
 
-    socket.emit('progress_update', {
-      progress: progress,
-      wpm: wpm,
-      accuracy: accuracy,
-      errors: mistakes
+        if (val.length > 0 && window.soundEngine) {
+            const lastChar = val[val.length - 1];
+            const isCorrect = (val.length <= currentPassage.length) && (lastChar === currentPassage[val.length - 1]);
+            window.soundEngine.playKey(!isCorrect);
+        }
+
+        const progress = Math.min(100, Math.round((currentInputIndex / currentPassage.length) * 100));
+        const elapsedMin = (performance.now() - raceStartTime) / 60000;
+        const netWords = Math.max(0, (currentInputIndex - mistakes) / 5.0);
+        const wpm = elapsedMin > 0 ? Math.round(netWords / elapsedMin) : 0;
+        const accuracy = currentInputIndex > 0 ? Math.round(((currentInputIndex - mistakes) / currentInputIndex) * 100) : 100;
+
+        socket.emit('progress_update', {
+            progress: progress,
+            wpm: wpm,
+            accuracy: accuracy,
+            errors: mistakes
+        });
+
+        if (val === currentPassage) {
+            hasLocallyFinished = true;
+            raceActive = false;
+            input.blur();
+        }
     });
 
-    if (val === currentPassage) {
-      hasLocallyFinished = true;
-      raceActive = false;
-      input.blur();
-    }
-  });
-
-  input.addEventListener('keydown', (e) => {
-    if (e.key === ' ' && !raceActive) {
-      e.preventDefault();
-    }
-  });
+    input.addEventListener('keydown', (e) => {
+        if (e.key === ' ' && !raceActive) e.preventDefault();
+    });
 }
 
-// ==========================================
-// Results Screen & Contextual Feedback
-// ==========================================
 function showResultsView(standings) {
-  showView('results');
-  const tbody = document.getElementById('results-standings-tbody');
-  tbody.innerHTML = '';
+    showView('results');
+    const tbody = document.getElementById('results-standings-tbody');
+    tbody.innerHTML = '';
 
-  const winner = standings[0];
-  const isWinnerMe = (winner && winner.sid === mySid);
+    const winner = standings[0];
+    const isWinnerMe = (winner && winner.sid === mySid);
+    const trophyIcon = document.getElementById('results-trophy-icon');
+    const titleEl = document.getElementById('results-headline-title');
+    const bannerEl = document.getElementById('results-motivational-banner');
 
-  const trophyIcon = document.getElementById('results-trophy-icon');
-  const titleEl = document.getElementById('results-headline-title');
-  const bannerEl = document.getElementById('results-motivational-banner');
-
-  if (isWinnerMe) {
-    trophyIcon.textContent = "🏆";
-    titleEl.textContent = "VICTORY! Outstanding Speed!";
-    titleEl.style.color = "var(--warning)";
-    bannerEl.style.borderColor = "var(--warning)";
-    bannerEl.style.background = "var(--warning-bg)";
-    bannerEl.innerHTML = `🥇 <strong>First Place Champion!</strong> You dominated the grid with unmatched precision!`;
-  } else {
-    trophyIcon.textContent = "🏁";
-    titleEl.textContent = "Race Concluded";
-    titleEl.style.color = "var(--accent)";
-    bannerEl.style.borderColor = "var(--accent)";
-    bannerEl.style.background = "var(--accent-glow)";
-
-    const myIndex = standings.findIndex(p => p.sid === mySid);
-    const myRank = myIndex + 1;
-
-    let motivation = "Great effort! Every race sharpens your tactile muscle memory.";
-    if (myRank === 2) {
-      motivation = "🥈 Silver finish! You were so close to 1st place — keep this momentum!";
-    } else if (myRank === 3) {
-      motivation = "🥉 Podium finish! Solid precision, keep pushing to close the gap!";
+    if (isWinnerMe) {
+        trophyIcon.textContent = "🏆";
+        titleEl.textContent = "VICTORY! Match Dominance!";
+        titleEl.style.color = "var(--warning)";
+        bannerEl.style.borderColor = "var(--warning)";
+        bannerEl.style.background = "var(--warning-bg)";
+        bannerEl.innerHTML = `🥇 <strong>Podium Gold!</strong> Superior cadence carried you across the finish line first!`;
     } else {
-      motivation = "Don't give up! Challenge the winner to a rematch and take back the lead.";
-    }
-    bannerEl.innerHTML = `You placed <strong>#${myRank > 0 ? myRank : 'DNF'}</strong> &bull; ${motivation}`;
-  }
-
-  standings.forEach((p, idx) => {
-    const isMe = (p.sid === mySid);
-    const tr = document.createElement('tr');
-    if (isMe) {
-      tr.style.background = 'rgba(56, 189, 248, 0.1)';
+        trophyIcon.textContent = "🏁";
+        titleEl.textContent = "Duel Concluded";
+        titleEl.style.color = "var(--accent)";
+        bannerEl.style.borderColor = "var(--accent)";
+        bannerEl.style.background = "var(--accent-glow)";
+        const myIndex = standings.findIndex(p => p.sid === mySid);
+        const myRank = myIndex + 1;
+        bannerEl.innerHTML = `You completed course in <strong>#${myRank > 0 ? myRank : 'DNF'}</strong>. Practice compounds velocity!`;
     }
 
-    const medal = (idx === 0) ? '🥇 1st' : ((idx === 1) ? '🥈 2nd' : ((idx === 2) ? '🥉 3rd' : `${idx + 1}th`));
-    const statusTag = p.left_early 
-      ? '<span style="color:var(--danger); font-weight:700;">DNF / Left</span>' 
-      : (p.finished ? '<span style="color:var(--success); font-weight:700;">Finished</span>' : '<span style="color:var(--warning); font-weight:700;">Racing</span>');
+    standings.forEach((p, idx) => {
+        const isMe = (p.sid === mySid);
+        const tr = document.createElement('tr');
+        if (isMe) tr.style.background = 'rgba(56, 189, 248, 0.1)';
 
-    tr.innerHTML = `
-      <td style="font-weight: 800; color: ${idx === 0 ? 'var(--warning)' : 'var(--text-primary)'};">${medal}</td>
-      <td style="font-weight: 700;">${isMe ? `You (${p.name})` : p.name}</td>
-      <td style="font-family: var(--font-mono); font-weight: 800; color: var(--accent);">${Math.round(p.wpm || 0)} WPM</td>
-      <td>${Math.round(p.accuracy || 100)}%</td>
-      <td style="color: var(--danger); font-weight: 700;">${p.errors || 0}</td>
-      <td>${statusTag}</td>
-    `;
-    tbody.appendChild(tr);
-  });
+        const medal = (idx === 0) ? '🥇 1st' : ((idx === 1) ? '🥈 2nd' : ((idx === 2) ? '🥉 3rd' : `${idx + 1}th`));
+        const statusTag = p.left_early 
+            ? '<span style="color:var(--danger); font-weight:700;">DNF / Disconnected</span>' 
+            : (p.finished ? '<span style="color:var(--success); font-weight:700;">Finished</span>' : '<span style="color:var(--warning); font-weight:700;">On Course</span>');
+
+        // Elo Delta Readout
+        let eloTag = '<span style="color:var(--text-muted);">-</span>';
+        if (p.elo_delta !== undefined && p.elo_delta !== 0) {
+            const sign = p.elo_delta > 0 ? '+' : '';
+            const color = p.elo_delta > 0 ? 'var(--success)' : 'var(--danger)';
+            eloTag = `<strong style="color:${color}; font-family:var(--font-mono);">${sign}${p.elo_delta} MMR</strong> <span style="font-size:0.75rem; color:var(--text-muted);">(${p.new_elo || ''})</span>`;
+        }
+
+        tr.innerHTML = `
+            <td style="font-weight: 800; color: ${idx === 0 ? 'var(--warning)' : 'var(--text-primary)'};">${medal}</td>
+            <td style="font-weight: 700;">${isMe ? `You (${p.name})` : p.name}</td>
+            <td style="font-family: var(--font-mono); font-weight: 800; color: var(--accent);">${Math.round(p.wpm || 0)} WPM</td>
+            <td>${Math.round(p.accuracy || 100)}%</td>
+            <td style="color: var(--danger); font-weight: 700;">${p.errors || 0}</td>
+            <td>${eloTag}</td>
+            <td>${statusTag}</td>
+        `;
+        tbody.appendChild(tr);
+    });
 }
 </script>
 {% endblock %}

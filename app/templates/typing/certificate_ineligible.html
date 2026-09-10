@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+{% block title %}Certification Criteria | TypeSphere{% endblock %}
+{% block content %}
+<div class="card" style="max-width: 620px; margin: 3.5rem auto; text-align: center; border: 1.5px solid var(--border-color); padding: 2.5rem 2rem;">
+    <div style="font-size: 3.5rem; margin-bottom: 1rem;">🛡️</div>
+    <h2 style="font-size: 1.6rem; font-weight: 800; color: var(--text-primary); margin-bottom: 0.5rem;">
+        Official Certification Requirement
+    </h2>
+    <p style="color: var(--text-secondary); font-size: 0.95rem; line-height: 1.6; margin-bottom: 1.75rem;">
+        {{ message }}
+    </p>
+
+    <!-- Standards Matrix -->
+    <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 1.25rem; text-align: left; margin-bottom: 2rem; font-size: 0.88rem;">
+        <h4 style="font-size: 0.8rem; text-transform: uppercase; color: var(--accent); letter-spacing: 0.08em; margin-bottom: 0.75rem;">
+            Official Flight Wings Thresholds:
+        </h4>
+        <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+            <div style="display: flex; justify-content: space-between;">
+                <span><strong>Gold Flight Wings:</strong></span>
+                <span style="color: #f59e0b; font-weight: 700;">70+ WPM &bull; 98.0%+ Accuracy</span>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+                <span><strong>Silver Flight Wings:</strong></span>
+                <span style="color: #94a3b8; font-weight: 700;">50+ WPM &bull; 92.0%+ Accuracy</span>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+                <span><strong>Bronze Flight Wings:</strong></span>
+                <span style="color: #d97706; font-weight: 700;">35+ WPM &bull; 90.0%+ Accuracy</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; border-top: 1px solid var(--border-color); padding-top: 0.5rem; margin-top: 0.25rem;">
+                <span style="color: var(--text-muted);">Account Status:</span>
+                <strong>Must be a registered Pilot</strong>
+            </div>
+        </div>
+    </div>
+
+    <div style="display: flex; justify-content: center; gap: 0.75rem; flex-wrap: wrap;">
+        {% if not current_user.is_authenticated %}
+            <a href="{{ url_for('auth.login', next=request.path) }}" class="btn btn-primary" style="padding: 0.7rem 1.75rem; font-weight: 800;">
+                Sign In to Your Account
+            </a>
+            <a href="{{ url_for('auth.register') }}" class="btn" style="padding: 0.7rem 1.5rem;">
+                Enlist Free Account
+            </a>
+        {% else %}
+            <a href="{{ url_for('typing.test_page') }}" class="btn btn-primary" style="padding: 0.7rem 2rem; font-weight: 800;">
+                ⚡ Launch Qualifying Run
+            </a>
+            <a href="{{ url_for('typing.result_page', test_id=test.id) }}" class="btn" style="padding: 0.7rem 1.5rem;">
+                &larr; Back to Telemetry
+            </a>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
