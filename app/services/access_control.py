@@ -1,7 +1,7 @@
-TypeSphere Capability-Based Access Control Architecture.
-Cleanly separates Guest experiences from Registered Pilot capabilities
-without exposing future subscription or billing structures.
-"""
+# TypeSphere Capability-Based Access Control Architecture.
+# Cleanly separates Guest experiences from Registered Pilot capabilities
+# without exposing future subscription or billing structures.
+
 from typing import Dict, Any
 from flask_login import current_user
 
@@ -45,7 +45,7 @@ class PilotCapabilities:
     @classmethod
     def get_capabilities(cls, user=None) -> Dict[str, bool]:
         target_user = user if user is not None else current_user
-        if target_user and target_user.is_authenticated:
+        if target_user and getattr(target_user, 'is_authenticated', False):
             return cls.REGISTERED_PILOT_CAPABILITIES.copy()
         return cls.GUEST_CAPABILITIES.copy()
 
@@ -55,9 +55,9 @@ class PilotCapabilities:
         return caps.get(capability_name, False)
 
 def inject_capabilities():
-    """Context processor helper providing `pilot_can(capability)` across all Jinja templates."""
-    return dict(
-        pilot_can=PilotCapabilities.can,
-        is_registered_pilot=current_user.is_authenticated if current_user else False,
-        current_pilot=current_user if (current_user and current_user.is_authenticated) else None
-    )
+    is_authenticated = bool(current_user and getattr(current_user, 'is_authenticated', False))
+    return {
+        'pilot_can': PilotCapabilities.can,
+        'is_registered_pilot': is_authenticated,
+        'current_pilot': current_user if is_authenticated else None
+    }
