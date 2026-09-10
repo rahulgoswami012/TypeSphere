@@ -40,12 +40,29 @@ def create_app(config_class=Config):
     def load_user(user_id):
         return User.query.get(int(user_id))
 
-    # Auto-patch tables with missing columns across development & production
+    # Capability-based access control context processor
+    from app.services.access_control import inject_capabilities
+    app.context_processor(inject_capabilities)
+
+    # Resilient auto-patchers for local SQLite & production PostgreSQL
     with app.app_context():
         db.create_all()
         try:
             with db.engine.connect() as conn:
-                # 1. Patch user_settings table
+                # Patch users table with Pilot Identity attributes
+                res = conn.execute(text("PRAGMA table_info(users)"))
+                u_cols = {row[1] for row in res.fetchall()}
+                if u_cols:
+                    if 'callsign' not in u_cols:
+                        conn.execute(text("ALTER TABLE users ADD COLUMN callsign VARCHAR(32)"))
+                    if 'flight_squadron' not in u_cols:
+                        conn.execute(text("ALTER TABLE users ADD COLUMN flight_squadron VARCHAR(64) DEFAULT 'Vanguard Flight Division'"))
+                    if 'avatar_flight_badge' not in u_cols:
+                        conn.execute(text("ALTER TABLE users ADD COLUMN avatar_flight_badge VARCHAR(32) DEFAULT 'apex_wings'"))
+                    if 'ranked_draws' not in u_cols:
+                        conn.execute(text("ALTER TABLE users ADD COLUMN ranked_draws INTEGER DEFAULT 0"))
+
+                # Patch user_settings table with Cockpit preferences
                 res = conn.execute(text("PRAGMA table_info(user_settings)"))
                 s_cols = {row[1] for row in res.fetchall()}
                 if s_cols:
@@ -63,13 +80,7 @@ def create_app(config_class=Config):
                         if col_name not in s_cols:
                             conn.execute(text(f"ALTER TABLE user_settings ADD COLUMN {col_name} {col_def}"))
 
-                # 2. Patch users table
-                res = conn.execute(text("PRAGMA table_info(users)"))
-                u_cols = {row[1] for row in res.fetchall()}
-                if u_cols and 'ranked_draws' not in u_cols:
-                    conn.execute(text("ALTER TABLE users ADD COLUMN ranked_draws INTEGER DEFAULT 0"))
-
-                # 3. Patch typing_tests table
+                # Patch typing_tests table
                 res = conn.execute(text("PRAGMA table_info(typing_tests)"))
                 t_cols = {row[1] for row in res.fetchall()}
                 if t_cols:
@@ -81,8 +92,7 @@ def create_app(config_class=Config):
                         conn.execute(text("ALTER TABLE typing_tests ADD COLUMN time_of_day_ist INTEGER"))
 
                 conn.commit()
-        except Exception as e:
-            # Soft fallback if engine does not support PRAGMA (e.g. cloud managed Postgres)
+        except Exception:
             pass
 
     # Register Blueprints
@@ -110,15 +120,12 @@ def create_app(config_class=Config):
     app.register_blueprint(learn_bp, url_prefix='/learn')
     app.register_blueprint(games_bp, url_prefix='/games')
 
-    # Register security telemetry
     from app.services.admin_security import capture_traffic
     capture_traffic(app)
 
-    # Register real-time arcade WebSockets
     from app.services.game_socket_engine import register_arcade_socket_events
     register_arcade_socket_events()
 
-    # Shared Root Homepage
     @app.route('/')
     def root_home():
         from app.routes.typing import test_page

@@ -1,102 +1,89 @@
 {% extends 'base.html' %}
-
+{% block title %}Trophy Hall & Flight Milestones | TypeSphere{% endblock %}
 {% block content %}
-<div class="card">
-  <!-- Title & Mastery Progress Header -->
-  <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 1.25rem; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
-    <div>
-      <h1 style="font-size: 1.8rem; font-weight: 700; margin: 0;">Trophy Hall & Achievement Badges</h1>
-      <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.35rem;">
-        Universal milestones tracking keyboard velocity, endurance, biometric precision, and rare feats.
-      </p>
-    </div>
-    
-    <div style="display: flex; gap: 0.75rem;">
-      <a href="{{ url_for('dashboard.index') }}" class="btn">&larr; Back to Dashboard</a>
-      <a href="{{ url_for('typing.test_page') }}" class="btn btn-primary">Take A Benchmark Run</a>
-    </div>
-  </div>
-
-  <!-- Mastery Progress Banner -->
-  <div class="card" style="background: var(--bg-card); border-color: var(--accent); margin-bottom: 2rem;">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
-      <span style="font-weight: 700; font-size: 1.1rem; color: var(--accent);">Overall Trophy Mastery</span>
-      <span style="font-family: var(--font-mono); font-size: 1.1rem; font-weight: 800;">{{ unlocked_count }} / {{ total_count }} Badges ({{ mastery_pct }}%)</span>
-    </div>
-    <!-- Progress Bar -->
-    <div style="background: var(--bg-secondary); height: 12px; border-radius: 6px; overflow: hidden; border: 1px solid var(--border-color);">
-      <div style="width: {{ mastery_pct }}%; height: 100%; background: linear-gradient(90deg, var(--accent), #a371f7); transition: width 0.4s ease;"></div>
-    </div>
-  </div>
-
-  <!-- Filter Pills -->
-  <div style="display: flex; gap: 0.5rem; margin-bottom: 1.75rem;">
-    <button onclick="filterTrophies('all')" class="btn active-choice" id="filter-all">All Badges ({{ total_count }})</button>
-    <button onclick="filterTrophies('unlocked')" class="btn" id="filter-unlocked">Unlocked ({{ unlocked_count }})</button>
-    <button onclick="filterTrophies('locked')" class="btn" id="filter-locked">Locked ({{ total_count - unlocked_count }})</button>
-  </div>
-
-  <!-- Trophies Grid -->
-  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem;" id="trophy-grid">
-    {% for b in badges %}
-    <div class="card trophy-card {{ 'trophy-unlocked' if b.unlocked else 'trophy-locked' }}" data-status="{{ 'unlocked' if b.unlocked else 'locked' }}" style="margin-bottom: 0; background: var(--bg-card); border-color: {{ 'var(--accent)' if b.unlocked else 'var(--border-color)' }}; position: relative; overflow: hidden;">
-      
-      <!-- Unlocked Watermark / Glow -->
-      {% if b.unlocked %}
-        <div style="position: absolute; right: -10px; top: -10px; font-size: 4rem; opacity: 0.08; pointer-events: none;">🏆</div>
-      {% endif %}
-
-      <div style="display: flex; align-items: flex-start; gap: 1rem;">
-        <!-- Badge Icon -->
-        <div style="width: 48px; height: 48px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0; background: {{ 'rgba(88, 166, 255, 0.2)' if b.unlocked else 'rgba(255, 255, 255, 0.05)' }}; border: 1px solid {{ 'var(--accent)' if b.unlocked else 'var(--border-color)' }};">
-          {{ '🏆' if b.unlocked else '🔒' }}
-        </div>
-
-        <div style="flex: 1;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
-            <h3 style="font-size: 1.05rem; font-weight: 700; margin: 0; color: {{ 'var(--text-primary)' if b.unlocked else 'var(--text-muted)' }};">
-              {{ b.title }}
-            </h3>
-            <span style="font-size: 0.7rem; font-weight: 700; padding: 0.15rem 0.45rem; border-radius: 4px; text-transform: uppercase; background: {{ 'rgba(63, 185, 80, 0.2)' if b.unlocked else 'var(--bg-secondary)' }}; color: {{ 'var(--success)' if b.unlocked else 'var(--text-muted)' }};">
-              {{ 'Unlocked' if b.unlocked else 'Locked' }}
-            </span>
-          </div>
-
-          <p style="color: var(--text-muted); font-size: 0.85rem; line-height: 1.5; margin-bottom: 0.75rem;">
-            {{ b.description }}
-          </p>
-
-          {% if b.unlocked %}
-            <div style="font-size: 0.75rem; color: var(--accent); font-weight: 600;">
-              ✓ Earned on {{ b.unlocked_at.strftime('%b %d, %Y at %H:%M') }}
+<div class="card" style="max-width: 1060px; margin: 0 auto; padding: 2rem;">
+    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:1.5rem; margin-bottom:2rem; flex-wrap:wrap; gap:1rem;">
+        <div>
+            <div style="display:flex; align-items:center; gap:0.65rem;">
+                <span style="font-size:2rem;">🏆</span>
+                <div>
+                    <h1 style="font-size:1.85rem; font-weight:800; margin:0;">Trophy Hall & Flight Badges</h1>
+                    <span style="font-size:0.78rem; font-weight:800; color:var(--accent); text-transform:uppercase; letter-spacing:0.06em;">Verified Pilot Flight Milestones</span>
+                </div>
             </div>
-          {% else %}
-            <div style="font-size: 0.75rem; color: var(--text-muted);">
-              ⏳ Requirement not yet achieved
-            </div>
-          {% endif %}
+            <p style="color:var(--text-secondary); font-size:0.9rem; margin-top:0.4rem;">
+                Milestones tracking velocity barriers, flawless precision gauntlets, and biometric cognitive stamina.
+            </p>
         </div>
-      </div>
+        <div style="display:flex; gap:0.6rem;">
+            <a href="{{ url_for('dashboard.index') }}" class="btn btn-sm">&larr; Pilot Dossier</a>
+            <a href="{{ url_for('typing.test_page') }}" class="btn btn-primary btn-sm" style="font-weight:800;">Launch Flight</a>
+        </div>
     </div>
-    {% endfor %}
-  </div>
+
+    <!-- Mastery Progress Bar -->
+    <div class="card" style="background:var(--bg-card); border-color:var(--accent); margin-bottom:2rem; padding:1.25rem 1.5rem;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.65rem; flex-wrap:wrap; gap:0.5rem;">
+            <span style="font-weight:800; font-size:1.1rem; color:var(--accent);">Flight Mastery Progression</span>
+            <span style="font-family:var(--font-mono); font-size:1.1rem; font-weight:800;">{{ unlocked_count }} / {{ total_count }} Milestones ({{ mastery_pct }}%)</span>
+        </div>
+        <div style="background:var(--bg-secondary); height:12px; border-radius:6px; overflow:hidden; border:1px solid var(--border-color);">
+            <div style="width:{{ mastery_pct }}%; height:100%; background:linear-gradient(90deg, var(--accent), #ec4899); transition:width 0.4s ease;"></div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div style="display:flex; gap:0.5rem; margin-bottom:1.75rem;">
+        <button onclick="filterTrophies('all')" class="btn btn-sm active-choice" id="filter-all">All Badges ({{ total_count }})</button>
+        <button onclick="filterTrophies('unlocked')" class="btn btn-sm" id="filter-unlocked">Unlocked ({{ unlocked_count }})</button>
+        <button onclick="filterTrophies('locked')" class="btn btn-sm" id="filter-locked">Locked ({{ total_count - unlocked_count }})</button>
+    </div>
+
+    <!-- Trophies Grid -->
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(290px, 1fr)); gap:1.5rem;" id="trophy-grid">
+        {% for b in badges %}
+        <div class="card trophy-card" data-status="{{ 'unlocked' if b.unlocked else 'locked' }}" style="margin-bottom:0; background:var(--bg-card); border-color:{{ 'var(--accent)' if b.unlocked else 'var(--border-color)' }};">
+            <div style="display:flex; align-items:flex-start; gap:1rem;">
+                <div style="width:48px; height:48px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:1.6rem; flex-shrink:0; background:{{ 'var(--accent-glow)' if b.unlocked else 'var(--bg-secondary)' }}; border:1.5px solid {{ 'var(--accent)' if b.unlocked else 'var(--border-color)' }};">
+                    {{ '🏆' if b.unlocked else '🔒' }}
+                </div>
+                <div style="flex:1;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.25rem;">
+                        <h3 style="font-size:1.05rem; font-weight:800; margin:0; color:{{ 'var(--text-primary)' if b.unlocked else 'var(--text-muted)' }};">
+                            {{ b.title }}
+                        </h3>
+                        <span style="font-size:0.7rem; font-weight:800; padding:0.15rem 0.45rem; border-radius:4px; text-transform:uppercase; background:{{ 'var(--success-bg)' if b.unlocked else 'var(--bg-secondary)' }}; color:{{ 'var(--success)' if b.unlocked else 'var(--text-muted)' }};">
+                            {{ 'Unlocked' if b.unlocked else 'Locked' }}
+                        </span>
+                    </div>
+                    <p style="color:var(--text-secondary); font-size:0.85rem; line-height:1.5; margin-bottom:0.75rem;">
+                        {{ b.description }}
+                    </p>
+                    {% if b.unlocked %}
+                        <div style="font-size:0.75rem; color:var(--accent); font-weight:700;">
+                            ✓ Awarded on {{ b.unlocked_at.strftime('%b %d, %Y') }} IST
+                        </div>
+                    {% else %}
+                        <div style="font-size:0.75rem; color:var(--text-muted);">
+                            ⏳ Threshold not yet logged
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
 function filterTrophies(type) {
-  document.querySelectorAll('[id^="filter-"]').forEach(b => b.classList.remove('active-choice'));
-  document.getElementById(`filter-${type}`).classList.add('active-choice');
-
-  const cards = document.querySelectorAll('.trophy-card');
-  cards.forEach(card => {
-    if (type === 'all' || card.dataset.status === type) {
-      card.style.display = 'block';
-    } else {
-      card.style.display = 'none';
-    }
-  });
+    document.querySelectorAll('[id^="filter-"]').forEach(b => b.classList.remove('active-choice'));
+    document.getElementById(`filter-${type}`).classList.add('active-choice');
+    document.querySelectorAll('.trophy-card').forEach(card => {
+        card.style.display = (type === 'all' || card.dataset.status === type) ? 'block' : 'none';
+    });
 }
 </script>
 {% endblock %}

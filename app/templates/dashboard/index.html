@@ -1,131 +1,130 @@
 {% extends 'base.html' %}
-
+{% block title %}Pilot Dossier: {{ current_user.display_callsign }} | TypeSphere{% endblock %}
 {% block content %}
-<div class="card">
-  <!-- Pilot Profile & Competitive Division Banner -->
-  <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 1.25rem; margin-bottom: 1.75rem; flex-wrap: wrap; gap: 1rem;">
-    <div>
-      <div style="display: flex; align-items: center; gap: 0.6rem;">
-        <h1 style="font-size: 1.8rem; font-weight: 800; margin: 0;">Pilot Dashboard: {{ current_user.username }}</h1>
-        <span style="font-size: 0.8rem; font-weight: 800; padding: 0.2rem 0.6rem; border-radius: 4px; background: {{ current_user.rank_badge.color }}; color: #04101e; text-transform: uppercase;">
-          {{ current_user.rank_badge.icon }} {{ current_user.rank_division }} &bull; {{ current_user.elo_rating }} MMR
-        </span>
-      </div>
-      <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.35rem;">
-        Member since {{ current_user.created_at.strftime('%B %Y') }} &bull; Competitive Record: <strong style="color: var(--success);">{{ current_user.ranked_wins }}W</strong> - <strong style="color: var(--danger);">{{ current_user.ranked_losses }}L</strong>
-      </p>
+<div class="card" style="max-width: 1080px; margin: 0 auto; padding: 2rem;">
+    <!-- Pilot Identity Header -->
+    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:1.5rem; margin-bottom:2rem; flex-wrap:wrap; gap:1.25rem;">
+        <div style="display:flex; align-items:center; gap:1.25rem;">
+            <div style="width:68px; height:68px; border-radius:50%; background:var(--bg-card); border:2.5px solid var(--accent); display:flex; align-items:center; justify-content:center; font-size:2rem; font-weight:900; color:var(--accent); box-shadow:0 0 20px var(--accent-glow);">
+                {{ current_user.display_callsign[0] }}
+            </div>
+            <div>
+                <div style="display:flex; align-items:center; gap:0.6rem; flex-wrap:wrap;">
+                    <h1 style="font-size:1.85rem; font-weight:900; margin:0;">PILOT {{ current_user.display_callsign }}</h1>
+                    <span style="font-size:0.75rem; font-weight:800; padding:0.2rem 0.6rem; border-radius:4px; background:{{ current_user.rank_badge.bg }}; color:{{ current_user.rank_badge.color }}; text-transform:uppercase;">
+                        {{ current_user.rank_badge.icon }} {{ current_user.rank_division }} &bull; {{ current_user.elo_rating }} MMR
+                    </span>
+                </div>
+                <p style="color:var(--text-secondary); font-size:0.86rem; margin-top:0.35rem;">
+                    Squadron: <strong style="color:var(--text-primary);">{{ current_user.flight_squadron }}</strong> &bull; Record: <strong style="color:var(--success);">{{ current_user.ranked_wins }}W</strong> - <strong style="color:var(--danger);">{{ current_user.ranked_losses }}L</strong>
+                </p>
+            </div>
+        </div>
+
+        <div style="display:flex; gap:0.6rem; flex-wrap:wrap;">
+            <a href="{{ url_for('dashboard.achievements_showcase') }}" class="btn" style="border-color:#f59e0b; color:#f59e0b; font-weight:700;">
+                🏆 Trophy Hall ({{ achievements|length }})
+            </a>
+            <a href="{{ url_for('dashboard.analytics') }}" class="btn">
+                📈 Historical Curves
+            </a>
+            <a href="{{ url_for('typing.test_page') }}" class="btn btn-primary" style="font-weight:800;">
+                ⚡ Launch Flight
+            </a>
+        </div>
     </div>
 
-    <div style="display: flex; gap: 0.6rem; flex-wrap: wrap;">
-      <a href="{{ url_for('dashboard.achievements_showcase') }}" class="btn" style="border-color: #f59e0b; color: #f59e0b; font-weight: 700;">
-        🏆 Trophy Hall ({{ achievements|length }})
-      </a>
-      <a href="{{ url_for('typing.practice_page') }}" class="btn" style="border-color: var(--accent); color: var(--accent);">
-        🎓 Academy & Practice &rarr;
-      </a>
-      <a href="{{ url_for('dashboard.analytics') }}" class="btn btn-primary">
-        Full Analytics &rarr;
-      </a>
-    </div>
-  </div>
-
-  <!-- Primary Lifetime Statistics HUD -->
-  <div class="stats-hud" style="grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));">
-    <div class="stat-box">
-      <div class="stat-label">Tests Completed</div>
-      <div class="stat-value">{{ total_tests }}</div>
-    </div>
-    <div class="stat-box">
-      <div class="stat-label">Average Speed</div>
-      <div class="stat-value">{{ avg_wpm }} <span style="font-size: 0.8rem; color: var(--text-muted);">WPM</span></div>
-    </div>
-    <div class="stat-box">
-      <div class="stat-label">Personal Best</div>
-      <div class="stat-value" style="color: var(--success);">{{ best_wpm }} <span style="font-size: 0.8rem; color: var(--text-muted);">WPM</span></div>
-    </div>
-    <div class="stat-box">
-      <div class="stat-label">Average Accuracy</div>
-      <div class="stat-value">{{ avg_accuracy }}%</div>
-    </div>
-    <div class="stat-box">
-      <div class="stat-label">Typing Time</div>
-      <div class="stat-value">{{ total_time_minutes }}m</div>
-    </div>
-  </div>
-
-  <!-- Content Grid: Solo Runs vs Multiplayer Race History -->
-  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 1.5rem;">
-    <!-- 1. Solo Verified Runs -->
-    <div class="card" style="margin-bottom: 0;">
-      <h3 style="font-size: 1.15rem; margin-bottom: 1rem;">Recent Benchmark Runs</h3>
-      <div class="table-responsive-container">
-        <table style="width: 100%; border-collapse: collapse; text-align: left;">
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Mode</th>
-              <th>Speed</th>
-              <th>Acc</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for t in recent_tests %}
-            <tr>
-              <td style="color: var(--text-muted);">{{ t.completed_at.strftime('%m-%d %H:%M') }}</td>
-              <td><span style="background: var(--bg-card); padding: 0.2rem 0.4rem; border-radius: 4px; font-size: 0.75rem;">{{ t.mode|capitalize }}</span></td>
-              <td style="font-weight: 700; color: var(--accent); font-family: var(--font-mono);">{{ t.wpm }} WPM</td>
-              <td>{{ t.accuracy }}%</td>
-              <td>
-                <a href="{{ url_for('typing.result_page', test_id=t.id) }}" class="btn btn-sm">Audit</a>
-              </td>
-            </tr>
-            {% else %}
-            <tr>
-              <td colspan="5" style="padding: 2rem; text-align: center; color: var(--text-muted);">No benchmark runs logged yet.</td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
+    <!-- Telemetry Lifetime Gauges -->
+    <div class="stats-hud" style="grid-template-columns:repeat(auto-fit, minmax(135px, 1fr)); margin-bottom:2rem;">
+        <div class="stat-box">
+            <div class="stat-label">Flights Logged</div>
+            <div class="stat-value">{{ total_tests }}</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">Average Speed</div>
+            <div class="stat-value">{{ avg_wpm }} <span style="font-size:0.8rem; color:var(--text-muted);">WPM</span></div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">Personal Best</div>
+            <div class="stat-value" style="color:var(--success);">{{ best_wpm }} <span style="font-size:0.8rem; color:var(--text-muted);">WPM</span></div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">Mean Accuracy</div>
+            <div class="stat-value">{{ avg_accuracy }}%</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">Flight Duration</div>
+            <div class="stat-value">{{ total_time_minutes }}m</div>
+        </div>
     </div>
 
-    <!-- 2. Multiplayer Competitive History -->
-    <div class="card" style="margin-bottom: 0;">
-      <h3 style="font-size: 1.15rem; margin-bottom: 1rem;">Multiplayer Race History</h3>
-      <div class="table-responsive-container">
-        <table style="width: 100%; border-collapse: collapse; text-align: left;">
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Duration</th>
-              <th>Speed</th>
-              <th>Acc</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for m in multiplayer_tests %}
-            <tr>
-              <td style="color: var(--text-muted);">{{ m.completed_at.strftime('%m-%d %H:%M') }}</td>
-              <td>{{ m.duration }}s</td>
-              <td style="font-weight: 700; color: var(--success); font-family: var(--font-mono);">{{ m.wpm }} WPM</td>
-              <td>{{ m.accuracy }}%</td>
-              <td>
-                <a href="{{ url_for('typing.result_page', test_id=m.id) }}" class="btn btn-sm">Audit</a>
-              </td>
-            </tr>
-            {% else %}
-            <tr>
-              <td colspan="5" style="padding: 2rem; text-align: center; color: var(--text-muted);">
-                No multiplayer races logged yet. Visit the <a href="{{ url_for('multiplayer.index') }}" style="color: var(--accent);">Multiplayer Arena</a>!
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
+    <!-- Split Grid: Solo Benchmarks vs. Multiplayer Duel History -->
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:1.5rem;">
+        <!-- Solo Flights -->
+        <div class="card" style="background:var(--bg-card); margin-bottom:0;">
+            <h3 style="font-size:1.15rem; font-weight:800; margin-bottom:1rem;">Verified Solo Flights</h3>
+            <div class="table-responsive-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date (IST)</th>
+                            <th>Mode</th>
+                            <th>Velocity</th>
+                            <th>Accuracy</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for t in recent_tests %}
+                        <tr>
+                            <td style="color:var(--text-muted);">{{ t.completed_at.strftime('%m-%d %H:%M') }}</td>
+                            <td><span style="background:var(--bg-secondary); padding:0.2rem 0.45rem; border-radius:4px; font-size:0.75rem;">{{ t.mode }}</span></td>
+                            <td style="font-weight:700; color:var(--accent); font-family:var(--font-mono);">{{ t.wpm }} WPM</td>
+                            <td>{{ test_accuracy if test_accuracy else t.accuracy }}%</td>
+                            <td>
+                                <a href="{{ url_for('typing.result_page', test_id=t.id) }}" class="btn btn-sm">Audit</a>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="5" style="text-align:center; padding:2rem; color:var(--text-muted);">No verified solo runs recorded yet.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 1v1 Duels -->
+        <div class="card" style="background:var(--bg-card); margin-bottom:0;">
+            <h3 style="font-size:1.15rem; font-weight:800; margin-bottom:1rem;">Competitive Duel History</h3>
+            <div class="table-responsive-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date (IST)</th>
+                            <th>Duration</th>
+                            <th>Velocity</th>
+                            <th>Accuracy</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for m in multiplayer_tests %}
+                        <tr>
+                            <td style="color:var(--text-muted);">{{ m.completed_at.strftime('%m-%d %H:%M') }}</td>
+                            <td>{{ m.duration|round|int }}s</td>
+                            <td style="font-weight:700; color:var(--success); font-family:var(--font-mono);">{{ m.wpm }} WPM</td>
+                            <td>{{ m.accuracy }}%</td>
+                            <td>
+                                <a href="{{ url_for('typing.result_page', test_id=m.id) }}" class="btn btn-sm">Audit</a>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="5" style="text-align:center; padding:2rem; color:var(--text-muted);">No multiplayer duels logged. Enter the <a href="{{ url_for('multiplayer.index') }}" style="color:var(--accent);">Air Grid</a>!</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
-  </div>
 </div>
 {% endblock %}

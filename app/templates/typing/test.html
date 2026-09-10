@@ -1,21 +1,85 @@
 {% extends 'base.html' %}
-{% block title %}Live Typing Benchmark & Biometric Cockpit | TypeSphere{% endblock %}
+{% block title %}Live Flight Cockpit & Speed Benchmark | TypeSphere{% endblock %}
 {% block content %}
+<!-- =========================================================
+     PAGE-SPECIFIC FLIGHT TRANSITION: TAKEOFF SEQUENCE
+     ========================================================= -->
+<div id="flight-takeoff-modal" class="modal-backdrop" style="display:flex;">
+    <div class="card modal-dialog" style="max-width:540px; text-align:center; padding:2.25rem 2rem; border-color:var(--accent);">
+        <div style="display:flex; justify-content:center; margin-bottom:1rem;">
+            <div class="brand-sphere-icon" style="width:48px; height:48px; font-size:1.5rem;">
+                🚀
+            </div>
+        </div>
+        <div style="font-size:0.75rem; font-weight:800; text-transform:uppercase; letter-spacing:0.14em; color:var(--text-muted); margin-bottom:0.25rem;">
+            TypeSphere Flight Control
+        </div>
+
+        {% if is_registered_pilot %}
+            <h2 style="font-size:1.45rem; font-weight:900; color:var(--text-primary); margin-bottom:0.25rem;">
+                PILOT CALLSIGN: <span style="color:var(--accent);">{{ current_pilot.display_callsign }}</span>
+            </h2>
+            <div style="font-size:0.8rem; color:var(--success); font-weight:700; margin-bottom:1.25rem;">
+                FLIGHT RECORD SYNCHRONIZED &bull; CLEARANCE GRANTED
+            </div>
+            <div style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--radius-sm); padding:0.85rem 1rem; margin-bottom:1.5rem; text-align:left; font-family:var(--font-mono); font-size:0.82rem; line-height:1.7;">
+                <div style="display:flex; justify-content:space-between;"><span>FLIGHT DIVISION:</span><strong>{{ current_pilot.rank_division }}</strong></div>
+                <div style="display:flex; justify-content:space-between;"><span>RECORDED MMR:</span><strong>{{ current_pilot.elo_rating }}</strong></div>
+                <div style="display:flex; justify-content:space-between;"><span>SYSTEM SENSORS:</span><strong style="color:var(--success);">READY</strong></div>
+            </div>
+        {% else %}
+            <h2 style="font-size:1.45rem; font-weight:900; color:var(--text-primary); margin-bottom:0.25rem;">
+                PILOT STATUS: <span style="color:var(--warning);">CADET / GUEST</span>
+            </h2>
+            <div style="font-size:0.8rem; color:var(--text-muted); font-weight:700; margin-bottom:1.25rem;">
+                TRAINING FLIGHT &bull; LOCAL TELEMETRY ONLY
+            </div>
+            <div style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--radius-sm); padding:0.85rem 1rem; margin-bottom:1.5rem; text-align:left; font-family:var(--font-mono); font-size:0.82rem; line-height:1.7;">
+                <div style="display:flex; justify-content:space-between;"><span>INPUT ENGINE:</span><strong style="color:var(--success);">READY</strong></div>
+                <div style="display:flex; justify-content:space-between;"><span>KEYBOARD MATRIX:</span><strong style="color:var(--success);">CALIBRATED</strong></div>
+                <div style="display:flex; justify-content:space-between;"><span>PERSISTENT CLOUD:</span><strong style="color:var(--warning);">UNREGISTERED</strong></div>
+            </div>
+        {% endif %}
+
+        <div id="takeoff-countdown-num" style="font-size:3.5rem; font-family:var(--font-mono); font-weight:900; color:var(--accent); line-height:1; margin-bottom:1.25rem;">
+            3
+        </div>
+
+        <button type="button" onclick="bypassTakeoffSequence()" class="btn btn-sm" style="color:var(--text-muted);">
+            Skip Initialization &rarr;
+        </button>
+    </div>
+</div>
+
+<!-- Contextual Guest Value Ribbon (Promotes registration naturally after achievements) -->
+{% if not is_registered_pilot %}
+<div id="guest-conversion-ribbon" class="guest-callout-ribbon" style="display:none;">
+    <div class="guest-callout-text">
+        <span style="font-size:1.2rem; margin-right:0.35rem;">🎖️</span>
+        <span id="guest-conversion-msg">Strong performance. Create your Pilot Profile to save this flight permanently.</span>
+    </div>
+    <div style="display:flex; gap:0.5rem;">
+        <a href="{{ url_for('auth.register') }}" class="btn btn-primary btn-sm" style="font-weight:800;">Enlist Pilot Profile</a>
+        <button onclick="document.getElementById('guest-conversion-ribbon').style.display='none'" class="btn btn-sm">&times;</button>
+    </div>
+</div>
+{% endif %}
+
 <!-- Pause Modal -->
 <div id="pause-modal" class="modal-backdrop" onclick="if(event.target===this)window.typingEngine.closePauseModal()" style="display:none;">
     <div class="card modal-dialog" style="text-align:center;">
         <button onclick="window.typingEngine.closePauseModal()" class="modal-close-btn" aria-label="Close">&times;</button>
         <div style="font-size:2rem; margin-bottom:0.4rem;">⏸</div>
-        <h2 style="font-size:1.4rem; font-weight:800; margin-bottom:0.3rem;">Benchmark Paused</h2>
+        <h2 style="font-size:1.4rem; font-weight:800; margin-bottom:0.3rem;">Cockpit Paused</h2>
         <p style="color:var(--text-muted); font-size:0.85rem; margin-bottom:1.5rem;">
-            Timer is frozen. Closing this window will not forfeit your benchmark run.
+            Timer is frozen. Closing this window preserves your benchmark.
         </p>
         <div style="display:flex; flex-direction:column; gap:0.5rem;">
             <button onclick="window.typingEngine.resumeTest()" class="btn btn-primary" style="padding:0.75rem; font-weight:700;">
-                ▶ Resume Benchmark (Space / Esc)
+                ▶ Resume Flight (Space / Esc)
             </button>
             <button onclick="window.typingEngine.loadPrompt(false)" class="btn" style="padding:0.65rem;">
-                🔄 Restart Benchmark (Tab)
+                🔄 Restart Flight (Tab)
             </button>
         </div>
     </div>
@@ -23,7 +87,7 @@
 
 <!-- Paused Floating HUD Bar -->
 <div id="paused-floating-bar" style="display:none; justify-content:space-between; align-items:center; background:var(--bg-card); border:1.5px solid var(--warning); padding:0.65rem 1.25rem; border-radius:var(--radius); margin-bottom:1.25rem; max-width:620px; margin-left:auto; margin-right:auto;">
-    <span style="color:var(--warning); font-weight:800; font-size:0.9rem;">⏸ BENCHMARK IS PAUSED</span>
+    <span style="color:var(--warning); font-weight:800; font-size:0.9rem;">⏸ FLIGHT SUSPENDED</span>
     <div style="display:flex; gap:0.5rem;">
         <button onclick="window.typingEngine.resumeTest()" class="btn btn-primary btn-sm">▶ Resume</button>
         <button onclick="window.typingEngine.loadPrompt(false)" class="btn btn-sm">🔄 Restart</button>
@@ -35,14 +99,14 @@
     <div class="card modal-dialog" style="max-width:440px; text-align:left; padding:1.5rem;">
         <button onclick="document.getElementById('key-inspect-modal').style.display='none'" class="modal-close-btn" aria-label="Close">&times;</button>
         <h3 id="km-key-title" style="font-size:1.25rem; font-weight:800; color:var(--accent); margin-bottom:1rem; border-bottom:1px solid var(--border-color); padding-bottom:0.5rem;">
-            Key Diagnostics: [ A ]
+            Key Telemetry: [ A ]
         </h3>
         <div style="display:flex; flex-direction:column; gap:0.65rem; font-size:0.9rem;">
             <div style="display:flex; justify-content:space-between;"><span style="color:var(--text-muted);">Ergonomic Finger:</span><strong id="km-finger" style="color:var(--text-primary);">Touch Key</strong></div>
             <div style="display:flex; justify-content:space-between;"><span style="color:var(--text-muted);">Total Keystrokes Logged:</span><strong id="km-total" style="font-family:var(--font-mono);">0</strong></div>
             <div style="display:flex; justify-content:space-between;"><span style="color:var(--text-muted);">Error Rate:</span><strong id="km-error-rate" style="color:var(--danger); font-family:var(--font-mono);">0%</strong></div>
-            <div style="display:flex; justify-content:space-between;"><span style="color:var(--text-muted);">Mean Latency Delay:</span><strong id="km-delay" style="font-family:var(--font-mono);">0 ms</strong></div>
-            <div style="display:flex; justify-content:space-between;"><span style="color:var(--text-muted);">Primary Confusion Mistake:</span><strong id="km-confusion" style="color:var(--warning);">None detected</strong></div>
+            <div style="display:flex; justify-content:space-between;"><span style="color:var(--text-muted);">Mean Strike Latency:</span><strong id="km-delay" style="font-family:var(--font-mono);">0 ms</strong></div>
+            <div style="display:flex; justify-content:space-between;"><span style="color:var(--text-muted);">Primary Confusion Pair:</span><strong id="km-confusion" style="color:var(--warning);">None detected</strong></div>
         </div>
         <div style="margin-top:1.25rem; border-top:1px solid var(--border-color); padding-top:0.75rem; text-align:right;">
             <button onclick="document.getElementById('key-inspect-modal').style.display='none'" class="btn btn-sm">Close</button>
@@ -50,13 +114,11 @@
     </div>
 </div>
 
-<!-- =========================================================
-     COCKPIT SURVIVAL MODE: 5-BATTERY SHIELD INTEGRITY HUD
-     ========================================================= -->
+<!-- Cockpit 5-Shield Battery HUD for Survival Mode -->
 <div id="survival-shield-hud" class="survival-shield-container">
     <div class="shield-hud-title">
-        <span>🛡️ Cockpit Shield Generator Integrity</span>
-        <span id="shield-status-text" style="color:var(--accent); font-family:var(--font-mono); font-weight:800;">100% STABILITY (5/5 CELLS)</span>
+        <span>🛡️ Flight Integrity Reserve</span>
+        <span id="shield-status-text" style="color:var(--accent); font-family:var(--font-mono); font-weight:800;">5 / 5 UNITS (100%)</span>
     </div>
     <div class="shield-cells-grid" id="shield-cells-track">
         <div class="shield-cell" id="sc-1"></div>
@@ -67,9 +129,7 @@
     </div>
 </div>
 
-<!-- =========================================================
-     TIER 1: COCKPIT CONFIGURATION CONTROLLER BAR
-     ========================================================= -->
+<!-- Primary Cockpit Control Console Bar -->
 <div class="card" style="padding:0.85rem 1.25rem; margin-bottom:1.25rem;">
     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.85rem;">
         <div style="display:flex; align-items:center; gap:0.6rem; flex-wrap:wrap;">
@@ -94,7 +154,7 @@
                 <select id="cfg-type-select" onchange="onTypeChange(this.value)" class="form-select">
                     <option value="words" selected>Words & Sentences</option>
                     <option value="paragraphs">Full Passages</option>
-                    <option value="exam">Government & Clerical (SSC)</option>
+                    <option value="exam">Administrative & Clerical (SSC)</option>
                     <option value="professional">Workplace Memos</option>
                     <option value="quotes">Literature & Quotes</option>
                     <option value="code">Programming Code</option>
@@ -105,7 +165,7 @@
                 </select>
             </div>
 
-            <!-- Dynamic Programming Language Selector (Shown only when Code selected) -->
+            <!-- Language Sub-Selector for Programming -->
             <div class="dropdown-control" id="cfg-code-lang-wrap" style="display:none;">
                 <label for="cfg-code-lang-select" class="dropdown-label" style="color:var(--warning);">Language</label>
                 <select id="cfg-code-lang-select" onchange="onCodeLangChange(this.value)" class="form-select" style="border-color:var(--warning);">
@@ -120,7 +180,7 @@
                 </select>
             </div>
 
-            <!-- Difficulty Level -->
+            <!-- Difficulty Tier -->
             <div class="dropdown-control">
                 <label for="cfg-diff-select" class="dropdown-label">Tier</label>
                 <select id="cfg-diff-select" onchange="onDifficultyChange(this.value)" class="form-select">
@@ -131,11 +191,11 @@
                 </select>
             </div>
 
-            <!-- Ranked Match Status Indicator -->
+            <!-- Ranked Eligibility Indicator -->
             <div id="rank-eligibility-badge" style="font-size:0.8rem; font-weight:700; margin-left:0.25rem;"></div>
         </div>
 
-        <!-- Quick Toggles -->
+        <!-- Quick Cockpit Toggles -->
         <div style="display:flex; align-items:center; gap:0.4rem; flex-wrap:wrap;">
             <button onclick="toggleBlindQuick()" id="btn-blind" class="btn btn-sm active-choice" title="Disables Backspacing">
                 Blind: ON
@@ -152,22 +212,19 @@
         </div>
     </div>
 
-    <!-- Telemetry Information Banner -->
     <div id="config-explainer-hint" style="font-size:0.8rem; color:var(--text-muted); margin-top:0.6rem; border-top:1px solid var(--border-color); padding-top:0.5rem;">
         Standard English vocabulary, natural syntax, and balanced keystroke frequencies.
     </div>
 </div>
 
-<!-- =========================================================
-     LIVE TELEMETRY HUD GAUGES
-     ========================================================= -->
+<!-- Telemetry HUD Gauges -->
 <div class="stats-hud">
     <div class="stat-box">
         <svg class="speedometer-svg" viewBox="0 0 36 36">
             <path class="speedo-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
             <path id="speedo-arc" class="speedo-fill" stroke-dasharray="100, 100" stroke-dashoffset="100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
         </svg>
-        <div class="stat-label">Net Velocity</div>
+        <div class="stat-label">Velocity</div>
         <div class="stat-value" id="hud-wpm">0</div>
     </div>
     <div class="stat-box">
@@ -184,7 +241,7 @@
     </div>
 </div>
 
-<!-- Main Typing Display Area with Smooth Line Centering -->
+<!-- Active Text Viewport -->
 <div id="typing-box" class="typing-container focus-ring" tabindex="0">
     <input type="text" id="mobile-text-proxy" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="position:absolute; opacity:0; left:0; top:0; width:100%; height:100%; cursor:default; z-index:1;">
     <div id="caret" class="caret caret-smooth"></div>
@@ -192,10 +249,10 @@
     <div id="text-display" class="typing-text-display"></div>
 </div>
 
-<!-- Manual Completion Action (Visible for No Time Limit / Custom Text) -->
+<!-- Manual Completion Action (For Untimed & Custom Flights) -->
 <div id="manual-finish-wrap" style="display:none; text-align:center; margin-top:1rem;">
     <button onclick="window.typingEngine.finishTest()" id="manual-finish-btn" class="btn btn-primary" style="padding:0.75rem 2rem; font-weight:800; font-size:1rem; box-shadow:0 0 20px var(--accent-glow);">
-        🏁 Complete Run & Submit Telemetry (Enter)
+        🏁 Complete Run & Record Flight (Enter)
     </button>
 </div>
 
@@ -211,9 +268,7 @@
     </div>
 </div>
 
-<!-- =========================================================
-     TIER 2: EXPANDABLE BIOMETRIC HEATMAP DRAWER
-     ========================================================= -->
+<!-- Expandable Biometric Heatmap Drawer -->
 <div id="advanced-analytics-drawer" class="card" style="display:none; margin-top:1.5rem; background:var(--bg-card); border:1px solid var(--border-color);">
     <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:0.75rem; margin-bottom:1rem;">
         <h3 style="font-size:1.05rem; font-weight:800; margin:0; color:var(--accent);">
@@ -222,7 +277,6 @@
         <span style="font-size:0.8rem; color:var(--text-muted);">Click any key to inspect diagnostic latency</span>
     </div>
 
-    <!-- On-screen Heatmap Keyboard -->
     <div class="keyboard-wrapper" id="keyboard-container" style="margin-top:0; border:none; padding:0; background:transparent;">
         <div style="display:flex; justify-content:space-between; width:100%; max-width:820px; align-items:center; margin-bottom:0.5rem; font-size:0.8rem; color:var(--text-muted);">
             <span>Interactive Biometric Heatmap</span>
@@ -240,6 +294,31 @@
 <script src="{{ url_for('static', filename='js/keyboard.js') }}"></script>
 <script src="{{ url_for('static', filename='js/engine.js') }}"></script>
 <script>
+let takeoffTimer = null;
+function startTakeoffCountdown() {
+    let count = 3;
+    const cd = document.getElementById('takeoff-countdown-num');
+    takeoffTimer = setInterval(() => {
+        count--;
+        if (count > 0) {
+            cd.textContent = count;
+        } else if (count === 0) {
+            cd.textContent = "TAKEOFF";
+            cd.style.color = "var(--success)";
+        } else {
+            clearInterval(takeoffTimer);
+            document.getElementById('flight-takeoff-modal').style.display = 'none';
+        }
+    }, 700);
+}
+function bypassTakeoffSequence() {
+    clearInterval(takeoffTimer);
+    document.getElementById('flight-takeoff-modal').style.display = 'none';
+}
+document.addEventListener('DOMContentLoaded', () => {
+    startTakeoffCountdown();
+});
+
 const HINT_DESCRIPTIONS = {
     'easy': 'Easy Tier: High-frequency words, basic syllables, and straightforward sentence structures.',
     'moderate': 'Moderate Tier: Standard English vocabulary, natural punctuation, and realistic sentence pacing.',

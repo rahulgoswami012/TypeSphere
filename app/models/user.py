@@ -1,4 +1,5 @@
 from datetime import datetime
+import re
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin
 from app import db
@@ -12,7 +13,12 @@ class User(UserMixin, db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.String(256), nullable=False)
 
-    # Granular Roles
+    # Pilot Identity & Callsign
+    callsign = db.Column(db.String(32), unique=True, nullable=True, index=True)
+    flight_squadron = db.Column(db.String(64), default='Vanguard Flight Division')
+    avatar_flight_badge = db.Column(db.String(32), default='apex_wings')
+
+    # Authority Roles
     role = db.Column(db.String(32), default='user', nullable=False, index=True)
     is_verified = db.Column(db.Boolean, default=True, nullable=True)
 
@@ -22,7 +28,7 @@ class User(UserMixin, db.Model):
     status_reason = db.Column(db.String(255), nullable=True)
     last_active = db.Column(db.DateTime, default=datetime.utcnow)
 
-    # Competitive Ranked Telemetry
+    # Competitive Ranked MMR Telemetry
     elo_rating = db.Column(db.Integer, default=1000, nullable=False, index=True)
     ranked_wins = db.Column(db.Integer, default=0, nullable=False)
     ranked_losses = db.Column(db.Integer, default=0, nullable=False)
@@ -40,6 +46,13 @@ class User(UserMixin, db.Model):
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
+
+    @property
+    def display_callsign(self) -> str:
+        if self.callsign and self.callsign.strip():
+            return self.callsign.strip().upper()
+        clean = re.sub(r'[^A-Za-z0-9]', '', self.username)
+        return (clean[:10] if clean else "PILOT").upper()
 
     @property
     def is_admin(self):
@@ -77,16 +90,10 @@ class User(UserMixin, db.Model):
         return badges.get(division, {"icon": "🥉", "color": "#d97706", "bg": "rgba(217,119,6,0.15)"})
 
     def update_competitive_elo(self, opponent_elo: int, match_outcome: str, k_factor: int = 32) -> int:
-        """
-        Authoritative Elo calculation:
-        match_outcome: 'WIN' (score 1.0), 'DRAW' (score 0.5), 'LOSS' (score 0.0).
-        Returns the integer delta applied to self.elo_rating.
-        """
         current_elo = self.elo_rating or 1000
         score_map = {'WIN': 1.0, 'DRAW': 0.5, 'LOSS': 0.0}
         actual_score = score_map.get(match_outcome, 0.0)
 
-        # Standard Logistic Expectation
         expected_score = 1.0 / (1.0 + (10.0 ** ((opponent_elo - current_elo) / 400.0)))
         delta = int(round(k_factor * (actual_score - expected_score)))
 
