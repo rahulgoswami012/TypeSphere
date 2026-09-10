@@ -24,20 +24,20 @@
         </div>
     </div>
 
-    <!-- 11-Game Cockpit Matrix -->
-    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:1.5rem;">
+    <!-- 11-Game Cockpit Matrix (Responsive without mobile clipping) -->
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap:1.5rem;">
         {% for g in games %}
-        <div class="card" style="background:var(--bg-card); margin-bottom:0; display:flex; flex-direction:column; justify-content:space-between; border-color:var(--border-color);">
+        <div id="game-card-{{ g.slug }}" class="card" style="background:var(--bg-card); margin-bottom:0; display:flex; flex-direction:column; justify-content:space-between; border-color:var(--border-color); scroll-margin-top:80px;">
             <div>
-                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.85rem;">
-                    <div style="display:flex; align-items:center; gap:0.75rem;">
-                        <span style="font-size:2.4rem;">{{ g.icon }}</span>
-                        <div>
-                            <h3 style="font-size:1.2rem; font-weight:800; margin:0; color:var(--text-primary);">{{ g.title }}</h3>
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.85rem; flex-wrap:wrap; gap:0.4rem;">
+                    <div style="display:flex; align-items:center; gap:0.65rem; min-width:0;">
+                        <span style="font-size:2.2rem; flex-shrink:0;">{{ g.icon }}</span>
+                        <div style="min-width:0;">
+                            <h3 style="font-size:1.15rem; font-weight:800; margin:0; color:var(--text-primary); word-break:break-word;">{{ g.title }}</h3>
                             <span style="font-size:0.75rem; color:var(--accent); font-weight:700; text-transform:uppercase; letter-spacing:0.04em;">{{ g.category }}</span>
                         </div>
                     </div>
-                    <span style="font-size:0.68rem; font-weight:800; background:var(--bg-secondary); border:1px solid var(--border-color); padding:0.2rem 0.5rem; border-radius:4px; color:var(--text-secondary); text-transform:uppercase;">
+                    <span style="font-size:0.68rem; font-weight:800; background:var(--bg-secondary); border:1px solid var(--border-color); padding:0.18rem 0.5rem; border-radius:4px; color:var(--text-secondary); text-transform:uppercase; white-space:nowrap;">
                         {{ g.badge }}
                     </span>
                 </div>
@@ -46,7 +46,6 @@
                     {{ g.summary }}
                 </p>
 
-                <!-- Objective Ribbon -->
                 <div style="background:var(--bg-secondary); border-radius:var(--radius-sm); padding:0.6rem 0.85rem; margin-bottom:1rem; font-size:0.8rem;">
                     <div style="margin-bottom:0.2rem;"><strong>Win:</strong> <span style="color:var(--text-primary);">{{ g.win_condition }}</span></div>
                     <div><strong style="color:var(--danger);">Lose:</strong> <span style="color:var(--text-muted);">{{ g.lose_condition }}</span></div>
@@ -54,12 +53,13 @@
             </div>
 
             <div>
-                <div style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem; padding-top:0.75rem; border-top:1px solid var(--border-color);">
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem; padding-top:0.75rem; border-top:1px solid var(--border-color); flex-wrap:wrap;">
                     {% set pb = high_scores.get(g.slug, 0) %}
                     <div style="font-size:0.82rem; color:var(--text-muted);">
                         Record: <strong style="color:{{ 'var(--warning)' if pb > 0 else 'var(--text-secondary)' }}; font-family:var(--font-mono); font-size:0.95rem;">{{ pb }} pts</strong>
                     </div>
-                    <a href="{{ url_for('games.play_arena', game_slug=g.slug) }}" class="btn btn-primary btn-sm" style="font-weight:800; padding:0.55rem 1.25rem;">
+                    <!-- Saves scroll position before opening game -->
+                    <a href="{{ url_for('games.play_arena', game_slug=g.slug) }}" onclick="saveCurrentScroll('{{ g.slug }}')" class="btn btn-primary btn-sm" style="font-weight:800; padding:0.55rem 1.25rem;">
                         Pre-Flight & Launch &rarr;
                     </a>
                 </div>
@@ -68,4 +68,35 @@
         {% endfor %}
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function saveCurrentScroll(slug) {
+    sessionStorage.setItem('typesphere_arcade_scroll_y', window.scrollY.toString());
+    sessionStorage.setItem('typesphere_arcade_last_slug', slug);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    // Restore scrolled position if returning from a game
+    const savedY = sessionStorage.getItem('typesphere_arcade_scroll_y');
+    const lastSlug = sessionStorage.getItem('typesphere_arcade_last_slug');
+
+    if (savedY !== null) {
+        window.scrollTo({ top: parseInt(savedY, 10), behavior: 'smooth' });
+        sessionStorage.removeItem('typesphere_arcade_scroll_y');
+    } else if (window.location.hash) {
+        const el = document.querySelector(window.location.hash);
+        if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    } else if (lastSlug) {
+        const el = document.getElementById('game-card-' + lastSlug);
+        if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            sessionStorage.removeItem('typesphere_arcade_last_slug');
+        }
+    }
+});
+</script>
 {% endblock %}

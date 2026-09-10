@@ -3,6 +3,29 @@
 {% block content %}
 <div class="card" style="max-width:1080px; margin:0 auto; padding:1.25rem 1.75rem;">
     <!-- =========================================================
+         CONFIRMATION POPUP MODAL FOR FLIGHT ABORT (Point 6)
+         ========================================================= -->
+    <div id="abort-confirm-modal" class="modal-backdrop" style="display:none;">
+        <div class="card modal-dialog" style="max-width:440px; text-align:center; padding:2rem 1.5rem; border-color:var(--danger);">
+            <div style="font-size:2.8rem; margin-bottom:0.5rem;">⚠️</div>
+            <h3 style="font-size:1.35rem; font-weight:800; color:var(--text-primary); margin-bottom:0.5rem;">
+                Abort Flight Confirmation
+            </h3>
+            <p style="color:var(--text-secondary); font-size:0.9rem; line-height:1.55; margin-bottom:1.5rem;">
+                If you abort this flight now, your active score, multiplier streak, and flight telemetry will be discarded and cannot be recovered.
+            </p>
+            <div style="display:flex; justify-content:center; gap:0.75rem; flex-wrap:wrap;">
+                <button type="button" onclick="resumeFromAbortModal()" class="btn btn-primary" style="padding:0.65rem 1.5rem; font-weight:800;">
+                    ▶ Resume Flight
+                </button>
+                <button type="button" onclick="confirmAbortFlight()" class="btn btn-danger" style="padding:0.65rem 1.25rem;">
+                    Confirm Abort
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- =========================================================
          PHASE 1: PRE-GAME SETUP SUITE
          ========================================================= -->
     <div id="game-setup-screen">
@@ -14,7 +37,8 @@
                     <span style="font-size:0.8rem; color:var(--accent); font-weight:700; text-transform:uppercase;">{{ game.category }} &bull; Pre-Flight Calibration</span>
                 </div>
             </div>
-            <a href="{{ url_for('games.index') }}" class="btn btn-sm">&larr; Return to Arcade</a>
+            <!-- Preserves scrolled position on return (Point 7) -->
+            <button type="button" onclick="returnToArcade()" class="btn btn-sm">&larr; Return to Arcade</button>
         </div>
 
         <!-- Objective Rules Card -->
@@ -28,7 +52,7 @@
             </div>
         </div>
 
-        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:1.25rem; margin-bottom:2rem;">
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap:1.25rem; margin-bottom:2rem;">
             <!-- 1. Play Mode Selector -->
             <div class="card" style="background:var(--bg-card); margin-bottom:0;">
                 <h3 style="font-size:0.95rem; font-weight:700; margin-bottom:0.75rem;">1. Select Flight Mode</h3>
@@ -111,24 +135,17 @@
         </div>
 
         <div style="text-align:center;">
-            <button type="button" onclick="initiateCountdownAndLaunch()" class="btn btn-primary" style="padding:0.85rem 3.5rem; font-size:1.1rem; font-weight:800; box-shadow:0 0 25px var(--accent-glow);">
-                ⚡ Launch Flight Arena (3..2..1)
+            <button type="button" onclick="startDirectGame()" class="btn btn-primary" style="padding:0.85rem 3.5rem; font-size:1.1rem; font-weight:800; box-shadow:0 0 25px var(--accent-glow);">
+                ⚡ Launch Flight Arena
             </button>
         </div>
     </div>
 
     <!-- =========================================================
-         PHASE 2: LIVE FLIGHT ARENA & 3..2..1 COUNTDOWN
+         PHASE 2: LIVE FLIGHT ARENA
          ========================================================= -->
     <div id="game-active-arena" style="display:none;">
-        <!-- Synchronized 3-2-1 Countdown Overlay -->
-        <div id="arena-launch-countdown-banner" style="display:none; text-align:center; padding:2rem; background:var(--bg-card); border:2px solid var(--accent); border-radius:var(--radius); margin-bottom:1.5rem;">
-            <div style="font-size:0.85rem; font-weight:800; text-transform:uppercase; letter-spacing:0.12em; color:var(--text-muted);">Synchronizing Cockpit Sensors</div>
-            <div id="arena-countdown-display" style="font-size:5rem; font-family:var(--font-mono); font-weight:900; color:var(--accent); line-height:1.2;">3</div>
-        </div>
-
-        <!-- Live Telemetry Ribbon -->
-        <div id="arena-live-content-wrap" style="display:none;">
+        <div id="arena-live-content-wrap">
             <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:0.75rem; margin-bottom:1rem; flex-wrap:wrap; gap:0.5rem;">
                 <div style="display:flex; align-items:center; gap:0.6rem;">
                     <span style="font-size:1.6rem;">{{ game.icon }}</span>
@@ -138,13 +155,14 @@
                     <div>You: <strong id="live-my-stat" style="color:var(--accent); font-family:var(--font-mono);">0 pts</strong> (<span id="live-my-wpm">0 WPM</span>)</div>
                     <div id="live-opp-wrapper">Opponent: <strong id="live-opp-stat" style="color:var(--warning); font-family:var(--font-mono);">0 pts</strong> (<span id="live-opp-wpm">0 WPM</span>)</div>
                 </div>
-                <button type="button" onclick="abortCurrentGame()" class="btn btn-sm btn-danger">&times; Abort Flight</button>
+                <!-- Prompts abort confirmation modal (Point 6) -->
+                <button type="button" onclick="promptAbortModal()" class="btn btn-sm btn-danger">&times; Abort Flight</button>
             </div>
 
-            <!-- The Game Viewport -->
+            <!-- The Unified Game Canvas Viewport -->
             <div id="arcade-viewport" tabindex="0"></div>
 
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.75rem; font-size:0.82rem; color:var(--text-muted);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.75rem; font-size:0.82rem; color:var(--text-muted); flex-wrap:wrap; gap:0.5rem;">
                 <span>VICTORY: {{ game.win_condition }}</span>
                 <span>Streak Multiplier: <strong id="live-combo-badge" style="color:var(--accent); font-family:var(--font-mono); font-size:0.95rem;">0x</strong></span>
             </div>
@@ -194,15 +212,16 @@
         </div>
 
         <div style="display:flex; justify-content:center; gap:0.75rem; flex-wrap:wrap;">
-            <button type="button" onclick="initiateCountdownAndLaunch()" class="btn btn-primary" style="padding:0.75rem 1.75rem; font-weight:800;">
+            <button type="button" onclick="startDirectGame()" class="btn btn-primary" style="padding:0.75rem 1.75rem; font-weight:800;">
                 🔄 Re-engage Discipline (Space)
             </button>
             <button type="button" onclick="openPreGameSetup()" class="btn" style="padding:0.75rem 1.25rem;">
                 ⚙️ Recalibrate Parameters
             </button>
-            <a href="{{ url_for('games.index') }}" class="btn" style="padding:0.75rem 1.25rem;">
+            <!-- Preserves scroll position upon return (Point 7) -->
+            <button type="button" onclick="returnToArcade()" class="btn" style="padding:0.75rem 1.25rem;">
                 Arcade Directory
-            </a>
+            </button>
             {% if current_user.is_authenticated %}
             <a href="{{ url_for('typing.practice_page') }}" class="btn" style="border-color:var(--accent); color:var(--accent); padding:0.75rem 1.25rem;">
                 Train Weaknesses &rarr;
@@ -255,7 +274,7 @@ function openPreGameSetup() {
     document.getElementById('game-results-screen').style.display = 'none';
 }
 
-function initiateCountdownAndLaunch() {
+function startDirectGame() {
     const diff = document.getElementById('setup-difficulty').value;
     const objVal = document.getElementById('setup-objective-val') ? document.getElementById('setup-objective-val').value : '60';
     const charMode = document.getElementById('setup-bubble-char-mode') ? document.getElementById('setup-bubble-char-mode').value : 'letters';
@@ -265,46 +284,38 @@ function initiateCountdownAndLaunch() {
     document.getElementById('game-results-screen').style.display = 'none';
     document.getElementById('game-active-arena').style.display = 'block';
 
-    const cdBanner = document.getElementById('arena-launch-countdown-banner');
-    const cdDisplay = document.getElementById('arena-countdown-display');
-    const liveContent = document.getElementById('arena-live-content-wrap');
-
-    cdBanner.style.display = 'block';
-    liveContent.style.display = 'none';
-
-    let count = 3;
-    cdDisplay.textContent = count;
-
-    const interval = setInterval(() => {
-        count--;
-        if (count > 0) {
-            cdDisplay.textContent = count;
-        } else if (count === 0) {
-            cdDisplay.textContent = 'GO!';
-            cdDisplay.style.color = 'var(--success)';
-        } else {
-            clearInterval(interval);
-            cdBanner.style.display = 'none';
-            liveContent.style.display = 'block';
-            cdDisplay.style.color = 'var(--accent)';
-
-            window.arcadeEngine.start({
-                slug: GAME_SLUG,
-                playMode: selectedPlayMode,
-                difficulty: diff,
-                objectiveVal: objVal,
-                blindMode: isBlindMode,
-                backspaceAllowed: isBackspaceAllowed,
-                charMode: charMode,
-                roomCode: code
-            });
-        }
-    }, 900);
+    window.arcadeEngine.start({
+        slug: GAME_SLUG,
+        playMode: selectedPlayMode,
+        difficulty: diff,
+        objectiveVal: objVal,
+        blindMode: isBlindMode,
+        backspaceAllowed: isBackspaceAllowed,
+        charMode: charMode,
+        roomCode: code
+    });
 }
 
-function abortCurrentGame() {
+// Point 6: Abort Confirmation Modal
+function promptAbortModal() {
+    window.arcadeEngine.pause();
+    document.getElementById('abort-confirm-modal').style.display = 'flex';
+}
+
+function resumeFromAbortModal() {
+    document.getElementById('abort-confirm-modal').style.display = 'none';
+    window.arcadeEngine.resume();
+}
+
+function confirmAbortFlight() {
+    document.getElementById('abort-confirm-modal').style.display = 'none';
     window.arcadeEngine.stop();
     openPreGameSetup();
+}
+
+// Point 7: Return to Arcade preserving scroll position
+function returnToArcade() {
+    window.location.href = "{{ url_for('games.index') }}#game-card-" + GAME_SLUG;
 }
 </script>
 {% endblock %}

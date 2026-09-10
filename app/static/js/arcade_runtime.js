@@ -1,14 +1,7 @@
 /**
  * TypeSphere Arcade Unified Client Runtime Engine
- * 
- * Drives all 11 educational typing games with unambiguous Win, Loss, and Finish conditions:
- * - Speed Racer: Velocity forward momentum + typo recoil, multi-lap text replenishment, and pace-car bot competition.
- * - Bubble Pop: Single-character isolated targeting with active countdown timers (30s, 60s, 120s).
- * - Whack-A-Word: 3x3 reaction grid with shrinking exposure latency and millisecond scoring.
- * - Zombie Duel: 1v1 combat duel with HP meters and recoil damage.
- * - Cipher Hacker: 4-layer cybersecurity breach with lockdown countdown.
- * - Falling Words / Space Defender / Zombie Defense: Multi-wave quotas (Wave 1 to 5) with definitive victory upon clearing.
- * - Bomb Defuse, Memory Type, Keyboard Quest: Strict failure and victory rules with end-game result reporting.
+ * Drives all 11 educational typing games with explicit timers, objectives,
+ * auto-centering paragraph scrolling, and distinct visual feedback.
  */
 class ArcadeRuntimeEngine {
     constructor() {
@@ -16,7 +9,7 @@ class ArcadeRuntimeEngine {
         this.config = {};
         this.socket = null;
 
-        // Core Session Metrics
+        // Core Metrics
         this.score = 0;
         this.errors = 0;
         this.combo = 0;
@@ -36,6 +29,7 @@ class ArcadeRuntimeEngine {
         this.activeTarget = null;
         this.inputBuffer = "";
         this.isRunning = false;
+        this.isPaused = false;
         this.contentBatch = [];
         this.remainingSeconds = 60;
         this.keydownHandler = (e) => this.handleKeystroke(e);
@@ -59,6 +53,7 @@ class ArcadeRuntimeEngine {
         this.inputBuffer = "";
         this.activeTarget = null;
         this.isRunning = true;
+        this.isPaused = false;
         this.startTime = performance.now();
         this.lastActionTimestamp = this.startTime;
         this.remainingSeconds = parseInt(this.config.objectiveVal) || 60;
@@ -87,6 +82,14 @@ class ArcadeRuntimeEngine {
             this.socket.disconnect();
             this.socket = null;
         }
+    }
+
+    pause() {
+        this.isPaused = true;
+    }
+
+    resume() {
+        this.isPaused = false;
     }
 
     getFallbackBatch(slug, diff, charMode) {
@@ -168,6 +171,7 @@ class ArcadeRuntimeEngine {
         });
 
         this.socket.on('arcade_live_telemetry', (data) => {
+            if (this.isPaused) return;
             const players = data.players || {};
             const ai = players['ai_bot'];
             if (ai) {
@@ -187,7 +191,7 @@ class ArcadeRuntimeEngine {
 
         if (this.config.playMode === 'solo_ai') {
             this.aiLoopTimer = setInterval(() => {
-                if (this.socket && this.isRunning) {
+                if (this.socket && this.isRunning && !this.isPaused) {
                     this.socket.emit('arcade_ai_tick', { delta: 0.25, total_chars: 280 });
                 }
             }, 250);
@@ -228,7 +232,7 @@ class ArcadeRuntimeEngine {
         }
     }
 
-    // 1. SPEED RACER
+    // 1. SPEED RACER: Auto-Centering Paragraph & Visual Highlights
     initSpeedRacer() {
         const isMultiplayer = (this.config.playMode !== 'solo_ai' && this.config.playMode !== 'solo_practice');
         const oppIcon = isMultiplayer ? "🏎️" : "🤖";
@@ -236,19 +240,19 @@ class ArcadeRuntimeEngine {
 
         this.viewport.innerHTML = `
             <div class="racer-track-surface"></div>
-            <div class="racer-lane-divider" style="top:33%;"></div>
-            <div class="racer-lane-divider" style="top:66%;"></div>
+            <div class="racer-lane-divider" style="top:30%;"></div>
+            <div class="racer-lane-divider" style="top:60%;"></div>
             <div class="racer-finish-gate"></div>
-            <div id="car-player" class="racer-vehicle-node" style="top:75px; left:25px;">
+            <div id="car-player" class="racer-vehicle-node" style="top:65px; left:25px;">
                 <div class="racer-vehicle-icon" style="filter:drop-shadow(0 4px 10px rgba(56,189,248,0.8));">🏎️</div>
                 <div class="racer-hud-tag" style="border-color:var(--accent); color:var(--accent);">You</div>
                 <div id="player-nitro" class="nitro-exhaust-burn" style="display:none;"></div>
             </div>
-            <div id="car-bot" class="racer-vehicle-node" style="top:210px; left:25px; ${this.config.playMode === 'solo_practice' ? 'display:none;' : ''}">
+            <div id="car-bot" class="racer-vehicle-node" style="top:185px; left:25px; ${this.config.playMode === 'solo_practice' ? 'display:none;' : ''}">
                 <div class="racer-vehicle-icon">${oppIcon}</div>
                 <div class="racer-hud-tag" style="border-color:var(--warning); color:var(--warning);">${oppLabel}</div>
             </div>
-            <div id="racer-text-track" style="position:absolute; bottom:15px; left:25px; right:25px; background:rgba(15,21,36,0.96); padding:1rem 1.4rem; border-radius:8px; border:1px solid var(--border-color); font-family:var(--font-mono); font-size:1.25rem; line-height:2.1; box-shadow:0 10px 25px rgba(0,0,0,0.6); max-height:115px; overflow:hidden;"></div>
+            <div id="racer-text-track" class="arcade-passage-box"></div>
         `;
 
         this.racerBatchIndex = 0;
@@ -266,11 +270,21 @@ class ArcadeRuntimeEngine {
         const frag = document.createDocumentFragment();
         for (let i = 0; i < this.racerPassage.length; i++) {
             const s = document.createElement('span');
-            s.className = 'char';
+            s.className = (i === 0) ? 'char current' : 'char untyped';
             s.textContent = this.racerPassage[i];
             frag.appendChild(s);
         }
         box.appendChild(frag);
+        box.scrollTop = 0;
+    }
+
+    scrollRacerTextToActive(span) {
+        const box = document.getElementById('racer-text-track');
+        if (!box || !span) return;
+        const targetMid = span.offsetTop - (box.clientHeight / 2) + 16;
+        if (Math.abs(box.scrollTop - targetMid) > 16) {
+            box.scrollTo({ top: Math.max(0, targetMid), behavior: 'smooth' });
+        }
     }
 
     updateSpeedRacerPosition(target, pct) {
@@ -289,10 +303,11 @@ class ArcadeRuntimeEngine {
             </div>
         `;
         this.bubbleLives = 3;
-        this.spawnTimer = setInterval(() => this.spawnCharBubble(), 1000);
-        this.gameLoopTimer = setInterval(() => this.tickBubbles(), 40);
+        this.spawnTimer = setInterval(() => { if (!this.isPaused) this.spawnCharBubble(); }, 1000);
+        this.gameLoopTimer = setInterval(() => { if (!this.isPaused) this.tickBubbles(); }, 40);
 
         this.objectiveCountdownTimer = setInterval(() => {
+            if (this.isPaused) return;
             this.remainingSeconds--;
             const clk = document.getElementById('bubble-clock');
             if (clk) clk.textContent = `${this.remainingSeconds}s`;
@@ -308,7 +323,8 @@ class ArcadeRuntimeEngine {
         const el = document.createElement('div');
         el.className = 'arcade-char-bubble';
         el.textContent = char;
-        el.style.left = `${Math.random() * (this.viewport.clientWidth - 70) + 15}px`;
+        const maxW = Math.max(80, this.viewport.clientWidth - 80);
+        el.style.left = `${Math.floor(Math.random() * maxW) + 15}px`;
         el.style.bottom = '0px';
         this.viewport.appendChild(el);
         this.entities.push({ el, char, y: 0, speed: 1.3 + Math.random() * 1.1 });
@@ -335,13 +351,13 @@ class ArcadeRuntimeEngine {
     // 3. WHACK-A-WORD
     initWhackAWord() {
         this.viewport.innerHTML = `
-            <div style="display:flex; justify-content:space-between; padding:15px 30px 0;">
+            <div style="display:flex; justify-content:space-between; padding:15px 25px 0;">
                 <span style="font-weight:700; color:var(--text-muted);">Reaction Latency Window</span>
                 <span style="font-family:var(--font-mono); font-weight:800; color:var(--warning);">Time: <span id="whack-clock">${this.remainingSeconds}s</span></span>
             </div>
             <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:1rem; max-width:620px; margin:20px auto;">
                 ${[0,1,2,3,4,5,6,7,8].map(i => `
-                    <div id="hole-${i}" style="height:90px; background:var(--bg-card); border:2px solid var(--border-color); border-radius:8px; display:flex; align-items:center; justify-content:center; font-family:var(--font-mono); font-weight:800; font-size:1.15rem; color:var(--text-muted); transition:background 0.15s ease, border-color 0.15s ease;"></div>
+                    <div id="hole-${i}" style="height:88px; background:var(--bg-card); border:2px solid var(--border-color); border-radius:8px; display:flex; align-items:center; justify-content:center; font-family:var(--font-mono); font-weight:800; font-size:1.15rem; color:var(--text-muted); transition:background 0.15s ease, border-color 0.15s ease;"></div>
                 `).join('')}
             </div>
         `;
@@ -352,6 +368,7 @@ class ArcadeRuntimeEngine {
         this.spawnNextMole();
 
         this.objectiveCountdownTimer = setInterval(() => {
+            if (this.isPaused) return;
             this.remainingSeconds--;
             const clk = document.getElementById('whack-clock');
             if (clk) clk.textContent = `${this.remainingSeconds}s`;
@@ -363,7 +380,7 @@ class ArcadeRuntimeEngine {
 
     spawnNextMole() {
         if (this.moleWindowTimer) clearTimeout(this.moleWindowTimer);
-        if (!this.isRunning) return;
+        if (!this.isRunning || this.isPaused) return;
 
         if (this.currentHole >= 0) {
             const prev = document.getElementById(`hole-${this.currentHole}`);
@@ -381,14 +398,14 @@ class ArcadeRuntimeEngine {
 
         const hole = document.getElementById(`hole-${this.currentHole}`);
         if (hole) {
-            hole.textContent = this.whackTarget;
+            hole.innerHTML = `<span class="char untyped" style="color:var(--text-primary);">${this.whackTarget}</span>`;
             hole.style.borderColor = 'var(--accent)';
-            hole.style.color = 'var(--text-primary)';
             hole.style.background = 'var(--bg-card)';
         }
 
         const windowMs = {'easy': 2400, 'moderate': 1800, 'hard': 1300, 'expert': 950}[this.config.difficulty] || 1800;
         this.moleWindowTimer = setTimeout(() => {
+            if (this.isPaused) return;
             this.missedHoles++;
             this.registerError();
             if (this.missedHoles >= 5) {
@@ -433,7 +450,7 @@ class ArcadeRuntimeEngine {
         if (this.config.playMode === 'solo_ai') {
             const intervalMs = {'easy': 3800, 'moderate': 2800, 'hard': 1900, 'expert': 1300}[this.config.difficulty] || 2800;
             this.aiLoopTimer = setInterval(() => {
-                if (!this.isRunning) return;
+                if (!this.isRunning || this.isPaused) return;
                 this.playerHP = Math.max(0, this.playerHP - 15);
                 const bar = document.getElementById('duel-player-hp');
                 const lbl = document.getElementById('player-hp-label');
@@ -452,7 +469,7 @@ class ArcadeRuntimeEngine {
         this.duelTarget = this.contentBatch[Math.floor(Math.random() * this.contentBatch.length)] || "strike";
         this.duelBuffer = "";
         const box = document.getElementById('duel-spell-box');
-        if (box) box.textContent = this.duelTarget;
+        if (box) box.innerHTML = `<span class="char untyped" style="color:var(--text-primary);">${this.duelTarget}</span>`;
     }
 
     // 5. CIPHER HACKER
@@ -478,6 +495,7 @@ class ArcadeRuntimeEngine {
         this.loadNextCipherToken();
 
         this.objectiveCountdownTimer = setInterval(() => {
+            if (this.isPaused) return;
             this.lockdownSeconds--;
             const clk = document.getElementById('cipher-lockdown-clk');
             if (clk) clk.textContent = `${this.lockdownSeconds}s`;
@@ -491,10 +509,10 @@ class ArcadeRuntimeEngine {
         this.cipherTarget = this.layerTokens[this.tokenIdx % this.layerTokens.length] || "0x7FA9";
         this.cipherBuffer = "";
         const el = document.getElementById('cipher-target-token');
-        if (el) el.textContent = this.cipherTarget;
+        if (el) el.innerHTML = `<span class="char untyped" style="color:#10b981;">${this.cipherTarget}</span>`;
     }
 
-    // 6. FALLING WORDS (Wave System)
+    // 6. FALLING WORDS (Randomized Positions across Viewport)
     initFallingWords() {
         this.currentWave = 1;
         this.maxWaves = 5;
@@ -507,11 +525,11 @@ class ArcadeRuntimeEngine {
                 <span style="font-weight:700; color:var(--accent);">WAVE <span id="fw-wave-num">1</span> / ${this.maxWaves}</span>
                 <span style="font-family:var(--font-mono); font-weight:800; color:var(--danger);">Lives: <span id="fw-lives-num">❤️❤️❤️</span></span>
             </div>
-            <div style="position:absolute; bottom:40px; left:0; right:0; height:2px; background:var(--danger); opacity:0.6;"></div>
+            <div class="danger-laser-line"></div>
         `;
 
-        this.spawnTimer = setInterval(() => this.spawnFallingNode(), 1800);
-        this.gameLoopTimer = setInterval(() => this.tickFallingNodes(), 40);
+        this.spawnTimer = setInterval(() => { if (!this.isPaused) this.spawnFallingNode(); }, 1800);
+        this.gameLoopTimer = setInterval(() => { if (!this.isPaused) this.tickFallingNodes(); }, 40);
     }
 
     spawnFallingNode() {
@@ -519,8 +537,13 @@ class ArcadeRuntimeEngine {
         const word = this.contentBatch[Math.floor(Math.random() * this.contentBatch.length)] || "velocity";
         const el = document.createElement('div');
         el.className = 'falling-meteor-word';
-        el.textContent = word;
-        el.style.left = `${Math.random() * (this.viewport.clientWidth - 130) + 15}px`;
+        el.innerHTML = `<span class="char untyped">${word}</span>`;
+
+        // Calculate random X position across available viewport width
+        const availableWidth = Math.max(100, this.viewport.clientWidth - 160);
+        const randomX = Math.floor(Math.random() * availableWidth) + 20;
+
+        el.style.left = `${randomX}px`;
         el.style.top = '0px';
         this.viewport.appendChild(el);
         this.entities.push({ el, word, typed: '', y: 0, speed: 1.1 + (this.currentWave * 0.25) });
@@ -548,7 +571,7 @@ class ArcadeRuntimeEngine {
         }
     }
 
-    // 7. ZOMBIE DEFENSE (Wave Base System)
+    // 7. ZOMBIE DEFENSE (Multi-Lane Horizontal March)
     initZombieDefense() {
         this.baseHP = 100;
         this.currentWave = 1;
@@ -556,25 +579,29 @@ class ArcadeRuntimeEngine {
         this.zombiesDefeated = 0;
 
         this.viewport.innerHTML = `
-            <div style="position:absolute; right:35px; top:0; bottom:0; width:6px; background:var(--accent); opacity:0.7;"></div>
+            <div style="position:absolute; right:35px; top:0; bottom:0; width:6px; background:var(--accent); opacity:0.75; box-shadow:0 0 12px var(--accent);"></div>
             <div style="display:flex; justify-content:space-between; padding:12px 25px 0; width:calc(100% - 50px);">
                 <span style="font-weight:700; color:var(--accent);">WAVE <span id="zd-wave">1</span> / ${this.maxWaves}</span>
                 <span style="font-family:var(--font-mono); font-weight:800; color:var(--warning);">Base Barrier: <span id="defense-hp">100%</span></span>
             </div>
         `;
-        this.spawnTimer = setInterval(() => this.spawnZombieDefenseUnit(), 2100);
-        this.gameLoopTimer = setInterval(() => this.tickZombieDefense(), 45);
+        this.spawnTimer = setInterval(() => { if (!this.isPaused) this.spawnZombieDefenseUnit(); }, 2100);
+        this.gameLoopTimer = setInterval(() => { if (!this.isPaused) this.tickZombieDefense(); }, 45);
     }
 
     spawnZombieDefenseUnit() {
         if (this.entities.length >= 6 || !this.isRunning) return;
         const word = this.contentBatch[Math.floor(Math.random() * this.contentBatch.length)] || "stalker";
         const el = document.createElement('div');
-        el.className = 'falling-meteor-word';
-        el.innerHTML = `🧟 <span>${word}</span>`;
+        el.className = 'zombie-walker-unit';
+        el.innerHTML = `🧟 <span class="char untyped">${word}</span>`;
+
+        // Distribute across 4 vertical lanes
+        const lane = Math.floor(Math.random() * 4);
+        const yPos = 50 + (lane * 65);
+
         el.style.left = '0px';
-        el.style.top = `${Math.random() * (this.viewport.clientHeight - 70) + 25}px`;
-        el.style.borderColor = 'var(--danger)';
+        el.style.top = `${yPos}px`;
         this.viewport.appendChild(el);
         this.entities.push({ el, word, typed: '', x: 0, speed: 1.1 + Math.random() * 0.8 });
     }
@@ -584,7 +611,7 @@ class ArcadeRuntimeEngine {
             const z = this.entities[i];
             z.x += z.speed;
             z.el.style.left = `${z.x}px`;
-            if (z.x >= this.viewport.clientWidth - 100) {
+            if (z.x >= this.viewport.clientWidth - 110) {
                 z.el.remove();
                 this.entities.splice(i, 1);
                 this.baseHP -= 20;
@@ -612,8 +639,8 @@ class ArcadeRuntimeEngine {
                 <span style="font-family:var(--font-mono); font-weight:800; color:var(--success);">Shields: <span id="sd-shields">100%</span></span>
             </div>
         `;
-        this.spawnTimer = setInterval(() => this.spawnAsteroidUnit(), 2000);
-        this.gameLoopTimer = setInterval(() => this.tickAsteroids(), 40);
+        this.spawnTimer = setInterval(() => { if (!this.isPaused) this.spawnAsteroidUnit(); }, 2000);
+        this.gameLoopTimer = setInterval(() => { if (!this.isPaused) this.tickAsteroids(); }, 40);
     }
 
     spawnAsteroidUnit() {
@@ -621,11 +648,13 @@ class ArcadeRuntimeEngine {
         const word = this.contentBatch[Math.floor(Math.random() * this.contentBatch.length)] || "orbit";
         const el = document.createElement('div');
         el.className = 'falling-meteor-word';
-        el.innerHTML = `☄️ <span>${word}</span>`;
+        el.innerHTML = `☄️ <span class="char untyped">${word}</span>`;
+
         const angle = Math.random() * Math.PI * 2;
-        const radius = 230;
+        const radius = 220;
         const startX = (this.viewport.clientWidth / 2) + Math.cos(angle) * radius;
         const startY = (this.viewport.clientHeight / 2) + Math.sin(angle) * radius;
+
         el.style.left = `${startX}px`;
         el.style.top = `${startY}px`;
         this.viewport.appendChild(el);
@@ -674,6 +703,7 @@ class ArcadeRuntimeEngine {
         `;
         this.spawnBombCode();
         this.objectiveCountdownTimer = setInterval(() => {
+            if (this.isPaused) return;
             this.bombSeconds--;
             const el = document.getElementById('bomb-digital-clock');
             if (el) el.textContent = `00:${this.bombSeconds < 10 ? '0' : ''}${this.bombSeconds}`;
@@ -687,7 +717,7 @@ class ArcadeRuntimeEngine {
         this.bombTarget = this.contentBatch[this.bombStage % this.contentBatch.length] || "ALPHA7";
         this.bombBuffer = "";
         const box = document.getElementById('bomb-code-box');
-        if (box) box.textContent = this.bombTarget;
+        if (box) box.innerHTML = `<span class="char untyped" style="color:var(--text-primary);">${this.bombTarget}</span>`;
     }
 
     // 10. TYPING NINJA
@@ -702,8 +732,8 @@ class ArcadeRuntimeEngine {
                 <span style="font-family:var(--font-mono); font-weight:800; color:var(--warning);">Misses: <span id="ninja-m">0</span> / 3</span>
             </div>
         `;
-        this.spawnTimer = setInterval(() => this.spawnNinjaTarget(), 1900);
-        this.gameLoopTimer = setInterval(() => this.tickNinjaTargets(), 40);
+        this.spawnTimer = setInterval(() => { if (!this.isPaused) this.spawnNinjaTarget(); }, 1900);
+        this.gameLoopTimer = setInterval(() => { if (!this.isPaused) this.tickNinjaTargets(); }, 40);
     }
 
     spawnNinjaTarget() {
@@ -711,8 +741,11 @@ class ArcadeRuntimeEngine {
         const word = this.contentBatch[Math.floor(Math.random() * this.contentBatch.length)] || "strike";
         const el = document.createElement('div');
         el.className = 'falling-meteor-word';
-        el.textContent = word;
-        const startX = Math.random() * (this.viewport.clientWidth - 150) + 30;
+        el.innerHTML = `<span class="char untyped">${word}</span>`;
+
+        const availableWidth = Math.max(100, this.viewport.clientWidth - 160);
+        const startX = Math.floor(Math.random() * availableWidth) + 20;
+
         el.style.left = `${startX}px`;
         el.style.top = `${this.viewport.clientHeight - 40}px`;
         this.viewport.appendChild(el);
@@ -765,7 +798,7 @@ class ArcadeRuntimeEngine {
     }
 
     flashMemoryTarget() {
-        if (!this.isRunning) return;
+        if (!this.isRunning || this.isPaused) return;
         this.memoryTarget = this.contentBatch[this.memoryIndex % this.contentBatch.length] || "recall";
         const box = document.getElementById('memory-box');
         const hint = document.getElementById('memory-hint');
@@ -808,14 +841,14 @@ class ArcadeRuntimeEngine {
         this.questTarget = this.contentBatch[this.questIndex % this.contentBatch.length] || "asdf";
         this.questBuffer = "";
         const box = document.getElementById('quest-target-box');
-        if (box) box.textContent = this.questTarget;
+        if (box) box.innerHTML = `<span class="char untyped" style="color:var(--text-primary);">${this.questTarget}</span>`;
     }
 
     // ==========================================================
-    // GLOBAL KEYSTROKE HANDLER
+    // KEYSTROKE DISPATCHER & VISUAL HIGHLIGHTING
     // ==========================================================
     handleKeystroke(e) {
-        if (!this.isRunning) return;
+        if (!this.isRunning || this.isPaused) return;
         if (e.key === 'Backspace' && !this.config.backspaceAllowed) {
             e.preventDefault();
             return;
@@ -853,6 +886,12 @@ class ArcadeRuntimeEngine {
                 const nitro = document.getElementById('player-nitro');
                 if (nitro) nitro.style.display = 'none';
                 this.registerError();
+            }
+
+            // Mark next active character
+            if (this.racerIdx < spans.length) {
+                spans[this.racerIdx].className = 'char current';
+                this.scrollRacerTextToActive(spans[this.racerIdx]);
             }
 
             const pct = Math.min(100, (this.playerDistanceMeters / this.targetDistanceMeters) * 100);
@@ -898,7 +937,9 @@ class ArcadeRuntimeEngine {
                 this.correctCharsTyped++;
                 this.registerHit(10);
                 const hole = document.getElementById(`hole-${this.currentHole}`);
-                if (hole) hole.innerHTML = `<span style="color:var(--success); text-decoration:underline;">${this.whackBuffer}</span>${this.whackTarget.slice(this.whackBuffer.length)}`;
+                if (hole) {
+                    hole.innerHTML = `<span class="char correct">${this.whackBuffer}</span><span class="char untyped">${this.whackTarget.slice(this.whackBuffer.length)}</span>`;
+                }
 
                 if (this.whackBuffer === this.whackTarget) {
                     this.spawnNextMole();
@@ -917,7 +958,9 @@ class ArcadeRuntimeEngine {
                 this.correctCharsTyped++;
                 this.registerHit(15);
                 const box = document.getElementById('duel-spell-box');
-                if (box) box.innerHTML = `<span style="color:var(--success);">${this.duelBuffer}</span>${this.duelTarget.slice(this.duelBuffer.length)}`;
+                if (box) {
+                    box.innerHTML = `<span class="char correct">${this.duelBuffer}</span><span class="char untyped">${this.duelTarget.slice(this.duelBuffer.length)}</span>`;
+                }
 
                 if (this.duelBuffer === this.duelTarget) {
                     this.opponentHP = Math.max(0, this.opponentHP - 25);
@@ -947,7 +990,9 @@ class ArcadeRuntimeEngine {
                 this.correctCharsTyped++;
                 this.registerHit(20);
                 const tokenEl = document.getElementById('cipher-target-token');
-                if (tokenEl) tokenEl.innerHTML = `<span style="color:var(--accent);">${this.cipherBuffer}</span>${this.cipherTarget.slice(this.cipherBuffer.length)}`;
+                if (tokenEl) {
+                    tokenEl.innerHTML = `<span class="char correct">${this.cipherBuffer}</span><span class="char untyped">${this.cipherTarget.slice(this.cipherBuffer.length)}</span>`;
+                }
 
                 if (this.cipherBuffer === this.cipherTarget) {
                     this.tokenIdx++;
@@ -978,7 +1023,9 @@ class ArcadeRuntimeEngine {
                 this.correctCharsTyped++;
                 this.registerHit(15);
                 const box = document.getElementById('bomb-code-box');
-                if (box) box.innerHTML = `<span style="color:var(--success);">${this.bombBuffer}</span>${this.bombTarget.slice(this.bombBuffer.length)}`;
+                if (box) {
+                    box.innerHTML = `<span class="char correct">${this.bombBuffer}</span><span class="char untyped">${this.bombTarget.slice(this.bombBuffer.length)}</span>`;
+                }
 
                 if (this.bombBuffer === this.bombTarget) {
                     this.bombStage++;
@@ -1036,7 +1083,9 @@ class ArcadeRuntimeEngine {
                 this.correctCharsTyped++;
                 this.registerHit(15);
                 const box = document.getElementById('quest-target-box');
-                if (box) box.innerHTML = `<span style="color:var(--success);">${this.questBuffer}</span>${this.questTarget.slice(this.questBuffer.length)}`;
+                if (box) {
+                    box.innerHTML = `<span class="char correct">${this.questBuffer}</span><span class="char untyped">${this.questTarget.slice(this.questBuffer.length)}</span>`;
+                }
 
                 if (this.questBuffer === this.questTarget) {
                     this.questIndex++;
@@ -1063,7 +1112,7 @@ class ArcadeRuntimeEngine {
                 this.activeTarget.typed += lower;
                 this.correctCharsTyped++;
                 this.registerHit(10);
-                this.activeTarget.el.innerHTML = `<span style="color:var(--success); text-decoration:underline;">${this.activeTarget.typed}</span>${this.activeTarget.word.slice(this.activeTarget.typed.length)}`;
+                this.renderEntityTypedHighlight(this.activeTarget);
 
                 if (this.activeTarget.typed === this.activeTarget.word) {
                     this.activeTarget.el.remove();
@@ -1083,11 +1132,18 @@ class ArcadeRuntimeEngine {
             this.correctCharsTyped++;
             this.registerHit(10);
             match.el.classList.add('target-locked');
-            match.el.innerHTML = `<span style="color:var(--success); text-decoration:underline;">${lower}</span>${match.word.slice(1)}`;
+            this.renderEntityTypedHighlight(match);
             this.syncProgressToServer(0, liveNetWpm);
         } else {
             this.registerError();
         }
+    }
+
+    renderEntityTypedHighlight(entity) {
+        const prefix = (this.config.slug === 'zombie_defense') ? '🧟 ' : ((this.config.slug === 'space_defender') ? '☄️ ' : '');
+        const typedPart = entity.word.substring(0, entity.typed.length);
+        const remaining = entity.word.substring(entity.typed.length);
+        entity.el.innerHTML = `${prefix}<span class="char correct">${typedPart}</span><span class="char untyped">${remaining}</span>`;
     }
 
     handleTargetElimination(liveWpm) {

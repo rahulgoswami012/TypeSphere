@@ -1,57 +1,7 @@
 {% extends 'base.html' %}
 {% block title %}Live Flight Cockpit & Speed Benchmark | TypeSphere{% endblock %}
 {% block content %}
-<!-- =========================================================
-     PAGE-SPECIFIC FLIGHT TRANSITION: TAKEOFF SEQUENCE
-     ========================================================= -->
-<div id="flight-takeoff-modal" class="modal-backdrop" style="display:flex;">
-    <div class="card modal-dialog" style="max-width:540px; text-align:center; padding:2.25rem 2rem; border-color:var(--accent);">
-        <div style="display:flex; justify-content:center; margin-bottom:1rem;">
-            <div class="brand-sphere-icon" style="width:48px; height:48px; font-size:1.5rem;">
-                🚀
-            </div>
-        </div>
-        <div style="font-size:0.75rem; font-weight:800; text-transform:uppercase; letter-spacing:0.14em; color:var(--text-muted); margin-bottom:0.25rem;">
-            TypeSphere Flight Control
-        </div>
-
-        {% if is_registered_pilot %}
-            <h2 style="font-size:1.45rem; font-weight:900; color:var(--text-primary); margin-bottom:0.25rem;">
-                PILOT CALLSIGN: <span style="color:var(--accent);">{{ current_pilot.display_callsign }}</span>
-            </h2>
-            <div style="font-size:0.8rem; color:var(--success); font-weight:700; margin-bottom:1.25rem;">
-                FLIGHT RECORD SYNCHRONIZED &bull; CLEARANCE GRANTED
-            </div>
-            <div style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--radius-sm); padding:0.85rem 1rem; margin-bottom:1.5rem; text-align:left; font-family:var(--font-mono); font-size:0.82rem; line-height:1.7;">
-                <div style="display:flex; justify-content:space-between;"><span>FLIGHT DIVISION:</span><strong>{{ current_pilot.rank_division }}</strong></div>
-                <div style="display:flex; justify-content:space-between;"><span>RECORDED MMR:</span><strong>{{ current_pilot.elo_rating }}</strong></div>
-                <div style="display:flex; justify-content:space-between;"><span>SYSTEM SENSORS:</span><strong style="color:var(--success);">READY</strong></div>
-            </div>
-        {% else %}
-            <h2 style="font-size:1.45rem; font-weight:900; color:var(--text-primary); margin-bottom:0.25rem;">
-                PILOT STATUS: <span style="color:var(--warning);">CADET / GUEST</span>
-            </h2>
-            <div style="font-size:0.8rem; color:var(--text-muted); font-weight:700; margin-bottom:1.25rem;">
-                TRAINING FLIGHT &bull; LOCAL TELEMETRY ONLY
-            </div>
-            <div style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--radius-sm); padding:0.85rem 1rem; margin-bottom:1.5rem; text-align:left; font-family:var(--font-mono); font-size:0.82rem; line-height:1.7;">
-                <div style="display:flex; justify-content:space-between;"><span>INPUT ENGINE:</span><strong style="color:var(--success);">READY</strong></div>
-                <div style="display:flex; justify-content:space-between;"><span>KEYBOARD MATRIX:</span><strong style="color:var(--success);">CALIBRATED</strong></div>
-                <div style="display:flex; justify-content:space-between;"><span>PERSISTENT CLOUD:</span><strong style="color:var(--warning);">UNREGISTERED</strong></div>
-            </div>
-        {% endif %}
-
-        <div id="takeoff-countdown-num" style="font-size:3.5rem; font-family:var(--font-mono); font-weight:900; color:var(--accent); line-height:1; margin-bottom:1.25rem;">
-            3
-        </div>
-
-        <button type="button" onclick="bypassTakeoffSequence()" class="btn btn-sm" style="color:var(--text-muted);">
-            Skip Initialization &rarr;
-        </button>
-    </div>
-</div>
-
-<!-- Contextual Guest Value Ribbon (Promotes registration naturally after achievements) -->
+<!-- Contextual Guest Callout Ribbon -->
 {% if not is_registered_pilot %}
 <div id="guest-conversion-ribbon" class="guest-callout-ribbon" style="display:none;">
     <div class="guest-callout-text">
@@ -294,31 +244,6 @@
 <script src="{{ url_for('static', filename='js/keyboard.js') }}"></script>
 <script src="{{ url_for('static', filename='js/engine.js') }}"></script>
 <script>
-let takeoffTimer = null;
-function startTakeoffCountdown() {
-    let count = 3;
-    const cd = document.getElementById('takeoff-countdown-num');
-    takeoffTimer = setInterval(() => {
-        count--;
-        if (count > 0) {
-            cd.textContent = count;
-        } else if (count === 0) {
-            cd.textContent = "TAKEOFF";
-            cd.style.color = "var(--success)";
-        } else {
-            clearInterval(takeoffTimer);
-            document.getElementById('flight-takeoff-modal').style.display = 'none';
-        }
-    }, 700);
-}
-function bypassTakeoffSequence() {
-    clearInterval(takeoffTimer);
-    document.getElementById('flight-takeoff-modal').style.display = 'none';
-}
-document.addEventListener('DOMContentLoaded', () => {
-    startTakeoffCountdown();
-});
-
 const HINT_DESCRIPTIONS = {
     'easy': 'Easy Tier: High-frequency words, basic syllables, and straightforward sentence structures.',
     'moderate': 'Moderate Tier: Standard English vocabulary, natural punctuation, and realistic sentence pacing.',
