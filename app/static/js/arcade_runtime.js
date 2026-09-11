@@ -1,7 +1,8 @@
 /**
  * TypeSphere Arcade Unified Client Runtime Engine
  * Drives all 11 educational typing games with explicit timers, objectives,
- * auto-centering paragraph scrolling, and distinct visual feedback.
+ * auto-centering paragraph scrolling, dynamic AI competitor simulation,
+ * score recoil penalties on errors, and viewport-centered results transitions.
  */
 class ArcadeRuntimeEngine {
     constructor() {
@@ -32,6 +33,7 @@ class ArcadeRuntimeEngine {
         this.isPaused = false;
         this.contentBatch = [];
         this.remainingSeconds = 60;
+        this.botSimulator = null;
         this.keydownHandler = (e) => this.handleKeystroke(e);
     }
 
@@ -57,6 +59,34 @@ class ArcadeRuntimeEngine {
         this.startTime = performance.now();
         this.lastActionTimestamp = this.startTime;
         this.remainingSeconds = parseInt(this.config.objectiveVal) || 60;
+
+        // Snap viewport directly to top so active workspace is centered
+        window.scrollTo({ top: 0, behavior: 'instant' });
+
+        // Dynamic Pilot AI Simulator
+        const userWpmRef = (this.config.userWpm || 60);
+        if (typeof DynamicPilotAISimulator !== 'undefined') {
+            this.botSimulator = new DynamicPilotAISimulator(this.config.difficulty, userWpmRef);
+        } else if (typeof window.DynamicPilotAISimulator !== 'undefined') {
+            this.botSimulator = new window.DynamicPilotAISimulator(this.config.difficulty, userWpmRef);
+        } else {
+            this.botSimulator = {
+                callsign: 'PILOT AI',
+                currentWpm: 55,
+                progressPct: 0,
+                progressChars: 0,
+                tick: (dt, total) => {
+                    this.botSimulator.progressPct = Math.min(100, this.botSimulator.progressPct + (dt * 3.0));
+                    return {
+                        wpm: 55,
+                        progressPct: this.botSimulator.progressPct,
+                        progressChars: Math.round((this.botSimulator.progressPct / 100) * total),
+                        callsign: 'PILOT AI'
+                    };
+                },
+                reset: () => { this.botSimulator.progressPct = 0; }
+            };
+        }
 
         this.updateHUD(0, 0, 0);
         this.contentBatch = this.getFallbackBatch(config.slug, config.difficulty, config.charMode);
@@ -84,13 +114,8 @@ class ArcadeRuntimeEngine {
         }
     }
 
-    pause() {
-        this.isPaused = true;
-    }
-
-    resume() {
-        this.isPaused = false;
-    }
+    pause() { this.isPaused = true; }
+    resume() { this.isPaused = false; }
 
     getFallbackBatch(slug, diff, charMode) {
         const common = [
@@ -138,7 +163,7 @@ class ArcadeRuntimeEngine {
         }
 
         if (slug === 'keyboard_quest') {
-            return ["asdf", "jkl;", "glad", "flask", "half", "fall", "quiet", "write", "power", "tower", "cabin", "zinc", "calm", "jump"];
+            return ["asdf", "jkl;", "glad", "flask", "half", "fall", "quiet", "write", "power", "tower", "cabin", "zinc", "calm", "jump", "quick", "orbit", "stream", "focus", "clean", "speed"];
         }
 
         return common;
@@ -172,29 +197,67 @@ class ArcadeRuntimeEngine {
 
         this.socket.on('arcade_live_telemetry', (data) => {
             if (this.isPaused) return;
-            const players = data.players || {};
-            const ai = players['ai_bot'];
-            if (ai) {
-                const oppStat = document.getElementById('live-opp-stat');
-                const oppWpm = document.getElementById('live-opp-wpm');
-                if (oppStat) oppStat.textContent = `${Math.round(ai.score)} pts`;
-                if (oppWpm) oppWpm.textContent = `${Math.round(ai.wpm)} WPM`;
+            if (this.config.playMode !== 'solo_ai') {
+                const players = data.players || {};
+                const opp = Object.values(players).find(p => p.sid !== (this.socket ? this.socket.id : ''));
+                if (opp) {
+                    const oppStat = document.getElementById('live-opp-stat');
+                    const oppWpm = document.getElementById('live-opp-wpm');
+                    if (oppStat) oppStat.textContent = `${Math.round(opp.score)} pts`;
+                    if (oppWpm) oppWpm.textContent = `${Math.round(opp.wpm)} WPM`;
 
-                if (this.config.slug === 'speed_racer') {
-                    this.updateSpeedRacerPosition('bot', ai.progress);
-                    if (ai.progress >= 100 && this.isRunning) {
-                        this.finishGame(false, "Opponent crossed the finish line ahead of you!");
+                    if (this.config.slug === 'speed_racer') {
+                        this.updateSpeedRacerPosition('bot', opp.progress);
+                        if (opp.progress >= 100 && this.isRunning) {
+                            this.finishGame(false, `${opp.name || 'Opponent'} crossed the finish line ahead of you!`);
+                        }
                     }
                 }
             }
         });
 
         if (this.config.playMode === 'solo_ai') {
+            const aiTickInterval = 120;
+            const totalChars = (this.config.slug === 'speed_racer') ? (this.targetDistanceMeters * 0.4) : 250;
+
             this.aiLoopTimer = setInterval(() => {
-                if (this.socket && this.isRunning && !this.isPaused) {
-                    this.socket.emit('arcade_ai_tick', { delta: 0.25, total_chars: 280 });
+                if (this.isRunning && !this.isPaused && this.botSimulator) {
+                    const aiTick = this.botSimulator.tick(aiTickInterval / 1000.0, totalChars);
+                    this.renderDynamicAITelemetry(aiTick);
                 }
-            }, 250);
+            }, aiTickInterval);
+        }
+    }
+
+    renderDynamicAITelemetry(aiData) {
+        const oppStat = document.getElementById('live-opp-stat');
+        const oppWpm = document.getElementById('live-opp-wpm');
+        const oppLabel = document.getElementById('live-opp-label');
+
+        if (oppLabel) oppLabel.textContent = aiData.callsign;
+        if (oppStat) oppStat.textContent = `${Math.round(aiData.progressPct * 10)} pts`;
+        if (oppWpm) oppWpm.textContent = `${aiData.wpm} WPM`;
+
+        if (this.config.slug === 'speed_racer') {
+            this.updateSpeedRacerPosition('bot', aiData.progressPct);
+            if (aiData.progressPct >= 100 && this.isRunning) {
+                this.finishGame(false, `${aiData.callsign} crossed the finish line first!`);
+            }
+        }
+
+        if (this.config.slug === 'zombie_duel' && this.isRunning) {
+            if (Math.random() < (aiData.wpm / 1500.0)) {
+                this.playerHP = Math.max(0, this.playerHP - 6);
+                const bar = document.getElementById('duel-player-hp');
+                const lbl = document.getElementById('player-hp-label');
+                if (bar) bar.style.width = `${this.playerHP}%`;
+                if (lbl) lbl.textContent = `${this.playerHP} / 100 HP`;
+
+                if (window.soundEngine) window.soundEngine.playKey(true);
+                if (this.playerHP <= 0) {
+                    this.finishGame(false, `Combat Loss: ${aiData.callsign} overwhelmed your shields!`);
+                }
+            }
         }
     }
 
@@ -232,11 +295,12 @@ class ArcadeRuntimeEngine {
         }
     }
 
-    // 1. SPEED RACER: Auto-Centering Paragraph & Visual Highlights
+    // 1. SPEED RACER
     initSpeedRacer() {
         const isMultiplayer = (this.config.playMode !== 'solo_ai' && this.config.playMode !== 'solo_practice');
         const oppIcon = isMultiplayer ? "🏎️" : "🤖";
-        const oppLabel = isMultiplayer ? "Opponent" : "CyberBot (AI)";
+        const botName = this.botSimulator ? this.botSimulator.callsign : "CyberBot (AI)";
+        const oppLabel = isMultiplayer ? "Opponent" : botName;
 
         this.viewport.innerHTML = `
             <div class="racer-track-surface"></div>
@@ -250,7 +314,7 @@ class ArcadeRuntimeEngine {
             </div>
             <div id="car-bot" class="racer-vehicle-node" style="top:185px; left:25px; ${this.config.playMode === 'solo_practice' ? 'display:none;' : ''}">
                 <div class="racer-vehicle-icon">${oppIcon}</div>
-                <div class="racer-hud-tag" style="border-color:var(--warning); color:var(--warning);">${oppLabel}</div>
+                <div class="racer-hud-tag" id="live-opp-label" style="border-color:var(--warning); color:var(--warning);">${oppLabel}</div>
             </div>
             <div id="racer-text-track" class="arcade-passage-box"></div>
         `;
@@ -303,6 +367,10 @@ class ArcadeRuntimeEngine {
             </div>
         `;
         this.bubbleLives = 3;
+
+        this.spawnCharBubble();
+        this.spawnCharBubble();
+
         this.spawnTimer = setInterval(() => { if (!this.isPaused) this.spawnCharBubble(); }, 1000);
         this.gameLoopTimer = setInterval(() => { if (!this.isPaused) this.tickBubbles(); }, 40);
 
@@ -350,12 +418,13 @@ class ArcadeRuntimeEngine {
 
     // 3. WHACK-A-WORD
     initWhackAWord() {
+        this.whackLives = 5;
         this.viewport.innerHTML = `
-            <div style="display:flex; justify-content:space-between; padding:15px 25px 0;">
-                <span style="font-weight:700; color:var(--text-muted);">Reaction Latency Window</span>
-                <span style="font-family:var(--font-mono); font-weight:800; color:var(--warning);">Time: <span id="whack-clock">${this.remainingSeconds}s</span></span>
+            <div style="display:flex; justify-content:space-between; padding:12px 25px 0; align-items:center;">
+                <div>Hammers: <span id="whack-hammers" style="font-size:1.1rem;">🔨🔨🔨🔨🔨</span></div>
+                <div style="font-family:var(--font-mono); font-weight:800; color:var(--warning);">Time: <span id="whack-clock">${this.remainingSeconds}s</span></div>
             </div>
-            <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:1rem; max-width:620px; margin:20px auto;">
+            <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:1rem; max-width:620px; margin:16px auto;">
                 ${[0,1,2,3,4,5,6,7,8].map(i => `
                     <div id="hole-${i}" style="height:88px; background:var(--bg-card); border:2px solid var(--border-color); border-radius:8px; display:flex; align-items:center; justify-content:center; font-family:var(--font-mono); font-weight:800; font-size:1.15rem; color:var(--text-muted); transition:background 0.15s ease, border-color 0.15s ease;"></div>
                 `).join('')}
@@ -364,7 +433,6 @@ class ArcadeRuntimeEngine {
         this.whackTarget = "";
         this.whackBuffer = "";
         this.currentHole = -1;
-        this.missedHoles = 0;
         this.spawnNextMole();
 
         this.objectiveCountdownTimer = setInterval(() => {
@@ -398,17 +466,20 @@ class ArcadeRuntimeEngine {
 
         const hole = document.getElementById(`hole-${this.currentHole}`);
         if (hole) {
-            hole.innerHTML = `<span class="char untyped" style="color:var(--text-primary);">${this.whackTarget}</span>`;
+            hole.innerHTML = `<span class="char untyped">${this.whackTarget}</span>`;
             hole.style.borderColor = 'var(--accent)';
             hole.style.background = 'var(--bg-card)';
         }
 
-        const windowMs = {'easy': 2400, 'moderate': 1800, 'hard': 1300, 'expert': 950}[this.config.difficulty] || 1800;
+        const windowMs = {'easy': 4200, 'moderate': 3500, 'hard': 3000, 'expert': 2600}[this.config.difficulty] || 3500;
         this.moleWindowTimer = setTimeout(() => {
             if (this.isPaused) return;
-            this.missedHoles++;
+            this.whackLives--;
             this.registerError();
-            if (this.missedHoles >= 5) {
+            const hEl = document.getElementById('whack-hammers');
+            if (hEl) hEl.textContent = "🔨".repeat(Math.max(0, this.whackLives)) || "💥 Defeated";
+
+            if (this.whackLives <= 0) {
                 this.finishGame(false, "Loss: Missed 5 reaction exposure windows.");
             } else {
                 this.spawnNextMole();
@@ -420,7 +491,7 @@ class ArcadeRuntimeEngine {
     initZombieDuel() {
         this.playerHP = 100;
         this.opponentHP = 100;
-        const oppName = (this.config.playMode === 'solo_ai') ? "CyberZombie (AI)" : "Opponent";
+        const oppName = (this.config.playMode === 'solo_ai') ? (this.botSimulator ? this.botSimulator.callsign : "CyberZombie (AI)") : "Opponent";
 
         this.viewport.innerHTML = `
             <div class="duel-combat-arena">
@@ -433,7 +504,7 @@ class ArcadeRuntimeEngine {
                 </div>
                 <div style="font-size:2.2rem; font-weight:900; color:var(--warning);">VS</div>
                 <div class="duel-combatant-card" style="text-align:right;">
-                    <div style="font-size:1.6rem;"><strong style="font-size:1.05rem; color:var(--danger);">${oppName}</strong> 🧟</div>
+                    <div style="font-size:1.6rem;"><strong id="live-opp-label" style="font-size:1.05rem; color:var(--danger);">${oppName}</strong> 🧟</div>
                     <div class="duel-hp-bar-container">
                         <div id="duel-opp-hp" class="duel-hp-fill" style="width:100%; background:var(--danger);"></div>
                     </div>
@@ -442,34 +513,17 @@ class ArcadeRuntimeEngine {
             </div>
             <div style="text-align:center; margin-top:35px;">
                 <div style="font-size:0.85rem; text-transform:uppercase; color:var(--text-muted); font-weight:700;">Cast Combat Spell:</div>
-                <div id="duel-spell-box" style="font-family:var(--font-mono); font-size:2.6rem; font-weight:900; color:var(--text-primary); margin:12px 0;">ATTACK</div>
+                <div id="duel-spell-box" style="font-family:var(--font-mono); font-size:2.6rem; font-weight:900; margin:12px 0;">ATTACK</div>
             </div>
         `;
         this.spawnDuelTarget();
-
-        if (this.config.playMode === 'solo_ai') {
-            const intervalMs = {'easy': 3800, 'moderate': 2800, 'hard': 1900, 'expert': 1300}[this.config.difficulty] || 2800;
-            this.aiLoopTimer = setInterval(() => {
-                if (!this.isRunning || this.isPaused) return;
-                this.playerHP = Math.max(0, this.playerHP - 15);
-                const bar = document.getElementById('duel-player-hp');
-                const lbl = document.getElementById('player-hp-label');
-                if (bar) bar.style.width = `${this.playerHP}%`;
-                if (lbl) lbl.textContent = `${this.playerHP} / 100 HP`;
-
-                if (window.soundEngine) window.soundEngine.playKey(true);
-                if (this.playerHP <= 0) {
-                    this.finishGame(false, "Loss: Your combat barrier collapsed under attack.");
-                }
-            }, intervalMs);
-        }
     }
 
     spawnDuelTarget() {
         this.duelTarget = this.contentBatch[Math.floor(Math.random() * this.contentBatch.length)] || "strike";
         this.duelBuffer = "";
         const box = document.getElementById('duel-spell-box');
-        if (box) box.innerHTML = `<span class="char untyped" style="color:var(--text-primary);">${this.duelTarget}</span>`;
+        if (box) box.innerHTML = `<span class="char untyped">${this.duelTarget}</span>`;
     }
 
     // 5. CIPHER HACKER
@@ -478,16 +532,16 @@ class ArcadeRuntimeEngine {
         this.totalLayers = parseInt(this.config.objectiveVal) || 4;
         this.layerTokens = this.contentBatch[0] || ["0x7FA9", "0xDE4B", "0x91C0"];
         this.tokenIdx = 0;
-        this.lockdownSeconds = 45;
+        this.lockdownSeconds = 60;
 
         this.viewport.innerHTML = `
             <div style="text-align:center; padding-top:25px;">
                 <div style="display:flex; justify-content:space-between; max-width:480px; margin:0 auto 10px;">
                     <div class="cipher-layer-badge" id="cipher-layer-title">SECURITY LAYER 1 / ${this.totalLayers}</div>
-                    <span style="font-family:var(--font-mono); font-weight:800; color:var(--danger);">Lockdown: <span id="cipher-lockdown-clk">45s</span></span>
+                    <span style="font-family:var(--font-mono); font-weight:800; color:var(--danger);">Lockdown: <span id="cipher-lockdown-clk">60s</span></span>
                 </div>
                 <div class="cipher-terminal-window" style="max-width:480px; margin:0 auto 1.5rem;">
-                    <div id="cipher-target-token" style="font-size:2.5rem; font-weight:900; color:#10b981; word-break:break-all;">...</div>
+                    <div id="cipher-target-token" style="font-size:2.5rem; font-weight:900; word-break:break-all;">...</div>
                 </div>
                 <div style="color:var(--text-muted); font-size:0.85rem;">Decrypt all sequential tokens to breach security clearance.</div>
             </div>
@@ -509,27 +563,35 @@ class ArcadeRuntimeEngine {
         this.cipherTarget = this.layerTokens[this.tokenIdx % this.layerTokens.length] || "0x7FA9";
         this.cipherBuffer = "";
         const el = document.getElementById('cipher-target-token');
-        if (el) el.innerHTML = `<span class="char untyped" style="color:#10b981;">${this.cipherTarget}</span>`;
+        if (el) el.innerHTML = `<span class="char untyped">${this.cipherTarget}</span>`;
     }
 
-    // 6. FALLING WORDS (Randomized Positions across Viewport)
+    // 6. FALLING WORDS
     initFallingWords() {
-        this.currentWave = 1;
-        this.maxWaves = 5;
-        this.wordsClearedInWave = 0;
-        this.waveQuota = 4;
         this.lives = 3;
-
         this.viewport.innerHTML = `
             <div style="display:flex; justify-content:space-between; padding:12px 25px 0;">
-                <span style="font-weight:700; color:var(--accent);">WAVE <span id="fw-wave-num">1</span> / ${this.maxWaves}</span>
+                <span style="font-weight:700; color:var(--accent);">Flight Clock: <span id="fw-clock">${this.remainingSeconds}s</span></span>
                 <span style="font-family:var(--font-mono); font-weight:800; color:var(--danger);">Lives: <span id="fw-lives-num">❤️❤️❤️</span></span>
             </div>
             <div class="danger-laser-line"></div>
         `;
 
+        this.spawnFallingNode();
+        this.spawnFallingNode();
+
         this.spawnTimer = setInterval(() => { if (!this.isPaused) this.spawnFallingNode(); }, 1800);
         this.gameLoopTimer = setInterval(() => { if (!this.isPaused) this.tickFallingNodes(); }, 40);
+
+        this.objectiveCountdownTimer = setInterval(() => {
+            if (this.isPaused) return;
+            this.remainingSeconds--;
+            const clk = document.getElementById('fw-clock');
+            if (clk) clk.textContent = `${this.remainingSeconds}s`;
+            if (this.remainingSeconds <= 0) {
+                this.finishGame(true, `Victory! Survived orbital descent with ${this.score} pts!`);
+            }
+        }, 1000);
     }
 
     spawnFallingNode() {
@@ -539,14 +601,13 @@ class ArcadeRuntimeEngine {
         el.className = 'falling-meteor-word';
         el.innerHTML = `<span class="char untyped">${word}</span>`;
 
-        // Calculate random X position across available viewport width
         const availableWidth = Math.max(100, this.viewport.clientWidth - 160);
         const randomX = Math.floor(Math.random() * availableWidth) + 20;
 
         el.style.left = `${randomX}px`;
         el.style.top = '0px';
         this.viewport.appendChild(el);
-        this.entities.push({ el, word, typed: '', y: 0, speed: 1.1 + (this.currentWave * 0.25) });
+        this.entities.push({ el, word, typed: '', y: 0, speed: 1.1 + Math.random() * 0.5 });
     }
 
     tickFallingNodes() {
@@ -571,22 +632,31 @@ class ArcadeRuntimeEngine {
         }
     }
 
-    // 7. ZOMBIE DEFENSE (Multi-Lane Horizontal March)
+    // 7. ZOMBIE DEFENSE
     initZombieDefense() {
         this.baseHP = 100;
-        this.currentWave = 1;
-        this.maxWaves = 4;
-        this.zombiesDefeated = 0;
-
         this.viewport.innerHTML = `
             <div style="position:absolute; right:35px; top:0; bottom:0; width:6px; background:var(--accent); opacity:0.75; box-shadow:0 0 12px var(--accent);"></div>
             <div style="display:flex; justify-content:space-between; padding:12px 25px 0; width:calc(100% - 50px);">
-                <span style="font-weight:700; color:var(--accent);">WAVE <span id="zd-wave">1</span> / ${this.maxWaves}</span>
+                <span style="font-weight:700; color:var(--accent);">Time: <span id="zd-clock">${this.remainingSeconds}s</span></span>
                 <span style="font-family:var(--font-mono); font-weight:800; color:var(--warning);">Base Barrier: <span id="defense-hp">100%</span></span>
             </div>
         `;
+
+        this.spawnZombieDefenseUnit();
+
         this.spawnTimer = setInterval(() => { if (!this.isPaused) this.spawnZombieDefenseUnit(); }, 2100);
         this.gameLoopTimer = setInterval(() => { if (!this.isPaused) this.tickZombieDefense(); }, 45);
+
+        this.objectiveCountdownTimer = setInterval(() => {
+            if (this.isPaused) return;
+            this.remainingSeconds--;
+            const clk = document.getElementById('zd-clock');
+            if (clk) clk.textContent = `${this.remainingSeconds}s`;
+            if (this.remainingSeconds <= 0) {
+                this.finishGame(true, `Victory! Perimeter held successfully with ${this.score} pts!`);
+            }
+        }, 1000);
     }
 
     spawnZombieDefenseUnit() {
@@ -596,9 +666,8 @@ class ArcadeRuntimeEngine {
         el.className = 'zombie-walker-unit';
         el.innerHTML = `🧟 <span class="char untyped">${word}</span>`;
 
-        // Distribute across 4 vertical lanes
         const lane = Math.floor(Math.random() * 4);
-        const yPos = 50 + (lane * 65);
+        const yPos = 45 + (lane * 62);
 
         el.style.left = '0px';
         el.style.top = `${yPos}px`;
@@ -629,18 +698,28 @@ class ArcadeRuntimeEngine {
     // 8. SPACE DEFENDER
     initSpaceDefender() {
         this.shields = 100;
-        this.asteroidsDestroyed = 0;
-        this.targetDestroyQuota = 15;
-
         this.viewport.innerHTML = `
             <div style="position:absolute; left:50%; top:50%; transform:translate(-50%, -50%); font-size:3rem;">🚀</div>
             <div style="display:flex; justify-content:space-between; padding:12px 25px 0;">
-                <span style="font-weight:700; color:var(--accent);">Targets: <span id="sd-quota">0</span> / ${this.targetDestroyQuota}</span>
+                <span style="font-weight:700; color:var(--accent);">Flight Clock: <span id="sd-clock">${this.remainingSeconds}s</span></span>
                 <span style="font-family:var(--font-mono); font-weight:800; color:var(--success);">Shields: <span id="sd-shields">100%</span></span>
             </div>
         `;
+
+        this.spawnAsteroidUnit();
+
         this.spawnTimer = setInterval(() => { if (!this.isPaused) this.spawnAsteroidUnit(); }, 2000);
         this.gameLoopTimer = setInterval(() => { if (!this.isPaused) this.tickAsteroids(); }, 40);
+
+        this.objectiveCountdownTimer = setInterval(() => {
+            if (this.isPaused) return;
+            this.remainingSeconds--;
+            const clk = document.getElementById('sd-clock');
+            if (clk) clk.textContent = `${this.remainingSeconds}s`;
+            if (this.remainingSeconds <= 0) {
+                this.finishGame(true, `Victory! Defended starship through orbital sector!`);
+            }
+        }, 1000);
     }
 
     spawnAsteroidUnit() {
@@ -696,7 +775,7 @@ class ArcadeRuntimeEngine {
                 <div style="font-size:2.8rem; margin-bottom:0.2rem;">💣</div>
                 <div style="font-weight:700; color:var(--text-muted); margin-bottom:0.4rem;">STAGE <span id="bomb-stg">1</span> / ${this.maxStages}</div>
                 <div id="bomb-digital-clock" class="bomb-timer-display" style="font-size:3rem; font-family:var(--font-mono); font-weight:800; color:var(--danger);">00:40</div>
-                <div id="bomb-code-box" style="margin:20px auto; max-width:440px; background:var(--bg-card); border:2px solid var(--accent); border-radius:8px; padding:1.25rem; font-family:var(--font-mono); font-size:1.8rem; letter-spacing:0.15em;">
+                <div id="bomb-code-box" style="margin:20px auto; max-width:440px; background:var(--bg-card); border:2px solid var(--accent); border-radius:8px; padding:1.25rem; font-family:var(--font-mono); font-size:1.8rem; letter-spacing:0.12em;">
                     INIT...
                 </div>
             </div>
@@ -717,23 +796,34 @@ class ArcadeRuntimeEngine {
         this.bombTarget = this.contentBatch[this.bombStage % this.contentBatch.length] || "ALPHA7";
         this.bombBuffer = "";
         const box = document.getElementById('bomb-code-box');
-        if (box) box.innerHTML = `<span class="char untyped" style="color:var(--text-primary);">${this.bombTarget}</span>`;
+        if (box) box.innerHTML = `<span class="char untyped">${this.bombTarget}</span>`;
     }
 
     // 10. TYPING NINJA
     initTypingNinja() {
-        this.ninjaStrikes = 0;
-        this.ninjaTargetQuota = 15;
         this.ninjaMisses = 0;
 
         this.viewport.innerHTML = `
             <div style="display:flex; justify-content:space-between; padding:12px 25px 0;">
-                <span style="font-weight:700; color:var(--accent);">Sliced: <span id="ninja-q">0</span> / ${this.ninjaTargetQuota}</span>
+                <span style="font-weight:700; color:var(--accent);">Flight Clock: <span id="ninja-clk">${this.remainingSeconds}s</span></span>
                 <span style="font-family:var(--font-mono); font-weight:800; color:var(--warning);">Misses: <span id="ninja-m">0</span> / 3</span>
             </div>
         `;
+
+        this.spawnNinjaTarget();
+
         this.spawnTimer = setInterval(() => { if (!this.isPaused) this.spawnNinjaTarget(); }, 1900);
         this.gameLoopTimer = setInterval(() => { if (!this.isPaused) this.tickNinjaTargets(); }, 40);
+
+        this.objectiveCountdownTimer = setInterval(() => {
+            if (this.isPaused) return;
+            this.remainingSeconds--;
+            const clk = document.getElementById('ninja-clk');
+            if (clk) clk.textContent = `${this.remainingSeconds}s`;
+            if (this.remainingSeconds <= 0) {
+                this.finishGame(true, `Victory! Completed slice run with ${this.score} pts!`);
+            }
+        }, 1000);
     }
 
     spawnNinjaTarget() {
@@ -766,7 +856,8 @@ class ArcadeRuntimeEngine {
                 if (this.activeTarget === n) this.activeTarget = null;
                 this.ninjaMisses++;
                 const mEl = document.getElementById('ninja-m');
-                if (mEl) mEl.textContent = `${this.ninjaMisses} / 3`;
+                if (mEl) mEl.textContent = this.ninjaMisses;
+
                 if (this.ninjaMisses >= 3) {
                     this.finishGame(false, "Loss: Allowed 3 targets to drop unsliced.");
                     break;
@@ -779,11 +870,10 @@ class ArcadeRuntimeEngine {
     initMemoryType() {
         this.memoryIndex = 0;
         this.memoryStrikes = 0;
-        this.memoryTotalRounds = parseInt(this.config.objectiveVal) || 5;
 
         this.viewport.innerHTML = `
             <div style="display:flex; justify-content:space-between; padding:12px 25px 0;">
-                <span style="font-weight:700; color:var(--accent);">Round: <span id="mem-rnd">1</span> / ${this.memoryTotalRounds}</span>
+                <span style="font-weight:700; color:var(--accent);">Time: <span id="mem-clk">${this.remainingSeconds}s</span></span>
                 <span style="font-family:var(--font-mono); font-weight:800; color:var(--danger);">Strikes: <span id="mem-str">0</span> / 3</span>
             </div>
             <div style="text-align:center; padding-top:35px;">
@@ -795,6 +885,16 @@ class ArcadeRuntimeEngine {
             </div>
         `;
         setTimeout(() => this.flashMemoryTarget(), 700);
+
+        this.objectiveCountdownTimer = setInterval(() => {
+            if (this.isPaused) return;
+            this.remainingSeconds--;
+            const clk = document.getElementById('mem-clk');
+            if (clk) clk.textContent = `${this.remainingSeconds}s`;
+            if (this.remainingSeconds <= 0) {
+                this.finishGame(true, `Victory! Memory recall endurance mastered with ${this.score} pts!`);
+            }
+        }, 1000);
     }
 
     flashMemoryTarget() {
@@ -820,32 +920,40 @@ class ArcadeRuntimeEngine {
     // 12. KEYBOARD QUEST
     initKeyboardQuest() {
         this.questIndex = 0;
-        this.questTotalStages = 5;
-
         this.viewport.innerHTML = `
             <div style="display:flex; justify-content:space-between; padding:12px 25px 0;">
-                <span style="font-weight:700; color:var(--accent);">QUEST PROGRESS</span>
-                <span style="font-family:var(--font-mono); font-weight:800; color:var(--warning);">Stage <span id="kq-stg">1</span> / ${this.questTotalStages}</span>
+                <span style="font-weight:700; color:var(--accent);">Ergonomic Row Stream</span>
+                <span style="font-family:var(--font-mono); font-weight:800; color:var(--warning);">Time: <span id="kq-clock">${this.remainingSeconds}s</span></span>
             </div>
-            <div style="text-align:center; padding-top:40px;">
-                <div id="quest-target-box" style="margin:25px auto; max-width:440px; background:var(--bg-card); border:2px solid var(--accent); border-radius:8px; padding:1.75rem; font-family:var(--font-mono); font-size:2.2rem; font-weight:800;">
+            <div style="text-align:center; padding-top:35px;">
+                <div id="quest-target-box" style="margin:20px auto; max-width:440px; background:var(--bg-card); border:2px solid var(--accent); border-radius:8px; padding:1.5rem; font-family:var(--font-mono); font-size:2.2rem; font-weight:800;">
                     ...
                 </div>
                 <div style="font-size:0.85rem; color:var(--text-muted);">Anchor palms on home-row. Execute cleanly.</div>
             </div>
         `;
         this.loadNextQuestTarget();
+
+        this.objectiveCountdownTimer = setInterval(() => {
+            if (this.isPaused) return;
+            this.remainingSeconds--;
+            const clk = document.getElementById('kq-clock');
+            if (clk) clk.textContent = `${this.remainingSeconds}s`;
+            if (this.remainingSeconds <= 0) {
+                this.finishGame(true, `Victory! Completed ergonomic sequence stream with ${this.score} pts!`);
+            }
+        }, 1000);
     }
 
     loadNextQuestTarget() {
         this.questTarget = this.contentBatch[this.questIndex % this.contentBatch.length] || "asdf";
         this.questBuffer = "";
         const box = document.getElementById('quest-target-box');
-        if (box) box.innerHTML = `<span class="char untyped" style="color:var(--text-primary);">${this.questTarget}</span>`;
+        if (box) box.innerHTML = `<span class="char untyped">${this.questTarget}</span>`;
     }
 
     // ==========================================================
-    // KEYSTROKE DISPATCHER & VISUAL HIGHLIGHTING
+    // KEYSTROKE DISPATCHER
     // ==========================================================
     handleKeystroke(e) {
         if (!this.isRunning || this.isPaused) return;
@@ -888,7 +996,6 @@ class ArcadeRuntimeEngine {
                 this.registerError();
             }
 
-            // Mark next active character
             if (this.racerIdx < spans.length) {
                 spans[this.racerIdx].className = 'char current';
                 this.scrollRacerTextToActive(spans[this.racerIdx]);
@@ -1053,19 +1160,13 @@ class ArcadeRuntimeEngine {
                 this.registerHit(20);
                 if (this.memoryBuffer === this.memoryTarget) {
                     this.memoryIndex++;
-                    if (this.memoryIndex >= this.memoryTotalRounds) {
-                        this.finishGame(true, "Victory! Mastered all memory recall rounds!");
-                        return;
-                    }
-                    const rndEl = document.getElementById('mem-rnd');
-                    if (rndEl) rndEl.textContent = this.memoryIndex + 1;
                     this.flashMemoryTarget();
                 }
                 this.syncProgressToServer(0, liveNetWpm);
             } else {
                 this.memoryStrikes++;
                 const strEl = document.getElementById('mem-str');
-                if (strEl) strEl.textContent = `${this.memoryStrikes} / 3`;
+                if (strEl) strEl.textContent = this.memoryStrikes;
                 this.registerError();
                 if (this.memoryStrikes >= 3) {
                     this.finishGame(false, "Loss: 3 sequence recall strikes reached.");
@@ -1089,12 +1190,6 @@ class ArcadeRuntimeEngine {
 
                 if (this.questBuffer === this.questTarget) {
                     this.questIndex++;
-                    if (this.questIndex >= this.questTotalStages) {
-                        this.finishGame(true, "Victory! All ergonomic keyboard milestones cleared!");
-                        return;
-                    }
-                    const stgEl = document.getElementById('kq-stg');
-                    if (stgEl) stgEl.textContent = this.questIndex + 1;
                     this.loadNextQuestTarget();
                 }
                 this.syncProgressToServer(0, liveNetWpm);
@@ -1118,7 +1213,6 @@ class ArcadeRuntimeEngine {
                     this.activeTarget.el.remove();
                     this.entities.splice(this.entities.indexOf(this.activeTarget), 1);
                     this.activeTarget = null;
-                    this.handleTargetElimination(liveNetWpm);
                 }
                 this.syncProgressToServer(0, liveNetWpm);
                 return;
@@ -1146,47 +1240,6 @@ class ArcadeRuntimeEngine {
         entity.el.innerHTML = `${prefix}<span class="char correct">${typedPart}</span><span class="char untyped">${remaining}</span>`;
     }
 
-    handleTargetElimination(liveWpm) {
-        if (this.config.slug === 'falling_words') {
-            this.wordsClearedInWave++;
-            if (this.wordsClearedInWave >= this.waveQuota) {
-                this.currentWave++;
-                this.wordsClearedInWave = 0;
-                if (this.currentWave > this.maxWaves) {
-                    this.finishGame(true, "Victory! All 5 descending word waves survived!");
-                    return;
-                }
-                const wEl = document.getElementById('fw-wave-num');
-                if (wEl) wEl.textContent = this.currentWave;
-            }
-        } else if (this.config.slug === 'space_defender') {
-            this.asteroidsDestroyed++;
-            const qEl = document.getElementById('sd-quota');
-            if (qEl) qEl.textContent = this.asteroidsDestroyed;
-            if (this.asteroidsDestroyed >= this.targetDestroyQuota) {
-                this.finishGame(true, "Victory! Orbital sector cleared of all incoming debris!");
-            }
-        } else if (this.config.slug === 'typing_ninja') {
-            this.ninjaStrikes++;
-            const nqEl = document.getElementById('ninja-q');
-            if (nqEl) nqEl.textContent = this.ninjaStrikes;
-            if (this.ninjaStrikes >= this.ninjaTargetQuota) {
-                this.finishGame(true, "Victory! Flawless airborne slicing quota achieved!");
-            }
-        } else if (this.config.slug === 'zombie_defense') {
-            this.zombiesDefeated++;
-            if (this.zombiesDefeated % 4 === 0) {
-                this.currentWave++;
-                if (this.currentWave > this.maxWaves) {
-                    this.finishGame(true, "Victory! Base defended successfully across all waves!");
-                    return;
-                }
-                const zdEl = document.getElementById('zd-wave');
-                if (zdEl) zdEl.textContent = this.currentWave;
-            }
-        }
-    }
-
     registerHit(pts) {
         this.combo++;
         if (this.combo > this.maxCombo) this.maxCombo = this.combo;
@@ -1203,6 +1256,7 @@ class ArcadeRuntimeEngine {
     registerError() {
         this.combo = 0;
         this.errors++;
+        this.score = Math.max(0, this.score - 15); // Score recoil penalty
 
         if (window.soundEngine) window.soundEngine.playKey(true);
 
@@ -1233,6 +1287,9 @@ class ArcadeRuntimeEngine {
         const resultsEl = document.getElementById('game-results-screen');
         if (arenaEl) arenaEl.style.display = 'none';
         if (resultsEl) resultsEl.style.display = 'block';
+
+        // Snap window immediately to top so the results card is centered (Image 2 Fix)
+        window.scrollTo({ top: 0, behavior: 'instant' });
 
         const badge = document.getElementById('res-outcome-badge');
         const trophy = document.getElementById('res-trophy-symbol');

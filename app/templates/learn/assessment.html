@@ -1,85 +1,75 @@
 {% extends 'base.html' %}
 {% block title %}Skill Placement Assessment | TypeSphere Academy{% endblock %}
 {% block content %}
-<div class="card" style="max-width: 920px; margin: 0 auto;">
-    <!-- Header -->
-    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+<div class="card" style="max-width: 920px; margin: 0 auto; padding: 1.25rem;">
+    <!-- Compact Header -->
+    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:0.75rem; margin-bottom:1rem; flex-wrap:wrap; gap:0.5rem;">
         <div>
-            <div style="display: flex; align-items: center; gap: 0.6rem;">
-                <h1 style="font-size: 1.75rem; font-weight: 800; margin: 0;">Academy Placement Benchmark</h1>
-                <span style="font-size: 0.75rem; font-weight: 800; background: var(--accent-glow); color: var(--accent); padding: 0.2rem 0.6rem; border-radius: 4px; text-transform: uppercase;">
-                    60-Second Diagnostic
+            <div style="display:flex; align-items:center; gap:0.5rem;">
+                <h1 style="font-size:1.45rem; font-weight:800; margin:0;">Academy Placement Benchmark</h1>
+                <span style="font-size:0.7rem; font-weight:800; background:var(--accent-glow); color:var(--accent); padding:0.15rem 0.5rem; border-radius:4px; text-transform:uppercase;">
+                    60s Diagnostic
                 </span>
             </div>
-            <p style="color: var(--text-secondary); font-size: 0.88rem; margin-top: 0.35rem;">
-                Type naturally for 60 seconds. Our telemetry engine evaluates your baseline velocity and precision to place you into your optimal curriculum track.
+            <p style="color:var(--text-secondary); font-size:0.8rem; margin-top:0.2rem;">
+                Type naturally for 60 seconds to determine your optimal learning track.
             </p>
         </div>
         <a href="{{ url_for('learn.index') }}" class="btn btn-sm">&larr; Return to Academy</a>
     </div>
 
-    <!-- Live Telemetry HUD -->
-    <div class="stats-hud" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 1.5rem;">
-        <div class="stat-box">
+    <!-- Compact Telemetry HUD -->
+    <div class="stats-hud" style="grid-template-columns:repeat(4, 1fr); margin-bottom:0.85rem;">
+        <div class="stat-box" style="padding:0.5rem;">
             <div class="stat-label">Net WPM</div>
-            <div class="stat-value" id="assess-hud-wpm" style="color: var(--accent);">0</div>
+            <div class="stat-value" id="assess-hud-wpm" style="color:var(--accent); font-size:1.4rem;">0</div>
         </div>
-        <div class="stat-box">
+        <div class="stat-box" style="padding:0.5rem;">
             <div class="stat-label">Accuracy</div>
-            <div class="stat-value" id="assess-hud-acc" style="color: var(--success);">100%</div>
+            <div class="stat-value" id="assess-hud-acc" style="color:var(--success); font-size:1.4rem;">100%</div>
         </div>
-        <div class="stat-box">
+        <div class="stat-box" style="padding:0.5rem;">
             <div class="stat-label">Errors</div>
-            <div class="stat-value" id="assess-hud-err" style="color: var(--danger);">0</div>
+            <div class="stat-value" id="assess-hud-err" style="color:var(--danger); font-size:1.4rem;">0</div>
         </div>
-        <div class="stat-box">
+        <div class="stat-box" style="padding:0.5rem;">
             <div class="stat-label">Time Remaining</div>
-            <div class="stat-value" id="assess-hud-time" style="color: var(--warning);">60s</div>
+            <div class="stat-value" id="assess-hud-time" style="color:var(--warning); font-size:1.4rem;">60s</div>
         </div>
     </div>
 
-    <!-- Active Assessment Typing Area -->
+    <!-- Active Assessment Typing Area (Point 9: 100% in viewport) -->
     <div id="assess-typing-area">
-        <div id="assess-text-container" class="typing-container focus-ring" style="min-height: 160px; max-height: 220px; overflow-y: auto; scroll-behavior: smooth; position: relative; margin-bottom: 1rem;" onclick="document.getElementById('assess-input').focus()">
+        <div id="assess-text-container" class="typing-container focus-ring" style="min-height:105px; max-height:135px; overflow-y:hidden; scroll-behavior:smooth; position:relative; margin-bottom:0.75rem; padding:1rem 1.25rem;" onclick="document.getElementById('assess-input').focus()">
             <div id="assess-caret" class="caret caret-smooth"></div>
-            <div id="assess-passage-display" class="typing-text-display"></div>
+            <div id="assess-passage-display" class="typing-text-display" style="font-size:1.15rem; line-height:1.8;"></div>
         </div>
 
-        <input type="text" id="assess-input" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Start typing the passage above to trigger the 60-second assessment timer..." style="width: 100%; padding: 0.95rem 1.15rem; background: var(--bg-card); border: 2px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary); font-family: var(--font-mono); font-size: 1.1rem; outline: none; transition: border-color var(--transition-fast);">
-        <div style="text-align: center; margin-top: 0.5rem; font-size: 0.8rem; color: var(--text-muted);">
+        <input type="text" id="assess-input" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Start typing the passage above to trigger the 60-second assessment timer..." style="width:100%; padding:0.75rem 1rem; background:var(--bg-card); border:1.5px solid var(--border-color); border-radius:var(--radius-sm); color:var(--text-primary); font-family:var(--font-mono); font-size:1rem; outline:none; transition:border-color var(--transition-fast);">
+        <div style="text-align:center; margin-top:0.35rem; font-size:0.76rem; color:var(--text-muted);">
             Tip: Maintain smooth, steady cadence. Do not rush at the expense of accuracy.
         </div>
     </div>
 
-    <!-- Placement Recommendation Modal / Results Card -->
-    <div id="assess-results-card" style="display: none; padding: 1.5rem; background: var(--bg-card); border: 2px solid var(--accent); border-radius: var(--radius); text-align: center;">
-        <div id="assess-badge-icon" style="font-size: 3.5rem; margin-bottom: 0.5rem;">🎯</div>
-        <h2 id="assess-track-title" style="font-size: 1.8rem; font-weight: 800; color: var(--accent); margin-bottom: 0.25rem;">Recommended Track: Intermediate</h2>
-        <p id="assess-track-reason" style="color: var(--text-secondary); font-size: 0.95rem; max-width: 600px; margin: 0 auto 1.5rem; line-height: 1.5;">
+    <!-- Results Modal Card -->
+    <div id="assess-results-card" style="display:none; padding:1.5rem; background:var(--bg-card); border:2px solid var(--accent); border-radius:var(--radius); text-align:center;">
+        <div id="assess-badge-icon" style="font-size:3rem; margin-bottom:0.4rem;">🎯</div>
+        <h2 id="assess-track-title" style="font-size:1.5rem; font-weight:800; color:var(--accent); margin-bottom:0.25rem;">Recommended Track: Intermediate</h2>
+        <p id="assess-track-reason" style="color:var(--text-secondary); font-size:0.88rem; max-width:600px; margin:0 auto 1.25rem; line-height:1.5;">
             Based on your 60-second diagnostic run, your foundation is solid and ready for core speed building.
         </p>
 
-        <!-- Stat Breakdown -->
-        <div class="stats-hud" style="grid-template-columns: repeat(3, 1fr); max-width: 520px; margin: 0 auto 1.75rem;">
-            <div class="stat-box">
-                <div class="stat-label">Placement Speed</div>
-                <div class="stat-value" id="res-final-wpm" style="color: var(--accent);">0 WPM</div>
-            </div>
-            <div class="stat-box">
-                <div class="stat-label">Final Accuracy</div>
-                <div class="stat-value" id="res-final-acc">100%</div>
-            </div>
-            <div class="stat-box">
-                <div class="stat-label">Total Errors</div>
-                <div class="stat-value" id="res-final-err" style="color: var(--danger);">0</div>
-            </div>
+        <div class="stats-hud" style="grid-template-columns:repeat(3, 1fr); max-width:480px; margin:0 auto 1.5rem;">
+            <div class="stat-box"><div class="stat-label">Placement Speed</div><div class="stat-value" id="res-final-wpm" style="color:var(--accent);">0 WPM</div></div>
+            <div class="stat-box"><div class="stat-label">Final Accuracy</div><div class="stat-value" id="res-final-acc">100%</div></div>
+            <div class="stat-box"><div class="stat-label">Total Errors</div><div class="stat-value" id="res-final-err" style="color:var(--danger);">0</div></div>
         </div>
 
-        <div style="display: flex; justify-content: center; gap: 0.75rem; flex-wrap: wrap;">
-            <a id="btn-enter-track" href="{{ url_for('learn.index') }}" class="btn btn-primary" style="padding: 0.75rem 2rem; font-weight: 800; font-size: 1rem;">
+        <div style="display:flex; justify-content:center; gap:0.75rem; flex-wrap:wrap;">
+            <a id="btn-enter-track" href="{{ url_for('learn.index') }}" class="btn btn-primary" style="padding:0.65rem 1.75rem; font-weight:800;">
                 Enter Recommended Track &rarr;
             </a>
-            <button onclick="restartAssessment()" class="btn" style="padding: 0.75rem 1.5rem;">
+            <button onclick="restartAssessment()" class="btn" style="padding:0.65rem 1.25rem;">
                 🔄 Retake Benchmark
             </button>
         </div>
@@ -157,16 +147,16 @@ function updateAssessmentCaret() {
         const target = spans[currentIndex];
         caret.style.display = 'block';
         caret.style.left = `${target.offsetLeft}px`;
-        caret.style.top = `${target.offsetTop + 4}px`;
+        caret.style.top = `${target.offsetTop + 3}px`;
 
-        const targetMid = target.offsetTop - (box.clientHeight / 2) + 25;
-        if (Math.abs(box.scrollTop - targetMid) > 20) {
+        const targetMid = target.offsetTop - (box.clientHeight / 2) + 16;
+        if (Math.abs(box.scrollTop - targetMid) > 16) {
             box.scrollTo({ top: Math.max(0, targetMid), behavior: 'smooth' });
         }
     } else if (spans.length > 0) {
         const last = spans[spans.length - 1];
         caret.style.left = `${last.offsetLeft + last.offsetWidth}px`;
-        caret.style.top = `${last.offsetTop + 4}px`;
+        caret.style.top = `${last.offsetTop + 3}px`;
     }
 }
 
@@ -203,14 +193,12 @@ function handleAssessmentInput(e) {
     correctChars = corrects;
     updateAssessmentCaret();
 
-    // Audio feedback
     if (val.length > 0 && window.soundEngine) {
         const lastChar = val[val.length - 1];
         const isLastCorrect = (val.length <= assessmentText.length) && (lastChar === assessmentText[val.length - 1]);
         window.soundEngine.playKey(!isLastCorrect);
     }
 
-    // Live telemetry calculations
     const elapsedMinutes = (performance.now() - startTime) / 60000;
     const netWords = Math.max(0, (correctChars / 5.0));
     const liveWpm = elapsedMinutes > 0 ? Math.round(netWords / elapsedMinutes) : 0;
@@ -220,7 +208,6 @@ function handleAssessmentInput(e) {
     document.getElementById('assess-hud-acc').textContent = `${liveAcc}%`;
     document.getElementById('assess-hud-err').textContent = errorsCount;
 
-    // Passage exhausted: append next loop segment so user never stops before 60s
     if (currentIndex >= assessmentText.length) {
         assessmentText += " " + ASSESSMENT_PASSAGES[Math.floor(Math.random() * ASSESSMENT_PASSAGES.length)];
         renderAssessmentPassage();
@@ -248,7 +235,6 @@ function finishAssessment() {
     const finalWpm = elapsedMinutes > 0 ? Math.round((correctChars / 5.0) / elapsedMinutes) : 0;
     const finalAcc = currentIndex > 0 ? Math.round((correctChars / currentIndex) * 100) : 100;
 
-    // Track Recommendation Decision Matrix
     let recommendedTrack = 'beginner';
     let trackTitle = "Beginner Track (0–40 WPM)";
     let trackReason = "We recommend starting with Home Row ergonomics, resting finger anchors, and posture calibration to build an unshakeable foundation.";
@@ -283,7 +269,7 @@ function finishAssessment() {
     document.getElementById('res-final-err').textContent = errorsCount;
 
     const trackBtn = document.getElementById('btn-enter-track');
-    trackBtn.href = `{{ url_for('learn.index') }}?track=${recommendedTrack}`;
+    trackBtn.href = `{{ url_for('learn.index') }}?track=${recommendedTrack}#track-stages`;
     trackBtn.textContent = `Enter ${recommendedTrack.charAt(0).toUpperCase() + recommendedTrack.slice(1)} Track →`;
 }
 

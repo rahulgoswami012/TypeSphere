@@ -1,86 +1,74 @@
 {% extends 'base.html' %}
-{% block title %}Competitive Flight Arenas & Challenges | TypeSphere{% endblock %}
+{% block title %}Tactical Mission Operations Hub | TypeSphere{% endblock %}
 {% block content %}
-<div class="card" style="max-width: 1060px; margin: 0 auto; padding: 2rem;">
-    <!-- Challenges Header -->
-    <div style="border-bottom:1px solid var(--border-color); padding-bottom:1.5rem; margin-bottom:2rem;">
-        <div style="display:flex; align-items:center; gap:0.65rem; margin-bottom:0.4rem;">
-            <span style="font-size:2.2rem;">🔥</span>
-            <div>
-                <h1 style="font-size:1.85rem; font-weight:800; margin:0;">Competitive Flight Arenas</h1>
-                <span style="font-size:0.78rem; font-weight:800; color:var(--accent); text-transform:uppercase; letter-spacing:0.06em;">Specialized Pressure Benchmarks</span>
+<div class="card" style="max-width: 1140px; margin: 0 auto; padding: 1.5rem;">
+    <!-- Mission Hub Header -->
+    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:1.25rem; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
+        <div>
+            <div style="display:flex; align-items:center; gap:0.65rem;">
+                <span style="font-size:2rem;">🔥</span>
+                <div>
+                    <h1 style="font-size:1.75rem; font-weight:800; margin:0;">Mission Control Operations</h1>
+                    <span style="font-size:0.75rem; font-weight:800; color:var(--accent); text-transform:uppercase; letter-spacing:0.06em;">Specialized Tactical Briefings</span>
+                </div>
             </div>
+            <p style="color:var(--text-secondary); font-size:0.88rem; margin-top:0.35rem; line-height:1.55;">
+                Engineered flight disciplines testing biometric accuracy, sudden-death reactor containment, supersonic velocity, and civil examination standards.
+            </p>
         </div>
-        <p style="color:var(--text-secondary); font-size:0.92rem; line-height:1.6; margin-top:0.4rem;">
-            Engineered disciplines to test biometric precision, survival stamina, and real-time cognitive stress resistance beyond standard timed runs.
-        </p>
+        <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+            <a href="{{ url_for('challenges.daily') }}" class="btn btn-sm" style="border-color:var(--accent); color:var(--accent); font-weight:700;">
+                🛰️ Daily 24H Standings
+            </a>
+            <a href="{{ url_for('typing.test_page') }}" class="btn btn-sm">&larr; Free Benchmark</a>
+        </div>
     </div>
 
-    <!-- Arena Cards Grid -->
-    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(290px, 1fr)); gap:1.75rem;">
-        <!-- 1. Daily 24H Synchronized Challenge -->
-        <div class="card" style="background:var(--bg-card); border:1.5px solid var(--accent); margin-bottom:0; display:flex; flex-direction:column; justify-content:space-between;">
-            <div>
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
-                    <h3 style="color:var(--accent); font-size:1.25rem; font-weight:800; margin:0;">Daily 24H Flight</h3>
-                    <span style="font-size:0.72rem; background:var(--accent); color:#04101e; padding:0.2rem 0.55rem; border-radius:4px; font-weight:800;">IST 24H</span>
+    <!-- Missions Matrix with Full Title Visibility -->
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap:1.25rem;">
+        {% for m in missions %}
+        <div class="card" style="background:var(--bg-card); margin:0; display:flex; flex-direction:column; justify-content:space-between; border-color:var(--border-color); padding:1.25rem;">
+            <div style="display:flex; flex-direction:column; flex:1;">
+                <!-- Header with unclipped, wrapping title and badge -->
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.75rem; flex-wrap:wrap; gap:0.4rem;">
+                    <div style="display:flex; align-items:flex-start; gap:0.6rem; flex:1; min-width:180px;">
+                        <span style="font-size:1.9rem; line-height:1; flex-shrink:0;">{{ m.icon }}</span>
+                        <div>
+                            <h3 style="font-size:1.05rem; font-weight:800; margin:0 0 0.2rem 0; color:var(--text-primary); line-height:1.35; white-space:normal; word-break:break-word;">
+                                {{ m.title }}
+                            </h3>
+                            <span style="font-size:0.72rem; color:var(--accent); font-weight:700; text-transform:uppercase; letter-spacing:0.04em;">
+                                {{ m.category }}
+                            </span>
+                        </div>
+                    </div>
+                    <span style="font-size:0.66rem; font-weight:800; background:var(--bg-secondary); border:1px solid var(--border-color); padding:0.18rem 0.45rem; border-radius:4px; color:{{ m.badge_color }}; text-transform:uppercase; white-space:nowrap; flex-shrink:0;">
+                        {{ m.badge }}
+                    </span>
                 </div>
-                <p style="color:var(--text-secondary); font-size:0.88rem; line-height:1.6; margin-bottom:1.5rem;">
-                    One synchronized global passage for all pilots every 24 hours. Resets daily at 00:00 IST with an official verified daily leaderboard.
-                </p>
-            </div>
-            <a href="{{ url_for('challenges.daily') }}" class="btn btn-primary" style="width:100%; justify-content:center; font-weight:800; padding:0.75rem;">
-                Engage Daily Run &rarr;
-            </a>
-        </div>
 
-        <!-- 2. Cockpit 5-Shield Survival Mode -->
-        <div class="card" style="background:var(--bg-card); border:1.5px solid var(--danger); margin-bottom:0; display:flex; flex-direction:column; justify-content:space-between;">
-            <div>
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
-                    <h3 style="color:var(--danger); font-size:1.25rem; font-weight:800; margin:0;">5-Shield Survival</h3>
-                    <span style="font-size:0.72rem; background:rgba(244,63,94,0.18); color:var(--danger); border:1px solid var(--danger); padding:0.2rem 0.55rem; border-radius:4px; font-weight:800;">SUDDEN OVERLOAD</span>
-                </div>
-                <p style="color:var(--text-secondary); font-size:0.88rem; line-height:1.6; margin-bottom:1.5rem;">
-                    Start with 5 battery shield cells (100% integrity). Each typo causes a battery overload. Depleting all 5 cells triggers a hull breach and immediate elimination.
+                <p style="color:var(--text-secondary); font-size:0.85rem; line-height:1.5; margin-bottom:1rem; min-height:42px;">
+                    {{ m.summary }}
                 </p>
-            </div>
-            <a href="{{ url_for('typing.test_page') }}?mode=survival" class="btn" style="border-color:var(--danger); color:var(--danger); width:100%; justify-content:center; font-weight:800; padding:0.75rem;">
-                Enter Survival Protocol &rarr;
-            </a>
-        </div>
 
-        <!-- 3. Zero-Error Accuracy Gauntlet -->
-        <div class="card" style="background:var(--bg-card); border:1.5px solid var(--success); margin-bottom:0; display:flex; flex-direction:column; justify-content:space-between;">
-            <div>
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
-                    <h3 style="color:var(--success); font-size:1.25rem; font-weight:800; margin:0;">Accuracy Gauntlet</h3>
-                    <span style="font-size:0.72rem; background:rgba(16,185,129,0.18); color:var(--success); border:1px solid var(--success); padding:0.2rem 0.55rem; border-radius:4px; font-weight:800;">100% MANDATORY</span>
+                <!-- Mission Parameters Box -->
+                <div style="background:var(--bg-secondary); border-radius:var(--radius-sm); padding:0.65rem 0.85rem; margin-top:auto; margin-bottom:1rem; font-size:0.78rem;">
+                    <div style="margin-bottom:0.25rem;"><strong style="color:var(--text-primary);">Objective:</strong> <span>{{ m.objective }}</span></div>
+                    <div><strong style="color:var(--danger);">Abort Condition:</strong> <span style="color:var(--text-muted);">{{ m.fail_condition }}</span></div>
                 </div>
-                <p style="color:var(--text-secondary); font-size:0.88rem; line-height:1.6; margin-bottom:1.5rem;">
-                    Speed is secondary; absolute precision is non-negotiable. The benchmark immediately restarts upon a single typographical error.
-                </p>
             </div>
-            <a href="{{ url_for('typing.test_page') }}?mode=accuracy" class="btn" style="border-color:var(--success); color:var(--success); width:100%; justify-content:center; font-weight:800; padding:0.75rem;">
-                Launch Gauntlet &rarr;
-            </a>
-        </div>
 
-        <!-- 4. 5-Minute Endurance Marathon -->
-        <div class="card" style="background:var(--bg-card); border:1.5px solid var(--warning); margin-bottom:0; display:flex; flex-direction:column; justify-content:space-between;">
-            <div>
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
-                    <h3 style="color:var(--warning); font-size:1.25rem; font-weight:800; margin:0;">Endurance Marathon</h3>
-                    <span style="font-size:0.72rem; background:rgba(245,158,11,0.18); color:var(--warning); border:1px solid var(--warning); padding:0.2rem 0.55rem; border-radius:4px; font-weight:800;">300 SECONDS</span>
+            <!-- Action Ribbon -->
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem; padding-top:0.75rem; border-top:1px solid var(--border-color);">
+                <div style="font-size:0.8rem; color:var(--text-muted); font-family:var(--font-mono);">
+                    Duration: <strong style="color:var(--text-primary);">{{ m.duration }}s</strong>
                 </div>
-                <p style="color:var(--text-secondary); font-size:0.88rem; line-height:1.6; margin-bottom:1.5rem;">
-                    A rigorous 300-second sustained flight designed to chart cognitive stamina, micro-hesitations, and physiological finger fatigue under pressure.
-                </p>
+                <a href="{{ url_for('challenges.mission_arena', mission_slug=m.slug) }}" class="btn btn-primary btn-sm" style="font-weight:800; padding:0.45rem 1.25rem;">
+                    Engage Mission &rarr;
+                </a>
             </div>
-            <a href="{{ url_for('typing.test_page') }}?mode=timed&duration=300" class="btn" style="border-color:var(--warning); color:var(--warning); width:100%; justify-content:center; font-weight:800; padding:0.75rem;">
-                Start 5-Minute Marathon &rarr;
-            </a>
         </div>
+        {% endfor %}
     </div>
 </div>
 {% endblock %}

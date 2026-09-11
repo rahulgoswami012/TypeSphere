@@ -1,68 +1,68 @@
 {% extends 'base.html' %}
 {% block title %}Arcade Flight Modules & Typing Games | TypeSphere{% endblock %}
 {% block content %}
-<div class="card" style="max-width: 1160px; margin: 0 auto; padding: 2rem;">
+<div class="card" style="max-width: 1160px; width: 100%; margin: 0 auto; padding: 1.5rem;">
     <!-- Directory Header -->
-    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:1.5rem; margin-bottom:2rem; flex-wrap:wrap; gap:1rem;">
+    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:1.25rem; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
         <div>
             <div style="display:flex; align-items:center; gap:0.65rem;">
-                <span style="font-size:2.2rem;">🕹️</span>
+                <span style="font-size:2rem;">🕹️</span>
                 <div>
-                    <h1 style="font-size:1.85rem; font-weight:800; margin:0;">TypeSphere Arcade</h1>
+                    <h1 style="font-size:1.75rem; font-weight:800; margin:0;">TypeSphere Arcade</h1>
                     <span style="background:var(--accent-glow); color:var(--accent); font-weight:800; font-size:0.75rem; padding:0.2rem 0.6rem; border-radius:4px; text-transform:uppercase;">
                         11 Kinetic Disciplines
                     </span>
                 </div>
             </div>
-            <p style="color:var(--text-secondary); font-size:0.9rem; margin-top:0.4rem; line-height:1.55;">
+            <p style="color:var(--text-secondary); font-size:0.88rem; margin-top:0.35rem; line-height:1.5;">
                 Engineered gaming disciplines designed to build instinctive tactile recognition, reaction latency, pressure tolerance, and burst velocity.
             </p>
         </div>
-        <div style="display:flex; gap:0.6rem; flex-wrap:wrap;">
+        <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
             <a href="{{ url_for('typing.test_page') }}" class="btn btn-sm">&larr; Speed Benchmark</a>
             <a href="{{ url_for('learn.index') }}" class="btn btn-sm">Academy Tracks &rarr;</a>
         </div>
     </div>
 
-    <!-- 11-Game Cockpit Matrix (Responsive without mobile clipping) -->
-    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap:1.5rem;">
+    <!-- 11-Game Uniform Equal-Height Matrix -->
+    <div class="arcade-cards-grid">
         {% for g in games %}
-        <div id="game-card-{{ g.slug }}" class="card" style="background:var(--bg-card); margin-bottom:0; display:flex; flex-direction:column; justify-content:space-between; border-color:var(--border-color); scroll-margin-top:80px;">
-            <div>
-                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.85rem; flex-wrap:wrap; gap:0.4rem;">
-                    <div style="display:flex; align-items:center; gap:0.65rem; min-width:0;">
-                        <span style="font-size:2.2rem; flex-shrink:0;">{{ g.icon }}</span>
+        <div id="game-card-{{ g.slug }}" class="card arcade-game-card" style="background:var(--bg-card); border-color:var(--border-color); padding:1.25rem;">
+            <!-- Top Segment -->
+            <div style="display:flex; flex-direction:column; flex:1;">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.75rem; flex-wrap:nowrap; gap:0.4rem;">
+                    <div style="display:flex; align-items:center; gap:0.6rem; min-width:0;">
+                        <span style="font-size:2rem; flex-shrink:0;">{{ g.icon }}</span>
                         <div style="min-width:0;">
-                            <h3 style="font-size:1.15rem; font-weight:800; margin:0; color:var(--text-primary); word-break:break-word;">{{ g.title }}</h3>
-                            <span style="font-size:0.75rem; color:var(--accent); font-weight:700; text-transform:uppercase; letter-spacing:0.04em;">{{ g.category }}</span>
+                            <h3 style="font-size:1.1rem; font-weight:800; margin:0; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ g.title }}</h3>
+                            <span style="font-size:0.72rem; color:var(--accent); font-weight:700; text-transform:uppercase; letter-spacing:0.04em;">{{ g.category }}</span>
                         </div>
                     </div>
-                    <span style="font-size:0.68rem; font-weight:800; background:var(--bg-secondary); border:1px solid var(--border-color); padding:0.18rem 0.5rem; border-radius:4px; color:var(--text-secondary); text-transform:uppercase; white-space:nowrap;">
+                    <span style="font-size:0.68rem; font-weight:800; background:var(--bg-secondary); border:1px solid var(--border-color); padding:0.18rem 0.45rem; border-radius:4px; color:var(--text-secondary); text-transform:uppercase; white-space:nowrap; flex-shrink:0;">
                         {{ g.badge }}
                     </span>
                 </div>
 
-                <p style="color:var(--text-secondary); font-size:0.86rem; line-height:1.55; margin-bottom:1rem;">
+                <p style="color:var(--text-secondary); font-size:0.85rem; line-height:1.5; margin-bottom:1rem; min-height:42px;">
                     {{ g.summary }}
                 </p>
 
-                <div style="background:var(--bg-secondary); border-radius:var(--radius-sm); padding:0.6rem 0.85rem; margin-bottom:1rem; font-size:0.8rem;">
-                    <div style="margin-bottom:0.2rem;"><strong>Win:</strong> <span style="color:var(--text-primary);">{{ g.win_condition }}</span></div>
+                <!-- Pushed naturally toward bottom of top section -->
+                <div style="background:var(--bg-secondary); border-radius:var(--radius-sm); padding:0.6rem 0.75rem; margin-top:auto; margin-bottom:1rem; font-size:0.78rem;">
+                    <div style="margin-bottom:0.25rem;"><strong>Win:</strong> <span style="color:var(--text-primary);">{{ g.win_condition }}</span></div>
                     <div><strong style="color:var(--danger);">Lose:</strong> <span style="color:var(--text-muted);">{{ g.lose_condition }}</span></div>
                 </div>
             </div>
 
-            <div>
-                <div style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem; padding-top:0.75rem; border-top:1px solid var(--border-color); flex-wrap:wrap;">
-                    {% set pb = high_scores.get(g.slug, 0) %}
-                    <div style="font-size:0.82rem; color:var(--text-muted);">
-                        Record: <strong style="color:{{ 'var(--warning)' if pb > 0 else 'var(--text-secondary)' }}; font-family:var(--font-mono); font-size:0.95rem;">{{ pb }} pts</strong>
-                    </div>
-                    <!-- Saves scroll position before opening game -->
-                    <a href="{{ url_for('games.play_arena', game_slug=g.slug) }}" onclick="saveCurrentScroll('{{ g.slug }}')" class="btn btn-primary btn-sm" style="font-weight:800; padding:0.55rem 1.25rem;">
-                        Pre-Flight & Launch &rarr;
-                    </a>
+            <!-- Bottom Segment: Anchored Record & Action Button -->
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem; padding-top:0.75rem; border-top:1px solid var(--border-color);">
+                {% set pb = high_scores.get(g.slug, 0) %}
+                <div style="font-size:0.8rem; color:var(--text-muted);">
+                    Record: <strong style="color:{{ 'var(--warning)' if pb > 0 else 'var(--text-secondary)' }}; font-family:var(--font-mono); font-size:0.92rem;">{{ pb }} pts</strong>
                 </div>
+                <a href="{{ url_for('games.play_arena', game_slug=g.slug) }}" onclick="saveCurrentScroll('{{ g.slug }}')" class="btn btn-primary btn-sm" style="font-weight:800; padding:0.45rem 1.15rem;">
+                    Pre-Flight & Launch &rarr;
+                </a>
             </div>
         </div>
         {% endfor %}
@@ -78,25 +78,19 @@ function saveCurrentScroll(slug) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Restore scrolled position if returning from a game
+    // Only restore scroll when returning intentionally from a game
+    const isReturnIntent = sessionStorage.getItem('typesphere_arcade_return_intent') === 'true';
     const savedY = sessionStorage.getItem('typesphere_arcade_scroll_y');
-    const lastSlug = sessionStorage.getItem('typesphere_arcade_last_slug');
 
-    if (savedY !== null) {
+    if (isReturnIntent && savedY !== null) {
         window.scrollTo({ top: parseInt(savedY, 10), behavior: 'smooth' });
-        sessionStorage.removeItem('typesphere_arcade_scroll_y');
-    } else if (window.location.hash) {
-        const el = document.querySelector(window.location.hash);
-        if (el) {
-            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-    } else if (lastSlug) {
-        const el = document.getElementById('game-card-' + lastSlug);
-        if (el) {
-            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            sessionStorage.removeItem('typesphere_arcade_last_slug');
-        }
+    } else {
+        window.scrollTo({ top: 0, behavior: 'auto' });
     }
+
+    sessionStorage.removeItem('typesphere_arcade_return_intent');
+    sessionStorage.removeItem('typesphere_arcade_scroll_y');
+    sessionStorage.removeItem('typesphere_arcade_last_slug');
 });
 </script>
 {% endblock %}

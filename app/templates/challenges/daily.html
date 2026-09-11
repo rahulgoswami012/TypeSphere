@@ -1,37 +1,68 @@
 {% extends 'base.html' %}
-{% block title %}Daily 24H Challenge: {{ challenge.title }} | TypeSphere{% endblock %}
+{% block title %}Tactical Daily Recon (24H) | TypeSphere{% endblock %}
 {% block content %}
-<div class="card" style="max-width: 1040px; margin: 0 auto;">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem; border-bottom:1px solid var(--border-color); padding-bottom:1.25rem;">
+<div class="card" style="max-width: 1040px; margin: 0 auto; padding: 1.5rem;">
+    <!-- Daily Flight Header -->
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem; border-bottom:1px solid var(--border-color); padding-bottom:1rem;">
         <div>
             <div style="display:flex; align-items:center; gap:0.6rem;">
-                <h1 style="font-size:1.8rem; font-weight:800; margin:0;">Daily Challenge: {{ challenge.title }}</h1>
-                <span style="background:var(--accent); color:#04101e; font-size:0.75rem; font-weight:800; padding:0.2rem 0.6rem; border-radius:4px; text-transform:uppercase;">
-                    OFFICIAL 24H BENCHMARK
-                </span>
+                <span style="font-size:1.8rem;">🛰️</span>
+                <div>
+                    <h1 style="font-size:1.65rem; font-weight:800; margin:0;">Tactical Daily Recon (24H)</h1>
+                    <span style="font-size:0.75rem; font-weight:800; color:var(--accent); text-transform:uppercase; letter-spacing:0.06em;">Synchronized Worldwide Flight Run</span>
+                </div>
             </div>
             <p style="color:var(--text-secondary); font-size:0.85rem; margin-top:0.35rem;">
-                {{ challenge.target_date.strftime('%A, %B %d, %Y') }} (Indian Standard Time) &bull; Synchronized worldwide for all typists.
+                Official 24-Hour Benchmark &bull; Evaluated on Indian Standard Time (IST, UTC+05:30). Resets automatically at 00:00 IST.
             </p>
         </div>
-        <button onclick="startDailyChallenge()" class="btn btn-primary" style="padding:0.75rem 1.75rem; font-size:1rem; font-weight:800;">
-            Engage Daily Flight &rarr;
-        </button>
+        <div style="display:flex; gap:0.5rem;">
+            <a href="{{ url_for('challenges.index') }}" class="btn btn-sm">&larr; Mission Control</a>
+            {% if challenge %}
+            <a href="{{ url_for('challenges.mission_arena', mission_slug='daily') }}" class="btn btn-primary btn-sm" style="font-weight:800; padding:0.55rem 1.25rem;">
+                Engage Briefing &rarr;
+            </a>
+            {% endif %}
+        </div>
     </div>
 
-    <!-- Synchronized Daily Text Card -->
-    <div style="background:var(--bg-card); padding:1.75rem; border-radius:var(--radius); margin-bottom:2rem; border-left:4px solid var(--accent); font-family:var(--font-mono); font-size:1.15rem; line-height:1.95; color:var(--text-primary);">
-        "{{ challenge.content }}"
-    </div>
+    <!-- Point 1: Daily Challenge Body or Professional Flight Control Notice -->
+    {% if challenge %}
+        <!-- Active Briefing Passage -->
+        <div class="card" style="background:var(--bg-card); border-left:4px solid var(--accent); padding:1.25rem 1.5rem; margin-bottom:1.5rem;">
+            <div style="font-size:0.75rem; text-transform:uppercase; font-weight:800; color:var(--accent); letter-spacing:0.06em; margin-bottom:0.4rem;">
+                Today's Authorized Briefing: {{ challenge.title }} &bull; {{ challenge.target_date.strftime('%B %d, %Y') }}
+            </div>
+            <div style="font-family:var(--font-mono); font-size:1.1rem; line-height:1.85; color:var(--text-primary);">
+                "{{ challenge.content }}"
+            </div>
+        </div>
+    {% else %}
+        <!-- Professional Calibration Notice When Admin Has Not Yet Pushed Today's Run -->
+        <div class="card" style="background:var(--bg-card); border:1.5px solid var(--warning); padding:1.5rem; margin-bottom:1.5rem; text-align:center;">
+            <div style="font-size:2.5rem; margin-bottom:0.5rem;">📡</div>
+            <h3 style="font-size:1.25rem; font-weight:800; color:var(--warning); margin-bottom:0.4rem;">
+                Flight Control Dispatch Notice
+            </h3>
+            <p style="color:var(--text-secondary); font-size:0.9rem; max-width:620px; margin:0 auto 1.25rem; line-height:1.6;">
+                The previous 24-hour tactical recon has concluded and archived. Today's synchronized briefing is currently undergoing flight calibration and will be published shortly by Flight Control. Please stand by or engage other active missions.
+            </p>
+            <div style="display:flex; justify-content:center; gap:0.5rem;">
+                <a href="{{ url_for('challenges.index') }}" class="btn btn-primary btn-sm" style="font-weight:800;">
+                    Explore Active Mission Briefings &rarr;
+                </a>
+            </div>
+        </div>
+    {% endif %}
 
     <!-- Today's Verified Standings -->
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-        <h3 style="font-size:1.15rem; margin:0;">Today's Verified IST Leaderboard</h3>
-        <span style="font-size:0.8rem; color:var(--text-muted);">Auto-resets at 00:00 IST</span>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.85rem;">
+        <h3 style="font-size:1.1rem; font-weight:800; margin:0;">Today's Verified IST Flight Leaderboard</h3>
+        <span style="font-size:0.75rem; color:var(--text-muted); font-family:var(--font-mono);">Resets daily at 00:00 IST</span>
     </div>
 
-    <div class="table-responsive-container" style="margin-bottom:2.5rem;">
-        <table style="width:100%; text-align:left;">
+    <div class="table-responsive-container" style="margin-bottom:2rem;">
+        <table>
             <thead>
                 <tr>
                     <th>Rank</th>
@@ -39,7 +70,7 @@
                     <th>Net Speed</th>
                     <th>Accuracy</th>
                     <th>Consistency</th>
-                    <th>Verified Time (IST)</th>
+                    <th>Time (IST)</th>
                 </tr>
             </thead>
             <tbody>
@@ -51,7 +82,7 @@
                     <td style="font-weight:700;">
                         {% if test.user %}
                             <a href="{{ url_for('dashboard.public_profile', username=test.user.username) }}" style="color:var(--text-primary); text-decoration:none;">
-                                {{ test.user.username }}
+                                {{ test.user.display_callsign if hasattr(test.user, 'display_callsign') else test.user.username }}
                             </a>
                         {% else %}
                             Verified Guest
@@ -62,14 +93,14 @@
                     </td>
                     <td>{{ test.accuracy }}%</td>
                     <td>{{ test.consistency }}%</td>
-                    <td style="color:var(--text-muted); font-size:0.82rem;">
+                    <td style="color:var(--text-muted); font-size:0.8rem;">
                         {{ to_ist(test.completed_at).strftime('%H:%M:%S') }} IST
                     </td>
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="6" style="padding:2.5rem; text-align:center; color:var(--text-muted);">
-                        No runs logged yet for today's challenge window. Be the first to establish today's benchmark!
+                    <td colspan="6" style="padding:2rem; text-align:center; color:var(--text-muted);">
+                        No runs logged yet for today's flight window. Be the first to establish today's verified benchmark!
                     </td>
                 </tr>
                 {% endfor %}
@@ -78,40 +109,32 @@
     </div>
 
     <!-- Historical Archives -->
-    <div style="border-top:1px solid var(--border-color); padding-top:1.5rem;">
-        <h3 style="font-size:1.1rem; margin-bottom:1rem;">Past Daily Flight Archives</h3>
+    <div style="border-top:1px solid var(--border-color); padding-top:1.25rem;">
+        <h3 style="font-size:1rem; font-weight:800; margin-bottom:0.75rem;">Past Reconnaissance Archives</h3>
         <div class="table-responsive-container">
             <table>
                 <thead>
                     <tr>
-                        <th>Date</th>
+                        <th>Date (IST)</th>
                         <th>Title</th>
-                        <th>Passage Excerpt</th>
+                        <th>Briefing Passage</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for h in history %}
                     <tr>
-                        <td style="font-weight:700; color:var(--accent);">{{ h.target_date.strftime('%b %d, %Y') }}</td>
-                        <td style="font-weight:600;">{{ h.title }}</td>
-                        <td style="color:var(--text-secondary); max-width:420px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-family:var(--font-mono); font-size:0.85rem;">
+                        <td style="font-weight:700; color:var(--accent); font-family:var(--font-mono);">{{ h.target_date.strftime('%b %d, %Y') }}</td>
+                        <td style="font-weight:700;">{{ h.title }}</td>
+                        <td style="color:var(--text-secondary); max-width:440px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-family:var(--font-mono); font-size:0.82rem;">
                             {{ h.content }}
                         </td>
                     </tr>
                     {% else %}
-                    <tr><td colspan="3" style="text-align:center; padding:1.5rem; color:var(--text-muted);">Historical challenges will archive here daily.</td></tr>
+                    <tr><td colspan="3" style="text-align:center; padding:1.25rem; color:var(--text-muted);">Historical briefings will archive here daily.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
     </div>
 </div>
-{% endblock %}
-
-{% block scripts %}
-<script>
-function startDailyChallenge() {
-    window.location.href = "{{ url_for('typing.test_page') }}?mode=daily";
-}
-</script>
 {% endblock %}

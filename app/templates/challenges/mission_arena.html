@@ -1,0 +1,185 @@
+{% extends 'base.html' %}
+{% block title %}Mission Arena: {{ mission.title }} | TypeSphere{% endblock %}
+{% block content %}
+<div id="mission-arena-root" class="card" 
+     data-slug="{{ mission.slug }}" 
+     data-mode="{{ mission.mode_type }}" 
+     data-duration="{{ mission.duration }}"
+     style="max-width: 960px; width: 100%; margin: 0 auto; padding: 1.5rem;">
+
+    <!-- Abort Confirmation Modal -->
+    <div id="mission-abort-modal" class="modal-backdrop" style="display:none;">
+        <div class="card modal-dialog" style="max-width:440px; text-align:center; padding:2rem 1.5rem; border-color:var(--danger);">
+            <div style="font-size:2.8rem; margin-bottom:0.5rem;">⚠️</div>
+            <h3 style="font-size:1.35rem; font-weight:800; color:var(--text-primary); margin-bottom:0.5rem;">
+                Abort Mission Confirmation
+            </h3>
+            <p style="color:var(--text-secondary); font-size:0.9rem; line-height:1.55; margin-bottom:1.5rem;">
+                If you abort this flight mission now, your active progress, cadence streaks, and telemetry will be discarded and cannot be recovered.
+            </p>
+            <div style="display:flex; justify-content:center; gap:0.75rem; flex-wrap:wrap;">
+                <button type="button" id="btn-modal-resume" class="btn btn-primary" style="padding:0.65rem 1.5rem; font-weight:800;">
+                    ▶ Resume Mission
+                </button>
+                <button type="button" id="btn-modal-confirm" class="btn btn-danger" style="padding:0.65rem 1.25rem;">
+                    Confirm Abort
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PHASE 1: Tactical Briefing Screen -->
+    <div id="mission-briefing-screen">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:1rem; margin-bottom:1.25rem; flex-wrap:wrap; gap:0.85rem;">
+            <div style="display:flex; align-items:center; gap:0.75rem;">
+                <span style="font-size:2.4rem;">{{ mission.icon }}</span>
+                <div>
+                    <h1 style="font-size:1.65rem; font-weight:800; margin:0;">{{ mission.title }}</h1>
+                    <span style="font-size:0.75rem; color:var(--accent); font-weight:800; text-transform:uppercase; letter-spacing:0.06em;">
+                        {{ mission.category }} &bull; Mission Briefing
+                    </span>
+                </div>
+            </div>
+            <a href="{{ url_for('challenges.index') }}" class="btn btn-sm">&larr; Return to Missions</a>
+        </div>
+
+        <div class="card" style="background:var(--bg-card); border-left:4px solid var(--accent); margin-bottom:1.25rem; padding:1rem 1.25rem;">
+            <h4 style="font-size:0.8rem; text-transform:uppercase; color:var(--accent); margin-bottom:0.4rem; letter-spacing:0.06em;">Tactical Directives</h4>
+            <div style="font-size:0.9rem; line-height:1.55; color:var(--text-primary); margin-bottom:0.35rem;">
+                <strong>PRIMARY OBJECTIVE:</strong> {{ mission.objective }}
+            </div>
+            <div style="font-size:0.9rem; line-height:1.55; color:var(--danger);">
+                <strong>MISSION ABORT THRESHOLD:</strong> {{ mission.fail_condition }}
+            </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:1rem; margin-bottom:1.75rem;">
+            <div class="card" style="background:var(--bg-card); margin:0; padding:1rem; text-align:center;">
+                <div style="font-size:0.72rem; color:var(--text-muted); text-transform:uppercase; font-weight:800;">Target Duration</div>
+                <div style="font-size:1.6rem; font-weight:900; color:var(--accent); font-family:var(--font-mono); margin-top:0.25rem;">{{ mission.duration }}s</div>
+            </div>
+            <div class="card" style="background:var(--bg-card); margin:0; padding:1rem; text-align:center;">
+                <div style="font-size:0.72rem; color:var(--text-muted); text-transform:uppercase; font-weight:800;">Classification</div>
+                <div style="font-size:1.1rem; font-weight:800; color:{{ mission.badge_color }}; margin-top:0.4rem;">{{ mission.badge }}</div>
+            </div>
+            <div class="card" style="background:var(--bg-card); margin:0; padding:1rem; text-align:center;">
+                <div style="font-size:0.72rem; color:var(--text-muted); text-transform:uppercase; font-weight:800;">Stealth Backspace</div>
+                <div style="font-size:1.1rem; font-weight:800; color:var(--warning); margin-top:0.4rem;">
+                    {{ 'DISABLED' if mission.mode_type in ['survival', 'accuracy'] else 'RESTRICTED' }}
+                </div>
+            </div>
+        </div>
+
+        <div style="text-align:center;">
+            <button type="button" id="btn-launch-mission" class="btn btn-primary" style="padding:0.85rem 3.5rem; font-size:1.1rem; font-weight:800; box-shadow:0 0 22px var(--accent-glow);">
+                ⚡ Authorize & Engage Mission
+            </button>
+        </div>
+    </div>
+
+    <!-- PHASE 2: Live Cockpit Mission Arena -->
+    <div id="mission-active-cockpit" style="display:none;">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:0.75rem; margin-bottom:1rem; flex-wrap:wrap; gap:0.5rem;">
+            <div style="display:flex; align-items:center; gap:0.5rem;">
+                <span style="font-size:1.6rem;">{{ mission.icon }}</span>
+                <strong style="font-size:1.15rem;">{{ mission.title }}</strong>
+            </div>
+            <button type="button" id="btn-prompt-abort" class="btn btn-sm btn-danger">&times; Abort Mission</button>
+        </div>
+
+        {% if mission.mode_type == 'survival' %}
+        <div id="mission-shield-hud" class="survival-shield-container" style="display:block; margin-bottom:0.85rem;">
+            <div class="shield-hud-title">
+                <span>🛡️ Flight Integrity Reserve</span>
+                <span id="shield-status-text" style="color:var(--accent); font-family:var(--font-mono); font-weight:800;">5 / 5 UNITS (100%)</span>
+            </div>
+            <div class="shield-cells-grid">
+                <div class="shield-cell" id="sc-1"></div>
+                <div class="shield-cell" id="sc-2"></div>
+                <div class="shield-cell" id="sc-3"></div>
+                <div class="shield-cell" id="sc-4"></div>
+                <div class="shield-cell" id="sc-5"></div>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="stats-hud" style="grid-template-columns:repeat(4, 1fr); margin-bottom:0.85rem;">
+            <div class="stat-box" style="padding:0.55rem;">
+                <div class="stat-label">Velocity</div>
+                <div class="stat-value" id="hud-mission-wpm" style="color:var(--accent); font-size:1.45rem;">0</div>
+            </div>
+            <div class="stat-box" style="padding:0.55rem;">
+                <div class="stat-label">Accuracy</div>
+                <div class="stat-value" id="hud-mission-acc" style="color:var(--success); font-size:1.45rem;">100%</div>
+            </div>
+            <div class="stat-box" style="padding:0.55rem;">
+                <div class="stat-label">Mistakes</div>
+                <div class="stat-value" id="hud-mission-err" style="color:var(--danger); font-size:1.45rem;">0</div>
+            </div>
+            <div class="stat-box" style="padding:0.55rem;">
+                <div class="stat-label">Countdown</div>
+                <div class="stat-value" id="hud-mission-time" style="color:var(--warning); font-size:1.45rem;">{{ mission.duration }}s</div>
+            </div>
+        </div>
+
+        <div id="mission-typing-box" class="typing-container focus-ring" style="min-height:130px; max-height:180px; margin-bottom:0.85rem; overflow-y:hidden; scroll-behavior:smooth; position:relative;">
+            <div id="mission-caret" class="caret caret-smooth"></div>
+            <div id="mission-text-display" class="typing-text-display" style="font-size:1.15rem; line-height:1.85;"></div>
+        </div>
+
+        <input type="text" id="mission-input" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Execute keystrokes cleanly to engage flight objectives..." style="width:100%; padding:0.85rem 1.15rem; background:var(--bg-card); border:1.5px solid var(--border-color); border-radius:var(--radius-sm); color:var(--text-primary); font-family:var(--font-mono); font-size:1.05rem; outline:none; transition:border-color var(--transition-fast);">
+        <div style="text-align:center; margin-top:0.4rem; font-size:0.78rem; color:var(--text-muted);">
+            Objective: {{ mission.objective }}
+        </div>
+    </div>
+
+    <!-- PHASE 3: Mission Conclusion Screen -->
+    <div id="mission-result-screen" style="display:none; text-align:center; padding:1.5rem 0;">
+        <div id="mission-outcome-badge" style="display:inline-block; font-size:0.95rem; font-weight:900; padding:0.35rem 1.25rem; border-radius:6px; margin-bottom:0.5rem; text-transform:uppercase; letter-spacing:0.06em;">
+            MISSION ACCOMPLISHED
+        </div>
+        <div id="mission-outcome-icon" style="font-size:3.8rem; margin-bottom:0.25rem;">🏆</div>
+        <h2 id="mission-outcome-title" style="font-size:1.85rem; font-weight:800; color:var(--accent); margin-bottom:0.25rem;">
+            Flight Directives Satisfied
+        </h2>
+        <p id="mission-outcome-desc" style="color:var(--text-secondary); font-size:0.92rem; max-width:620px; margin:0 auto 1.5rem; line-height:1.55;">
+            Telemetry authenticated and recorded.
+        </p>
+
+        <div class="stats-hud" style="grid-template-columns:repeat(auto-fit, minmax(120px, 1fr)); max-width:760px; margin:0 auto 1.75rem;">
+            <div class="stat-box">
+                <div class="stat-label">Net Speed</div>
+                <div class="stat-value" id="res-m-wpm" style="color:var(--accent);">0 WPM</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Accuracy</div>
+                <div class="stat-value" id="res-m-acc">100%</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Total Mistakes</div>
+                <div class="stat-value" id="res-m-err" style="color:var(--danger);">0</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Flight Duration</div>
+                <div class="stat-value" id="res-m-time">0s</div>
+            </div>
+        </div>
+
+        <div style="display:flex; justify-content:center; gap:0.75rem; flex-wrap:wrap;">
+            <button type="button" id="btn-restart-mission" class="btn btn-primary" style="padding:0.75rem 1.75rem; font-weight:800;">
+                🔄 Re-engage Mission
+            </button>
+            <a href="{{ url_for('challenges.index') }}" class="btn" style="padding:0.75rem 1.5rem;">
+                Mission Control Hub
+            </a>
+        </div>
+    </div>
+
+    <!-- Hidden Raw Passage Container for Script Consumption -->
+    <div id="mission-raw-passage" style="display:none;">{{ passage }}</div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/mission_engine.js') }}"></script>
+{% endblock %}

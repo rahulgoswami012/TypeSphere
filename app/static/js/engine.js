@@ -2,7 +2,7 @@
  * TypeSphere Core Engine
  * Two-tier UI architecture, continuous passage streaming for timed tests,
  * genuine completion points for untimed and custom tests, 5-battery survival mode,
- * and live biometric keyboard synchronization without layout jumping.
+ * live biometric keyboard synchronization, and dynamic AI pacer simulation.
  */
 class TypingEngine {
     constructor() {
@@ -18,8 +18,8 @@ class TypingEngine {
         this.durationLimit = 60; // 15, 30, 60, 120, 300, 600, 1200, or 0 (No Limit)
         this.contentType = 'words';
         this.level = 'moderate'; // easy, moderate, hard, expert
-        this.codeLanguage = 'python'; // python, javascript, html, css, sql, java, c, cpp
-        this.mode = 'timed'; // 'timed', 'accuracy', 'survival', 'adaptive', 'daily', 'custom'
+        this.codeLanguage = 'python';
+        this.mode = 'timed';
         this.retryTestId = null;
         this.isRankedEligible = true;
 
@@ -30,13 +30,14 @@ class TypingEngine {
         // Behavioral Defaults
         this.blindModeActive = true; // Blind Mode: ON by default
         this.ghostEnabled = false; // Ghost Mode: OFF by default
-        this.ghostWpm = 70;
-        this.ghostProgress = 0;
+        
+        // Point 3: Dynamic Pilot AI Simulator Integration
+        this.aiSimulator = null;
         this.ghostInterval = null;
 
         // Keystroke Error Telemetry
-        this.totalMistakes = 0; // Cumulative mistakes made
-        this.uncorrectedErrors = 0; // Red spans remaining
+        this.totalMistakes = 0;
+        this.uncorrectedErrors = 0;
         this.streak = 0;
 
         // Runtime Lifecycle
@@ -108,7 +109,7 @@ class TypingEngine {
             const res = await fetch(`/typing/api/ghost/${testId}`);
             const data = await res.json();
             if (data && data.wpm) {
-                this.ghostWpm = parseFloat(data.wpm);
+                this.aiSimulator = new DynamicPilotAISimulator(this.level, parseFloat(data.wpm));
                 this.ghostEnabled = true;
                 this.updateControlsUI();
             }
@@ -167,11 +168,10 @@ class TypingEngine {
             bBtn.classList.toggle('active-choice', this.blindModeActive);
         }
         if (gBtn) {
-            gBtn.textContent = `Ghost: ${this.ghostEnabled ? 'ON' : 'OFF'}`;
+            gBtn.textContent = `Ghost Pacer: ${this.ghostEnabled ? 'ACTIVE' : 'OFF'}`;
             gBtn.classList.toggle('active-choice', this.ghostEnabled);
         }
 
-        // Display 5-Shield HUD only in Survival Mode
         if (this.survivalHud) {
             this.survivalHud.style.display = (this.mode === 'survival') ? 'block' : 'none';
         }
@@ -185,7 +185,7 @@ class TypingEngine {
         const pct = Math.round((this.shieldLives / this.maxShields) * 100);
 
         if (statusText) {
-            statusText.textContent = `${pct}% STABILITY (${this.shieldLives}/${this.maxShields} CELLS)`;
+            statusText.textContent = `${this.shieldLives} / ${this.maxShields} UNITS (${pct}%)`;
             statusText.style.color = (this.shieldLives <= 1) ? 'var(--danger)' : ((this.shieldLives <= 3) ? 'var(--warning)' : 'var(--accent)');
         }
 
@@ -199,7 +199,6 @@ class TypingEngine {
     }
 
     async loadPrompt(append = false) {
-        // 1. Custom Text Practice (Never loops or duplicates)
         if (this.contentType === 'custom' || this.mode === 'custom') {
             const stored = sessionStorage.getItem('typesphere_custom_text');
             if (stored && stored.trim().length > 0) {
@@ -210,7 +209,6 @@ class TypingEngine {
             }
         }
 
-        // 2. Daily Challenge Synchronization
         if (this.mode === 'daily') {
             try {
                 const res = await fetch('/typing/api/daily-text');
@@ -222,7 +220,6 @@ class TypingEngine {
             } catch {}
         }
 
-        // 3. Adaptive Weakness Drill
         if (this.mode === 'adaptive') {
             try {
                 const res = await fetch('/typing/api/adaptive-drill');
@@ -234,7 +231,6 @@ class TypingEngine {
             } catch {}
         }
 
-        // 4. Standard Dynamic Streams / Retry Prompts
         try {
             let url = `/typing/api/text?content_type=${encodeURIComponent(this.contentType)}&level=${encodeURIComponent(this.level)}&code_lang=${encodeURIComponent(this.codeLanguage)}&batch_size=75`;
             if (this.retryTestId) {
@@ -309,8 +305,14 @@ class TypingEngine {
         this.streak = 0;
         this.totalMistakes = 0;
         this.uncorrectedErrors = 0;
-        this.ghostProgress = 0;
         this.shieldLives = 5;
+
+        // Reset Dynamic Pilot AI Simulator
+        if (!this.aiSimulator) {
+            this.aiSimulator = new DynamicPilotAISimulator(this.level);
+        } else {
+            this.aiSimulator.reset();
+        }
 
         if (this.container) {
             this.container.scrollTop = 0;
@@ -333,7 +335,7 @@ class TypingEngine {
         if (this.durationLimit > 0) {
             this.hudTime.textContent = this.formatTimeDisplay(this.durationLimit);
         } else {
-            this.hudTime.textContent = '0s (Open Stopwatch)';
+            this.hudTime.textContent = '0s (Open Flight)';
         }
 
         const spans = this.display.querySelectorAll('.char');
@@ -437,7 +439,7 @@ class TypingEngine {
         const floatBar = document.getElementById('paused-floating-bar');
         if (floatBar) floatBar.style.display = 'none';
         this.startTick(true);
-        if (this.ghostEnabled) this.startGhostRacer();
+        if (this.ghostEnabled) this.startDynamicGhostPacer();
         if (this.mobileProxy) this.mobileProxy.focus();
     }
 
@@ -452,14 +454,13 @@ class TypingEngine {
         if (!this.startTime) {
             this.startTime = now;
             this.startTick(false);
-            if (this.ghostEnabled) this.startGhostRacer();
+            if (this.ghostEnabled) this.startDynamicGhostPacer();
         }
 
         const spans = this.display.querySelectorAll('.char');
         if (this.currentIndex >= spans.length) return;
         const expectedChar = this.targetText[this.currentIndex];
 
-        // Backspace Handling: Blocked if Blind Mode is ON
         if (key === 'Backspace') {
             if (originalEvent) originalEvent.preventDefault();
             if (this.blindModeActive) return;
@@ -495,7 +496,6 @@ class TypingEngine {
             this.uncorrectedErrors++;
             if (window.soundEngine) window.soundEngine.playKey(true);
 
-            // Survival Challenge 5-Shield Integrity Overload
             if (this.mode === 'survival') {
                 this.shieldLives--;
                 this.updateShieldHUD();
@@ -505,7 +505,6 @@ class TypingEngine {
                 }
             }
 
-            // Accuracy Gauntlet Elimination
             if (this.mode === 'accuracy') {
                 alert("Accuracy Gauntlet Breached: 100% precision required.");
                 this.reset();
@@ -534,14 +533,12 @@ class TypingEngine {
             window.virtualKeyboard.updateCurrentExpectedKey(this.targetText[this.currentIndex]);
         }
 
-        // Continuous Infinite Pipeline for Standard Timed Benchmarks
         const isFiniteMode = (this.durationLimit === 0 || this.mode === 'custom');
         if (!isFiniteMode) {
             if (this.currentIndex >= spans.length - 20) {
                 this.loadPrompt(true);
             }
         } else {
-            // Natural completion for No Time Limit and Custom Passage
             if (this.currentIndex >= spans.length) {
                 this.finishTest();
             } else if (this.currentIndex >= spans.length - 10 && this.manualFinishWrap) {
@@ -564,27 +561,47 @@ class TypingEngine {
                     this.finishTest();
                 }
             } else {
-                this.hudTime.textContent = `${this.formatTimeDisplay(this.tickElapsed)} (Stopwatch)`;
+                this.hudTime.textContent = `${this.formatTimeDisplay(this.tickElapsed)} (Open Flight)`;
             }
         }, 1000);
     }
 
-    startGhostRacer() {
-        const charsPerSec = (this.ghostWpm * 5) / 60;
+    /**
+     * Point 3: Dynamic Pilot AI Pacer
+     * Runs natural simulation ticks adjusting speed, jitter, and pauses realistically.
+     */
+    startDynamicGhostPacer() {
+        clearInterval(this.ghostInterval);
+        if (!this.aiSimulator) {
+            this.aiSimulator = new DynamicPilotAISimulator(this.level);
+        }
+
+        const totalChars = Math.max(100, this.targetText.length);
+        const tickRateMs = 100;
+
         this.ghostInterval = setInterval(() => {
             if (this.isFinished || this.isPaused) {
                 clearInterval(this.ghostInterval);
                 return;
             }
-            this.ghostProgress += (charsPerSec * 0.1);
-            const ghostIdx = Math.min(this.targetText.length - 1, Math.floor(this.ghostProgress));
+
+            // Advance AI Pilot simulation tick
+            const aiData = this.aiSimulator.tick(tickRateMs / 1000.0, totalChars);
+            const ghostIdx = Math.min(this.targetText.length - 1, aiData.progressChars);
             const spans = this.display.querySelectorAll('.char');
+
             if (spans[ghostIdx] && this.ghostCaret) {
                 this.ghostCaret.style.display = 'block';
                 this.ghostCaret.style.left = `${spans[ghostIdx].offsetLeft}px`;
                 this.ghostCaret.style.top = `${spans[ghostIdx].offsetTop + 4}px`;
+                
+                // Show dynamic comparative lead/deficit in title tooltip
+                const leadChars = this.currentIndex - ghostIdx;
+                const leadWords = Math.round(leadChars / 5.0);
+                const leadText = (leadWords >= 0) ? `+${leadWords} wds ahead` : `${leadWords} wds behind`;
+                this.ghostCaret.title = `${aiData.callsign} (${aiData.wpm} WPM) &bull; ${leadText}`;
             }
-        }, 100);
+        }, tickRateMs);
     }
 
     updateLiveStats(now) {
@@ -639,7 +656,7 @@ class TypingEngine {
         this.isFinished = true;
         clearInterval(this.timerInterval);
         clearInterval(this.ghostInterval);
-        alert("💥 COCKPIT SHIELD BREACH! All 5 battery cells exhausted. Reactor containment compromised.");
+        alert("💥 HULL BREACH! All 5 flight integrity units depleted. Reactor containment offline.");
         this.reset();
     }
 

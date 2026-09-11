@@ -28,18 +28,20 @@ ARCADE_MASTER_REGISTRY = [
     {
         'slug': 'falling_words',
         'title': 'Falling Words',
-        'badge': 'WAVE SURVIVAL',
+        'badge': 'GRAVITY DEFENSE',
         'icon': '☄️',
         'category': 'Target Locking & Peripheral Vision',
         'summary': 'Words descend with accelerating gravitational velocity. Target lock descending phrases before they touch the defense barrier.',
-        'win_condition': 'Clear all waves or achieve higher score than rival when timer expires.',
-        'lose_condition': 'Lose all lives or opponent secures higher wave score.',
+        'win_condition': 'Survive the selected flight duration with defense integrity intact.',
+        'lose_condition': 'Lose all lives before the timer runs out.',
         'supports': ['Solo vs AI', '1v1 Duel'],
-        'default_objective': 'waves',
+        'default_objective': 'timed',
         'objective_options': [
-            {'label': '3 Waves (Short)', 'val': '3'},
-            {'label': '5 Waves (Standard)', 'val': '5'},
-            {'label': 'Survival (Unlimited)', 'val': '0'}
+            {'label': '30 Seconds', 'val': '30'},
+            {'label': '45 Seconds', 'val': '45'},
+            {'label': '60 Seconds (1 Min)', 'val': '60'},
+            {'label': '120 Seconds (2 Min)', 'val': '120'},
+            {'label': '300 Seconds (5 Min)', 'val': '300'}
         ]
     },
     {
@@ -65,9 +67,9 @@ ARCADE_MASTER_REGISTRY = [
         'badge': 'REACTION GRID',
         'icon': '🔨',
         'category': 'Spatial Reaction Latency',
-        'summary': 'Targets emerge across a 3x3 reaction grid with shrinking exposure times. Type the active target before it retracts into the bunker.',
-        'win_condition': 'Score higher points by striking targets within the shortest millisecond window.',
-        'lose_condition': 'Miss 5 target windows or score lower than opponent.',
+        'summary': 'Targets emerge across a 3x3 reaction grid with calibrated exposure times. Strike the active target before it retracts into the bunker.',
+        'win_condition': 'Score higher points by striking targets within the millisecond window.',
+        'lose_condition': 'Exhaust all 5 hammer attempts or score lower than opponent.',
         'supports': ['Solo vs AI', '1v1 Challenge'],
         'default_objective': 'timed',
         'objective_options': [
@@ -81,16 +83,17 @@ ARCADE_MASTER_REGISTRY = [
         'title': 'Zombie Defense',
         'badge': 'BASE SURVIVAL',
         'icon': '🧟‍♂️',
-        'category': 'Perimeter Wave Defense',
+        'category': 'Perimeter Defense',
         'summary': 'Incoming hordes march towards your fortified base. Type overhead words to discharge defensive turrets.',
-        'win_condition': 'Survive all incoming waves with base integrity intact.',
+        'win_condition': 'Survive the full session duration with base barrier intact.',
         'lose_condition': 'Zombies breach the perimeter and reduce base health to 0%.',
         'supports': ['Solo vs AI', 'Co-op Score Duel'],
-        'default_objective': 'waves',
+        'default_objective': 'timed',
         'objective_options': [
-            {'label': 'Wave 1 - 3', 'val': '3'},
-            {'label': 'Wave 1 - 5', 'val': '5'},
-            {'label': 'Wave 1 - 10', 'val': '10'}
+            {'label': '45 Seconds', 'val': '45'},
+            {'label': '60 Seconds (1 Min)', 'val': '60'},
+            {'label': '120 Seconds (2 Min)', 'val': '120'},
+            {'label': '300 Seconds (5 Min)', 'val': '300'}
         ]
     },
     {
@@ -128,18 +131,19 @@ ARCADE_MASTER_REGISTRY = [
     {
         'slug': 'space_defender',
         'title': 'Space Defender',
-        'badge': 'MULTI-QUADRANT',
+        'badge': 'ORBITAL GRID',
         'icon': '🚀',
         'category': 'Orbital Trajectory Defense',
         'summary': 'Debris and drones converge on your starship across 360 degrees. Acquire target locks and neutralize orbital threats.',
-        'win_condition': 'Clear all orbital waves before ship shielding is depleted.',
+        'win_condition': 'Survive orbital debris impacts for the full flight duration.',
         'lose_condition': 'Ship shields collapse from debris impacts.',
         'supports': ['Solo vs AI', '1v1 Duel'],
         'default_objective': 'timed',
         'objective_options': [
+            {'label': '30 Seconds', 'val': '30'},
             {'label': '45 Seconds', 'val': '45'},
-            {'label': '60 Seconds', 'val': '60'},
-            {'label': '120 Seconds', 'val': '120'}
+            {'label': '60 Seconds (1 Min)', 'val': '60'},
+            {'label': '120 Seconds (2 Min)', 'val': '120'}
         ]
     },
     {
@@ -166,13 +170,15 @@ ARCADE_MASTER_REGISTRY = [
         'icon': '🥷',
         'category': 'Airborne Word Trajectories',
         'summary': 'Airborne words launch with parabolic momentum. Slice targets cleanly mid-air to build score multipliers.',
-        'win_condition': 'Amass highest slice score and maintain unbroken multiplier combos.',
+        'win_condition': 'Survive flight duration with highest slice score and unbroken multiplier combos.',
         'lose_condition': 'Drop 3 unsliced targets or score lower than opponent.',
         'supports': ['Solo vs AI', '1v1 Challenge'],
         'default_objective': 'timed',
         'objective_options': [
+            {'label': '30 Seconds', 'val': '30'},
             {'label': '45 Seconds', 'val': '45'},
-            {'label': '60 Seconds', 'val': '60'}
+            {'label': '60 Seconds (1 Min)', 'val': '60'},
+            {'label': '120 Seconds (2 Min)', 'val': '120'}
         ]
     },
     {
@@ -182,14 +188,15 @@ ARCADE_MASTER_REGISTRY = [
         'icon': '🧠',
         'category': 'Working Cognitive Recall',
         'summary': 'Sequences flash briefly and vanish. Type the sequence completely from mental recall.',
-        'win_condition': 'Successfully reproduce the highest quota of hidden sequences.',
-        'lose_condition': 'Fail 3 sequence recalls.',
+        'win_condition': 'Maintain memory recall streak through selected flight duration.',
+        'lose_condition': 'Accumulate 3 sequence recall strikes.',
         'supports': ['Solo vs AI', '1v1 Duel'],
-        'default_objective': 'rounds',
+        'default_objective': 'timed',
         'objective_options': [
-            {'label': '5 Memory Rounds', 'val': '5'},
-            {'label': '10 Memory Rounds', 'val': '10'},
-            {'label': '15 Memory Rounds', 'val': '15'}
+            {'label': '30 Seconds', 'val': '30'},
+            {'label': '45 Seconds', 'val': '45'},
+            {'label': '60 Seconds (1 Min)', 'val': '60'},
+            {'label': '120 Seconds (2 Min)', 'val': '120'}
         ]
     },
     {
@@ -199,13 +206,16 @@ ARCADE_MASTER_REGISTRY = [
         'icon': '🗺️',
         'category': 'Ergonomic Row Progression',
         'summary': 'Journey through ergonomic training stages: Home Row anchors, upper extensions, bottom tucks, and number stretches.',
-        'win_condition': 'Clear all quest stages with at least 95% accuracy.',
-        'lose_condition': 'Accuracy falls below baseline stage threshold.',
+        'win_condition': 'Maintain typing stream throughout selected flight time with high accuracy.',
+        'lose_condition': 'Timer expires with accuracy below baseline.',
         'supports': ['Solo Quest', 'Stage Duel'],
-        'default_objective': 'stages',
+        'default_objective': 'timed',
         'objective_options': [
-            {'label': 'Stage 1 to 3', 'val': '3'},
-            {'label': 'Stage 1 to 5 (Full Map)', 'val': '5'}
+            {'label': '45 Seconds', 'val': '45'},
+            {'label': '1 Minute (60s)', 'val': '60'},
+            {'label': '2 Minutes (120s)', 'val': '120'},
+            {'label': '5 Minutes (300s)', 'val': '300'},
+            {'label': '10 Minutes (600s)', 'val': '600'}
         ]
     }
 ]
@@ -216,7 +226,6 @@ def index():
     if current_user.is_authenticated:
         records = ArcadeLeaderboard.query.filter_by(user_id=current_user.id).all()
         user_high_scores = {r.game_mode: r.high_score for r in records}
-        
     return render_template(
         'games/index.html',
         games=ARCADE_MASTER_REGISTRY,
@@ -228,12 +237,10 @@ def play_arena(game_slug):
     game_info = next((g for g in ARCADE_MASTER_REGISTRY if g['slug'] == game_slug), None)
     if not game_info:
         return render_template('games/index.html', games=ARCADE_MASTER_REGISTRY)
-
     user_weak_keys = []
     if current_user.is_authenticated and current_user.dna_profile:
         stats = current_user.dna_profile.get_key_stats()
         user_weak_keys = [k.upper() for k, v in stats.items() if v.get('total', 0) >= 4 and (v.get('errors', 0)/v['total']) > 0.08][:6]
-
     return render_template(
         'games/arena.html',
         game=game_info,

@@ -71,7 +71,7 @@
         </ul>
     </aside>
 
-    <!-- Top Cockpit Header Navigation -->
+    <!-- Top Cockpit Fixed Navigation -->
     <nav class="navbar">
         <a href="{{ url_for('typing.test_page') }}" class="brand">
             <span class="brand-sphere-icon">
@@ -220,6 +220,7 @@
             });
         });
     </script>
+    <script src="{{ url_for('static', filename='js/pilot_ai.js') }}"></script>
     <script src="{{ url_for('static', filename='js/audio.js') }}"></script>
     <script src="{{ url_for('static', filename='js/settings.js') }}"></script>
     <script src="{{ url_for('static', filename='js/charts.js') }}"></script>
