@@ -7,10 +7,34 @@
     <meta name="description" content="TypeSphere is India's premier typing intelligence ecosystem, touch typing flight school, competitive 1v1 arena, and biometric telemetry engine.">
     <meta name="keywords" content="typing test, WPM speed test, typing DNA, touch typing academy, multiplayer typing, SSC CGL typing test">
 
-    <!-- Aeronautical Fonts -->
+    <!-- Pre-Paint Head Script: Eliminates Theme/Style Blinking on Page Load -->
+    <script>
+        (function() {
+            try {
+                var stored = localStorage.getItem('typesphere_user_profile_prefs') || sessionStorage.getItem('typesphere_anon_session_prefs');
+                if (stored) {
+                    var prefs = JSON.parse(stored);
+                    if (prefs.theme) document.documentElement.setAttribute('data-theme', prefs.theme);
+                    if (prefs.reduce_motion) document.documentElement.setAttribute('data-reduce-motion', 'true');
+                    
+                    var fontMap = {
+                        'Colus': "'Colus', 'Playfair Display', Georgia, serif",
+                        'Guka': "'Guka', 'Roboto Slab', Rockwell, serif",
+                        'Mixa': "'Mixa', 'Space Grotesk', -apple-system, sans-serif"
+                    };
+                    if (prefs.font_family && fontMap[prefs.font_family]) {
+                        document.documentElement.style.setProperty('--font-mono', fontMap[prefs.font_family]);
+                    }
+                    if (prefs.font_size) document.documentElement.style.setProperty('--typing-font-size', prefs.font_size + 'px');
+                }
+            } catch (e) {}
+        })();
+    </script>
+
+    <!-- Distinctive Typographical Fonts: Colus (Playfair Display), Guka (Roboto Slab), Mixa (Space Grotesk) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500&family=Roboto+Slab:wght@500;600;700;800&family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700;800&display=swap" rel="stylesheet">
 
     <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/typing.css') }}">
@@ -71,7 +95,7 @@
         </ul>
     </aside>
 
-    <!-- Top Cockpit Fixed Navigation -->
+    <!-- Top Fixed Cockpit Navigation -->
     <nav class="navbar">
         <a href="{{ url_for('typing.test_page') }}" class="brand">
             <span class="brand-sphere-icon">
@@ -115,7 +139,7 @@
         </button>
     </nav>
 
-    <!-- Main Flight Deck Container -->
+    <!-- Main Viewport Deck -->
     <main class="container">
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
@@ -133,7 +157,7 @@
         {% block content %}{% endblock %}
     </main>
 
-    <!-- Cockpit Telemetry Footer -->
+    <!-- Telemetry Footer -->
     <footer class="app-footer">
         <div class="footer-container">
             <div class="footer-grid">

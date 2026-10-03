@@ -1,12 +1,12 @@
 /**
  * TypeSphere Unified Settings & Cockpit Personalization Dispatcher
- * Strictly separates Default Settings, Guest Session Settings, and User Profile Settings.
+ * Manages typography (Colus, Guka, Mixa), live sandbox styling, and persistence.
  */
 class SettingsManager {
     constructor() {
         this.defaultSettings = {
-            theme: 'Dark',
-            font_family: 'JetBrains Mono',
+            theme: 'dark',
+            font_family: 'Colus',
             font_size: 22,
             caret_style: 'smooth',
             typing_area_style: 'modern',
@@ -21,8 +21,8 @@ class SettingsManager {
             default_duration: 60,
             default_content: 'words',
             default_level: 'moderate',
-            blind_mode: true,   // Default: ON
-            ghost_mode: false   // Default: OFF
+            blind_mode: true,
+            ghost_mode: false
         };
         this.current = Object.assign({}, this.defaultSettings);
         this.initSettings();
@@ -33,7 +33,6 @@ class SettingsManager {
         const isAuthenticated = authElement ? authElement.dataset.authenticated === 'true' : false;
 
         if (isAuthenticated) {
-            // Authenticated Pilot: Read from localStorage or initial database injection
             const stored = localStorage.getItem('typesphere_user_profile_prefs');
             if (stored) {
                 try {
@@ -41,7 +40,6 @@ class SettingsManager {
                 } catch {}
             }
         } else {
-            // Anonymous Guest: Temporary session storage only; refreshes revert to system defaults
             const sessionData = sessionStorage.getItem('typesphere_anon_session_prefs');
             if (sessionData) {
                 try {
@@ -58,15 +56,21 @@ class SettingsManager {
         // 1. Theme Palette
         document.documentElement.setAttribute('data-theme', this.current.theme || 'dark');
 
-        // 2. Reduced Motion Preference
+        // 2. Reduced Motion
         if (this.current.reduce_motion) {
             document.documentElement.setAttribute('data-reduce-motion', 'true');
         } else {
             document.documentElement.removeAttribute('data-reduce-motion');
         }
 
-        // 3. Typography & Sizing CSS Variables
-        document.documentElement.style.setProperty('--font-mono', `"${this.current.font_family}", monospace`);
+        // 3. Typographical Mapping (Distinct Lowercase Glyph Renders)
+        const fontMap = {
+            'Colus': "'Colus', 'Playfair Display', Georgia, serif",
+            'Guka': "'Guka', 'Roboto Slab', Rockwell, serif",
+            'Mixa': "'Mixa', 'Space Grotesk', -apple-system, sans-serif"
+        };
+        const resolvedFont = fontMap[this.current.font_family] || fontMap['Colus'];
+        document.documentElement.style.setProperty('--font-mono', resolvedFont);
         document.documentElement.style.setProperty('--typing-font-size', `${this.current.font_size}px`);
 
         // 4. Caret Styles
@@ -77,26 +81,26 @@ class SettingsManager {
             }
         });
 
-        // 5. Typing Container Visual Style
-        const typingBox = document.getElementById('typing-box');
-        if (typingBox && this.current.typing_area_style) {
-            typingBox.className = `typing-container focus-ring style-${this.current.typing_area_style}`;
-        }
+        // 5. Live Viewport Styling Updates
+        const allTypingBoxes = document.querySelectorAll('.typing-container, #typing-box, #sandbox-typing-box');
+        allTypingBoxes.forEach(box => {
+            box.className = `typing-container focus-ring style-${this.current.typing_area_style || 'modern'}`;
+        });
 
-        // 6. Sound Synthesizer
+        // 6. Audio Engine
         if (window.soundEngine) {
             window.soundEngine.enabled = this.current.sound_enabled;
             window.soundEngine.theme = this.current.sound_theme;
             window.soundEngine.setVolume(this.current.sound_volume);
         }
 
-        // 7. On-Screen Virtual Keyboard Visibility
+        // 7. Virtual Keyboard Display
         const kbWrapper = document.getElementById('keyboard-container');
         if (kbWrapper) {
             kbWrapper.style.display = (this.current.keyboard_display === 'hidden') ? 'none' : 'flex';
         }
 
-        // 8. Synchronize Live Typing Engine Controls if Present
+        // 8. Synchronize Live Typing Controls
         if (window.typingEngine) {
             window.typingEngine.durationLimit = this.current.default_duration;
             window.typingEngine.contentType = this.current.default_content;
@@ -106,42 +110,34 @@ class SettingsManager {
             window.typingEngine.updateControlsUI();
         }
 
-        // 9. Synchronize Active UI Button States on /settings/
         this.highlightSettingsPageUI();
     }
 
     highlightSettingsPageUI() {
-        // Theme Buttons
         document.querySelectorAll('[data-cfg-theme]').forEach(btn => {
             btn.classList.toggle('active-choice', btn.dataset.cfgTheme === this.current.theme);
         });
 
-        // Typing Style Buttons
         document.querySelectorAll('[data-cfg-style]').forEach(btn => {
             btn.classList.toggle('active-choice', btn.dataset.cfgStyle === this.current.typing_area_style);
         });
 
-        // Font Family Buttons
         document.querySelectorAll('[data-cfg-font]').forEach(btn => {
             btn.classList.toggle('active-choice', btn.dataset.cfgFont === this.current.font_family);
         });
 
-        // Caret Style Buttons
         document.querySelectorAll('[data-cfg-caret]').forEach(btn => {
             btn.classList.toggle('active-choice', btn.dataset.cfgCaret === this.current.caret_style);
         });
 
-        // Sound Theme Buttons
         document.querySelectorAll('[data-cfg-sound]').forEach(btn => {
             btn.classList.toggle('active-choice', btn.dataset.cfgSound === this.current.sound_theme);
         });
 
-        // Keyboard Display Buttons
         document.querySelectorAll('[data-cfg-kb]').forEach(btn => {
             btn.classList.toggle('active-choice', btn.dataset.cfgKb === this.current.keyboard_display);
         });
 
-        // Sliders & Labels
         const fSlider = document.getElementById('font-size-slider');
         const fLabel = document.getElementById('font-size-label');
         if (fSlider) fSlider.value = this.current.font_size;
@@ -152,7 +148,6 @@ class SettingsManager {
         if (sSlider) sSlider.value = Math.round(this.current.sound_volume * 100);
         if (sLabel) sLabel.textContent = `${Math.round(this.current.sound_volume * 100)}%`;
 
-        // Toggles & Dropdowns
         const muteBtn = document.getElementById('btn-sound-mute-toggle');
         if (muteBtn) {
             muteBtn.textContent = this.current.sound_enabled ? 'Sound: ON' : 'Sound: MUTED';

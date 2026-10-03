@@ -19,14 +19,14 @@
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(115px, 1fr));
     gap: 0.75rem;
-    margin-bottom: 1.25rem;
+    margin-bottom: 0.85rem;
     transition: var(--transition);
 }
 .stat-box {
     background: var(--bg-secondary);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-sm);
-    padding: 0.75rem 0.6rem;
+    padding: 0.65rem 0.6rem;
     text-align: center;
     position: relative;
     overflow: hidden;
@@ -47,14 +47,14 @@
     line-height: 1.2;
 }
 
-/* Speedometer Vector Gauge */
+/* Restored Circular Vector Speedometer Arc */
 .speedometer-svg {
     position: absolute;
     right: 8px;
     bottom: 8px;
-    width: 42px;
-    height: 42px;
-    opacity: 0.22;
+    width: 38px;
+    height: 38px;
+    opacity: 0.45;
     pointer-events: none;
 }
 .speedo-bg {
@@ -78,20 +78,20 @@
     background: var(--bg-secondary);
     border: 1.5px solid var(--accent);
     border-radius: var(--radius);
-    padding: 0.85rem 1.25rem;
-    margin-bottom: 1.25rem;
+    padding: 0.75rem 1.15rem;
+    margin-bottom: 0.85rem;
     box-shadow: 0 0 16px var(--accent-glow);
 }
 .shield-hud-title {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-size: 0.78rem;
+    font-size: 0.76rem;
     font-weight: 800;
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: var(--text-muted);
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.45rem;
 }
 .shield-cells-grid {
     display: grid;
@@ -122,16 +122,16 @@
 }
 
 /* =============================================================
-   TYPING VIEWPORT STYLES (MODERN, COCKPIT, MINIMAL, TERMINAL)
+   TYPING VIEWPORT STYLES
    ============================================================= */
 .typing-container {
     position: relative;
     background: var(--bg-secondary);
     border: 1.5px solid var(--border-color);
     border-radius: var(--radius);
-    padding: 1.75rem 2rem;
-    min-height: 180px;
-    max-height: 245px;
+    padding: 1.5rem 1.75rem;
+    min-height: 140px;
+    max-height: 200px;
     cursor: text;
     outline: none;
     user-select: none;
@@ -145,26 +145,35 @@
     box-shadow: 0 0 0 3px var(--accent-glow);
 }
 
-/* Cockpit Flight Border Variant */
+/* Style Modern */
+.typing-container.style-modern {
+    background: var(--bg-secondary);
+    border: 1.5px solid var(--accent);
+    box-shadow: 0 0 15px var(--accent-glow);
+}
+
+/* Style Cockpit */
 .typing-container.style-cockpit {
     border: 2px solid var(--accent);
     box-shadow: 0 0 25px var(--accent-glow), inset 0 0 25px rgba(0, 0, 0, 0.5);
-    background-image: linear-gradient(rgba(56, 189, 248, 0.02) 1px, transparent 1px);
+    background-image: linear-gradient(rgba(56, 189, 248, 0.03) 1px, transparent 1px);
     background-size: 100% 24px;
 }
-/* Minimalist Variant */
+
+/* Style Minimalist */
 .typing-container.style-minimal {
     background: transparent;
     border-color: transparent;
     box-shadow: none;
     padding: 1rem 0;
 }
-/* Retro CRT Terminal Variant */
+
+/* Style Retro Terminal */
 .typing-container.style-terminal {
-    background: #020604;
-    border: 1.5px solid #22c55e;
-    box-shadow: 0 0 20px rgba(34, 197, 94, 0.2);
-    color: #22c55e;
+    background: #020604 !important;
+    border: 1.5px solid #22c55e !important;
+    box-shadow: 0 0 20px rgba(34, 197, 94, 0.25) !important;
+    color: #22c55e !important;
 }
 
 .typing-text-display {
@@ -176,6 +185,26 @@
     position: relative;
     word-break: break-word;
     white-space: pre-wrap;
+}
+
+/* Point 2: Distinct Typography Fonts with Accurate Lowercase Glyph Rendering */
+.font-colus, [data-cfg-font="Colus"] {
+    font-family: 'Colus', 'Playfair Display', Georgia, serif !important;
+    text-transform: none !important;
+    font-variant-caps: normal !important;
+    font-variant: normal !important;
+}
+.font-guka, [data-cfg-font="Guka"] {
+    font-family: 'Guka', 'Roboto Slab', Rockwell, serif !important;
+    text-transform: none !important;
+    font-variant-caps: normal !important;
+    font-variant: normal !important;
+}
+.font-mixa, [data-cfg-font="Mixa"] {
+    font-family: 'Mixa', 'Space Grotesk', -apple-system, sans-serif !important;
+    text-transform: none !important;
+    font-variant-caps: normal !important;
+    font-variant: normal !important;
 }
 
 /* Character States */
@@ -241,7 +270,7 @@
     box-shadow: 0 0 8px #ec4899;
 }
 
-/* Distraction-Free Focus Mode (Esc) */
+/* Focus Mode */
 body.focus-mode .navbar,
 body.focus-mode .stats-hud,
 body.focus-mode .mode-selectors,
@@ -252,13 +281,13 @@ body.focus-mode .test-tip-banner {
 }
 body.focus-mode .container {
     max-width: 880px;
-    margin-top: 15vh;
+    margin-top: 8vh;
 }
 
 @media (max-width: 768px) {
     .typing-container {
-        padding: 1.25rem 1rem;
-        min-height: 150px;
+        padding: 1.15rem 0.85rem;
+        min-height: 135px;
     }
     .typing-text-display {
         font-size: 1.15rem;

@@ -36,7 +36,7 @@
 </div>
 
 <!-- Paused Floating HUD Bar -->
-<div id="paused-floating-bar" style="display:none; justify-content:space-between; align-items:center; background:var(--bg-card); border:1.5px solid var(--warning); padding:0.55rem 1.15rem; border-radius:var(--radius); margin-bottom:0.75rem; max-width:620px; margin-left:auto; margin-right:auto;">
+<div id="paused-floating-bar" style="display:none; justify-content:space-between; align-items:center; background:var(--bg-card); border:1.5px solid var(--warning); padding:0.55rem 1.15rem; border-radius:var(--radius); margin-bottom:0.85rem; max-width:620px; margin-left:auto; margin-right:auto;">
     <span style="color:var(--warning); font-weight:800; font-size:0.85rem;">⏸ FLIGHT SUSPENDED</span>
     <div style="display:flex; gap:0.5rem;">
         <button onclick="window.typingEngine.resumeTest()" class="btn btn-primary btn-sm">▶ Resume</button>
@@ -65,7 +65,7 @@
 </div>
 
 <!-- Cockpit 5-Shield Battery HUD for Survival Mode -->
-<div id="survival-shield-hud" class="survival-shield-container" style="margin-bottom:0.75rem;">
+<div id="survival-shield-hud" class="survival-shield-container" style="margin-bottom:0.85rem;">
     <div class="shield-hud-title">
         <span>🛡️ Flight Integrity Reserve</span>
         <span id="shield-status-text" style="color:var(--accent); font-family:var(--font-mono); font-weight:800;">5 / 5 UNITS (100%)</span>
@@ -80,7 +80,7 @@
 </div>
 
 <!-- Primary Cockpit Control Console Bar -->
-<div class="card" style="padding:0.75rem 1.15rem; margin-bottom:0.75rem;">
+<div class="card" style="padding:0.75rem 1.15rem; margin-bottom:0.85rem;">
     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.65rem;">
         <div style="display:flex; align-items:center; gap:0.55rem; flex-wrap:wrap;">
             <!-- Duration Selector -->
@@ -167,8 +167,8 @@
     </div>
 </div>
 
-<!-- Telemetry HUD Gauges -->
-<div class="stats-hud" style="margin-bottom:0.75rem;">
+<!-- Telemetry HUD Gauges: Speedometer Arc + Context-Aware Time Label -->
+<div class="stats-hud" style="margin-bottom:0.85rem;">
     <div class="stat-box">
         <svg class="speedometer-svg" viewBox="0 0 36 36">
             <path class="speedo-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
@@ -269,10 +269,9 @@ function onCodeLangChange(langVal) {
     window.typingEngine.loadPrompt(false);
 }
 
+/* Point 1: Directly sets duration, updating HUD time and label immediately */
 function onTimeChange(timeVal) {
-    const dur = parseInt(timeVal, 10);
-    window.typingEngine.durationLimit = dur;
-    window.typingEngine.loadPrompt(false);
+    window.typingEngine.setDuration(timeVal);
 }
 
 function onDifficultyChange(diffVal) {

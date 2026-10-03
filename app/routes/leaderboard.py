@@ -3,6 +3,7 @@ from flask_login import current_user
 from datetime import datetime, timedelta
 from app.models.user import User
 from app.models.typing import TypingTest
+from app.utils.timezone import ist_today_bounds
 
 leaderboard_bp = Blueprint('leaderboard', __name__)
 
@@ -10,7 +11,8 @@ leaderboard_bp = Blueprint('leaderboard', __name__)
 def index():
     sort_by = request.args.get('sort', 'wpm')
     mode_filter = request.args.get('mode', 'all')
-    period_filter = request.args.get('period', 'all')  # 'all', 'month', 'week', 'today'
+    # Point 6: 24-hour ('today') is now the default period
+    period_filter = request.args.get('period', 'today')
 
     # 1. Official Ranked Elo Division Standings
     if mode_filter == 'ranked_elo':
@@ -26,14 +28,14 @@ def index():
             current_period=period_filter
         )
 
-    # 2. Filter strictly for verified tests (Custom text / Practice tests excluded)
+    # 2. Filter strictly for verified tests
     query = TypingTest.query.filter_by(suspicious=False, is_ranked=True).filter(TypingTest.user_id.isnot(None))
 
-    # Time-Window Aggregations (Weekly & Monthly Cycles)
+    # Time-Window Aggregations: Default is 'today' (24-hour IST window)
     now = datetime.utcnow()
     if period_filter == 'today':
-        today_start = datetime(now.year, now.month, now.day)
-        query = query.filter(TypingTest.completed_at >= today_start)
+        start_utc, end_utc = ist_today_bounds()
+        query = query.filter(TypingTest.completed_at >= start_utc, TypingTest.completed_at < end_utc)
     elif period_filter == 'week':
         week_cutoff = now - timedelta(days=7)
         query = query.filter(TypingTest.completed_at >= week_cutoff)
@@ -67,7 +69,8 @@ def index():
     if current_user.is_authenticated:
         user_best_query = TypingTest.query.filter_by(user_id=current_user.id, is_ranked=True, suspicious=False)
         if period_filter == 'today':
-            user_best_query = user_best_query.filter(TypingTest.completed_at >= datetime(now.year, now.month, now.day))
+            start_utc, end_utc = ist_today_bounds()
+            user_best_query = user_best_query.filter(TypingTest.completed_at >= start_utc, TypingTest.completed_at < end_utc)
         elif period_filter == 'week':
             user_best_query = user_best_query.filter(TypingTest.completed_at >= (now - timedelta(days=7)))
         elif period_filter == 'month':

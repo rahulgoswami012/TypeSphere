@@ -1,65 +1,75 @@
 {% extends 'base.html' %}
 {% block title %}Championship Leaderboard | TypeSphere{% endblock %}
 {% block content %}
-<div class="card" style="max-width:1080px; margin:0 auto;">
+<div class="card" style="max-width:1080px; width:100%; margin:0 auto; padding:1.5rem;">
     <!-- Header -->
-    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:1.25rem; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
+    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:1.25rem; margin-bottom:1.25rem; flex-wrap:wrap; gap:1rem;">
         <div>
-            <h1 style="font-size:1.8rem; font-weight:800; margin:0;">Global Championship Leaderboard</h1>
+            <h1 style="font-size:1.75rem; font-weight:800; margin:0;">Global Championship Leaderboard</h1>
             <p style="color:var(--text-secondary); font-size:0.85rem; margin-top:0.25rem;">
                 Official anti-cheat verified rankings. Custom text and unstandardized runs are excluded.
             </p>
         </div>
         {% if current_mode != 'ranked_elo' %}
         <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
-            <a href="{{ url_for('leaderboard.index', sort='wpm', mode=current_mode, period=current_period) }}" class="btn {{ 'btn-primary' if current_sort == 'wpm' else '' }}">Speed (WPM)</a>
-            <a href="{{ url_for('leaderboard.index', sort='accuracy', mode=current_mode, period=current_period) }}" class="btn {{ 'btn-primary' if current_sort == 'accuracy' else '' }}">Accuracy</a>
-            <a href="{{ url_for('leaderboard.index', sort='consistency', mode=current_mode, period=current_period) }}" class="btn {{ 'btn-primary' if current_sort == 'consistency' else '' }}">Consistency</a>
+            <a href="{{ url_for('leaderboard.index', sort='wpm', mode=current_mode, period=current_period) }}" class="btn btn-sm {{ 'btn-primary active-choice' if current_sort == 'wpm' else '' }}">Speed (WPM)</a>
+            <a href="{{ url_for('leaderboard.index', sort='accuracy', mode=current_mode, period=current_period) }}" class="btn btn-sm {{ 'btn-primary active-choice' if current_sort == 'accuracy' else '' }}">Accuracy</a>
+            <a href="{{ url_for('leaderboard.index', sort='consistency', mode=current_mode, period=current_period) }}" class="btn btn-sm {{ 'btn-primary active-choice' if current_sort == 'consistency' else '' }}">Consistency</a>
         </div>
         {% endif %}
     </div>
 
-    <!-- Time Period & Cycle Selection Bar -->
+    <!-- Point 6: Today (24H) positioned first as default period -->
     {% if current_mode != 'ranked_elo' %}
-    <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.75rem; background:var(--bg-card); padding:0.6rem 1rem; border-radius:var(--radius-sm); border:1px solid var(--border-color); margin-bottom:1.25rem;">
-        <span style="font-size:0.78rem; font-weight:700; text-transform:uppercase; color:var(--text-muted); letter-spacing:0.05em;">Competitive Period:</span>
+    <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.75rem; background:var(--bg-card); padding:0.6rem 0.85rem; border-radius:var(--radius-sm); border:1px solid var(--border-color); margin-bottom:1.25rem;">
+        <span style="font-size:0.76rem; font-weight:800; text-transform:uppercase; color:var(--text-muted); letter-spacing:0.06em;">Competitive Period:</span>
         <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
-            <a href="{{ url_for('leaderboard.index', sort=current_sort, mode=current_mode, period='all') }}" class="btn btn-sm {{ 'btn-primary' if current_period == 'all' else '' }}">All-Time</a>
-            <a href="{{ url_for('leaderboard.index', sort=current_sort, mode=current_mode, period='month') }}" class="btn btn-sm {{ 'btn-primary' if current_period == 'month' else '' }}">Monthly Cycle (30D)</a>
-            <a href="{{ url_for('leaderboard.index', sort=current_sort, mode=current_mode, period='week') }}" class="btn btn-sm {{ 'btn-primary' if current_period == 'week' else '' }}">Weekly Sprint (7D)</a>
-            <a href="{{ url_for('leaderboard.index', sort=current_sort, mode=current_mode, period='today') }}" class="btn btn-sm {{ 'btn-primary' if current_period == 'today' else '' }}">Today (24H)</a>
+            <a href="{{ url_for('leaderboard.index', sort=current_sort, mode=current_mode, period='today') }}" class="btn btn-sm {{ 'btn-primary active-choice' if current_period == 'today' else '' }}">
+                ⚡ Today (24H)
+            </a>
+            <a href="{{ url_for('leaderboard.index', sort=current_sort, mode=current_mode, period='week') }}" class="btn btn-sm {{ 'btn-primary active-choice' if current_period == 'week' else '' }}">
+                Weekly Sprint (7D)
+            </a>
+            <a href="{{ url_for('leaderboard.index', sort=current_sort, mode=current_mode, period='month') }}" class="btn btn-sm {{ 'btn-primary active-choice' if current_period == 'month' else '' }}">
+                Monthly Cycle (30D)
+            </a>
+            <a href="{{ url_for('leaderboard.index', sort=current_sort, mode=current_mode, period='all') }}" class="btn btn-sm {{ 'btn-primary active-choice' if current_period == 'all' else '' }}">
+                All-Time
+            </a>
         </div>
     </div>
     {% endif %}
 
     <!-- Mode Filter Pills -->
     <div style="display:flex; gap:0.4rem; margin-bottom:1.5rem; flex-wrap:wrap;">
-        <a href="{{ url_for('leaderboard.index', sort=current_sort, mode='all', period=current_period) }}" class="btn {{ 'btn-primary' if current_mode == 'all' else '' }}" style="padding:0.35rem 0.75rem; font-size:0.82rem;">All Ranked Runs</a>
-        <a href="{{ url_for('leaderboard.index', mode='ranked_elo') }}" class="btn {{ 'btn-primary' if current_mode == 'ranked_elo' else '' }}" style="padding:0.35rem 0.75rem; font-size:0.82rem; border-color:#f59e0b; color:{{ '#04101e' if current_mode == 'ranked_elo' else '#f59e0b' }}; font-weight:700;">
+        <a href="{{ url_for('leaderboard.index', sort=current_sort, mode='all', period=current_period) }}" class="btn btn-sm {{ 'btn-primary active-choice' if current_mode == 'all' else '' }}">All Ranked Runs</a>
+        <a href="{{ url_for('leaderboard.index', mode='ranked_elo') }}" class="btn btn-sm {{ 'btn-primary active-choice' if current_mode == 'ranked_elo' else '' }}" style="border-color:#f59e0b; color:{{ '#04101e' if current_mode == 'ranked_elo' else '#f59e0b' }}; font-weight:700;">
             ⚡ Ranked Elo Divisions
         </a>
-        <a href="{{ url_for('leaderboard.index', sort=current_sort, mode='timed_60', period=current_period) }}" class="btn {{ 'btn-primary' if current_mode == 'timed_60' else '' }}" style="padding:0.35rem 0.75rem; font-size:0.82rem;">1-Min Benchmark</a>
-        <a href="{{ url_for('leaderboard.index', sort=current_sort, mode='timed_30', period=current_period) }}" class="btn {{ 'btn-primary' if current_mode == 'timed_30' else '' }}" style="padding:0.35rem 0.75rem; font-size:0.82rem;">30s Sprint</a>
-        <a href="{{ url_for('leaderboard.index', sort=current_sort, mode='timed_15', period=current_period) }}" class="btn {{ 'btn-primary' if current_mode == 'timed_15' else '' }}" style="padding:0.35rem 0.75rem; font-size:0.82rem;">15s Dash</a>
-        <a href="{{ url_for('leaderboard.index', sort=current_sort, mode='timed_120', period=current_period) }}" class="btn {{ 'btn-primary' if current_mode == 'timed_120' else '' }}" style="padding:0.35rem 0.75rem; font-size:0.82rem;">2-Min Endurance</a>
+        <a href="{{ url_for('leaderboard.index', sort=current_sort, mode='timed_60', period=current_period) }}" class="btn btn-sm {{ 'btn-primary active-choice' if current_mode == 'timed_60' else '' }}">1-Min Benchmark</a>
+        <a href="{{ url_for('leaderboard.index', sort=current_sort, mode='timed_30', period=current_period) }}" class="btn btn-sm {{ 'btn-primary active-choice' if current_mode == 'timed_30' else '' }}">30s Sprint</a>
+        <a href="{{ url_for('leaderboard.index', sort=current_sort, mode='timed_15', period=current_period) }}" class="btn btn-sm {{ 'btn-primary active-choice' if current_mode == 'timed_15' else '' }}">15s Dash</a>
+        <a href="{{ url_for('leaderboard.index', sort=current_sort, mode='timed_120', period=current_period) }}" class="btn btn-sm {{ 'btn-primary active-choice' if current_mode == 'timed_120' else '' }}">2-Min Endurance</a>
     </div>
 
-    <!-- User Personal Ranking Summary Card -->
+    <!-- User Standing Summary Card -->
     {% if user_rank_info %}
-    <div class="card" style="background:var(--bg-card); border:1px solid var(--accent); padding:0.85rem 1.25rem; margin-bottom:1.75rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+    <div class="card" style="background:var(--bg-card); border:1px solid var(--accent); padding:0.85rem 1.25rem; margin-bottom:1.5rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
         <div>
-            <span style="font-size:0.75rem; font-weight:800; color:var(--accent); text-transform:uppercase;">Your Standing for {{ current_period|capitalize }}</span>
-            <div style="font-size:1.15rem; font-weight:800; margin-top:0.2rem;">
-                Rank #{{ user_rank_info.rank }} &bull; Top {{ user_rank_info.percentile }}% of Verified Typists
+            <span style="font-size:0.74rem; font-weight:800; color:var(--accent); text-transform:uppercase;">
+                Your Standing for {{ 'Today (24H)' if current_period == 'today' else current_period|capitalize }}
+            </span>
+            <div style="font-size:1.1rem; font-weight:800; margin-top:0.2rem;">
+                Rank #{{ user_rank_info.rank }} &bull; Top {{ user_rank_info.percentile }}% of Verified Pilots
             </div>
         </div>
         <div>
-            Personal Best: <strong style="color:var(--accent); font-family:var(--font-mono); font-size:1.1rem;">{{ user_rank_info.best_wpm }} WPM</strong> ({{ user_rank_info.best_acc }}%)
+            Personal Best: <strong style="color:var(--accent); font-family:var(--font-mono); font-size:1.05rem;">{{ user_rank_info.best_wpm }} WPM</strong> ({{ user_rank_info.best_acc }}%)
         </div>
     </div>
     {% endif %}
 
-    <!-- Table -->
+    <!-- Standings Table -->
     <div class="table-responsive-container">
         {% if current_mode == 'ranked_elo' %}
         <table>
@@ -76,8 +86,8 @@
             <tbody>
                 {% for u in ranked_users %}
                 <tr>
-                    <td style="font-weight:800; color:{{ '#f59e0b' if loop.index == 1 else ('#94a3b8' if loop.index == 2 else ('#b45309' if loop.index == 3 else 'var(--text-muted)')) }};">#{{ loop.index }}</td>
-                    <td><a href="{{ url_for('dashboard.public_profile', username=u.username) }}" style="color:var(--text-primary); text-decoration:none; font-weight:700;">{{ u.username }}</a></td>
+                    <td style="font-weight:800; color:{{ '#f59e0b' if loop.index == 1 else ('#94a3b8' if loop.index == 2 else ('#d97706' if loop.index == 3 else 'var(--text-muted)')) }};">#{{ loop.index }}</td>
+                    <td><a href="{{ url_for('dashboard.public_profile', username=u.username) }}" style="color:var(--text-primary); text-decoration:none; font-weight:700;">{{ u.display_callsign if hasattr(u, 'display_callsign') else u.username }}</a></td>
                     <td><span style="font-weight:700; color:{{ u.rank_badge.color }};">{{ u.rank_badge.icon }} {{ u.rank_division }}</span></td>
                     <td style="font-family:var(--font-mono); font-weight:800; color:var(--accent);">{{ u.elo_rating }} MMR</td>
                     <td><span style="color:var(--success); font-weight:700;">{{ u.ranked_wins }}W</span> - <span style="color:var(--danger); font-weight:700;">{{ u.ranked_losses }}L</span></td>
@@ -85,7 +95,7 @@
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="6" style="padding:3rem; text-align:center; color:var(--text-muted);">
+                    <td colspan="6" style="padding:2.5rem; text-align:center; color:var(--text-muted);">
                         No competitive duels recorded yet.<br><br>
                         <a href="{{ url_for('multiplayer.index') }}" class="btn btn-primary btn-sm">Find a Ranked Match</a>
                     </td>
@@ -109,8 +119,8 @@
             <tbody>
                 {% for test in tests %}
                 <tr>
-                    <td style="font-weight:800; color:{{ '#f59e0b' if loop.index == 1 else ('#94a3b8' if loop.index == 2 else ('#b45309' if loop.index == 3 else 'var(--text-muted)')) }};">#{{ loop.index }}</td>
-                    <td><a href="{{ url_for('dashboard.public_profile', username=test.user.username) }}" style="color:var(--accent); text-decoration:none; font-weight:700;">{{ test.user.username }}</a></td>
+                    <td style="font-weight:800; color:{{ '#f59e0b' if loop.index == 1 else ('#94a3b8' if loop.index == 2 else ('#d97706' if loop.index == 3 else 'var(--text-muted)')) }};">#{{ loop.index }}</td>
+                    <td><a href="{{ url_for('dashboard.public_profile', username=test.user.username) }}" style="color:var(--accent); text-decoration:none; font-weight:700;">{{ test.user.display_callsign if hasattr(test.user, 'display_callsign') else test.user.username }}</a></td>
                     <td>{{ test.duration|int }}s</td>
                     <td style="font-family:var(--font-mono); font-weight:800; color:var(--accent);">{{ test.wpm }} WPM</td>
                     <td>{{ test.accuracy }}%</td>
@@ -123,11 +133,11 @@
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="7" style="padding:3.5rem; text-align:center; color:var(--text-muted);">
-                        <div style="font-size:2rem; margin-bottom:0.5rem;">🏁</div>
-                        <div style="font-size:1.05rem; font-weight:700; color:var(--text-primary); margin-bottom:0.25rem;">No verified results for this time window.</div>
-                        <p style="margin-bottom:1.25rem;">Be the first verified typist to set this cycle's benchmark score.</p>
-                        <a href="{{ url_for('typing.test_page') }}" class="btn btn-primary">Start Ranked Test</a>
+                    <td colspan="7" style="padding:3rem; text-align:center; color:var(--text-muted);">
+                        <div style="font-size:2rem; margin-bottom:0.35rem;">🏁</div>
+                        <div style="font-size:1rem; font-weight:700; color:var(--text-primary); margin-bottom:0.25rem;">No verified results in the {{ 'Today (24H)' if current_period == 'today' else current_period|capitalize }} period yet.</div>
+                        <p style="margin-bottom:1rem; font-size:0.85rem;">Be the first verified pilot to set the benchmark score for this period.</p>
+                        <a href="{{ url_for('typing.test_page') }}" class="btn btn-primary btn-sm">Start Ranked Flight</a>
                     </td>
                 </tr>
                 {% endfor %}

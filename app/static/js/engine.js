@@ -2,7 +2,7 @@
  * TypeSphere Core Engine
  * Two-tier UI architecture, continuous passage streaming for timed tests,
  * genuine completion points for untimed and custom tests, 5-battery survival mode,
- * live biometric keyboard synchronization, and dynamic AI pacer simulation.
+ * dynamic AI pacer simulation, and immediate pre-start HUD duration synchronization.
  */
 class TypingEngine {
     constructor() {
@@ -15,9 +15,9 @@ class TypingEngine {
         this.timerInterval = null;
 
         // Test Configuration
-        this.durationLimit = 60; // 15, 30, 60, 120, 300, 600, 1200, or 0 (No Limit)
+        this.durationLimit = 60;
         this.contentType = 'words';
-        this.level = 'moderate'; // easy, moderate, hard, expert
+        this.level = 'moderate';
         this.codeLanguage = 'python';
         this.mode = 'timed';
         this.retryTestId = null;
@@ -28,10 +28,9 @@ class TypingEngine {
         this.maxShields = 5;
 
         // Behavioral Defaults
-        this.blindModeActive = true; // Blind Mode: ON by default
-        this.ghostEnabled = false; // Ghost Mode: OFF by default
+        this.blindModeActive = true;
+        this.ghostEnabled = false;
         
-        // Point 3: Dynamic Pilot AI Simulator Integration
         this.aiSimulator = null;
         this.ghostInterval = null;
 
@@ -55,6 +54,7 @@ class TypingEngine {
         this.hudWpm = document.getElementById('hud-wpm');
         this.hudAcc = document.getElementById('hud-acc');
         this.hudTime = document.getElementById('hud-time');
+        this.hudLabelTime = document.getElementById('hud-label-time');
         this.hudErrors = document.getElementById('hud-errors');
         this.speedometerArc = document.getElementById('speedo-arc');
         this.pauseModal = document.getElementById('pause-modal');
@@ -102,6 +102,7 @@ class TypingEngine {
         }
 
         this.updateRankedEligibility();
+        this.updateTimeDisplay();
     }
 
     async loadGhostRace(testId) {
@@ -146,6 +147,32 @@ class TypingEngine {
             }
         }
         this.updateControlsUI();
+        this.updateTimeDisplay();
+    }
+
+    /**
+     * Point 1 & 3: Immediately updates time and label before flight begins
+     */
+    setDuration(dur) {
+        this.durationLimit = parseInt(dur, 10);
+        this.updateTimeDisplay();
+        this.updateRankedEligibility();
+        this.loadPrompt(false);
+    }
+
+    updateTimeDisplay() {
+        const labelEl = document.getElementById('hud-label-time');
+        const timeEl = document.getElementById('hud-time');
+        if (!timeEl) return;
+
+        if (this.durationLimit > 0) {
+            if (labelEl) labelEl.textContent = "Time Remaining";
+            timeEl.textContent = this.formatTimeDisplay(this.durationLimit);
+        } else {
+            // Point 3: Context-aware label for No Time Limit Mode
+            if (labelEl) labelEl.textContent = "Elapsed Flight Time";
+            timeEl.textContent = "0s";
+        }
     }
 
     updateControlsUI() {
@@ -177,6 +204,7 @@ class TypingEngine {
         }
 
         this.updateRankedEligibility();
+        this.updateTimeDisplay();
     }
 
     updateShieldHUD() {
@@ -307,7 +335,6 @@ class TypingEngine {
         this.uncorrectedErrors = 0;
         this.shieldLives = 5;
 
-        // Reset Dynamic Pilot AI Simulator
         if (!this.aiSimulator) {
             this.aiSimulator = new DynamicPilotAISimulator(this.level);
         } else {
@@ -331,12 +358,7 @@ class TypingEngine {
         this.hudErrors.textContent = '0';
         this.updateSpeedometer(0);
         this.updateShieldHUD();
-
-        if (this.durationLimit > 0) {
-            this.hudTime.textContent = this.formatTimeDisplay(this.durationLimit);
-        } else {
-            this.hudTime.textContent = '0s (Open Flight)';
-        }
+        this.updateTimeDisplay();
 
         const spans = this.display.querySelectorAll('.char');
         spans.forEach(s => s.className = 'char');
@@ -554,22 +576,23 @@ class TypingEngine {
             const now = performance.now() / 1000.0;
             this.updateLiveStats(now);
 
+            const labelEl = document.getElementById('hud-label-time');
+
             if (this.durationLimit > 0) {
                 const remaining = Math.max(0, this.durationLimit - this.tickElapsed);
+                if (labelEl) labelEl.textContent = "Time Remaining";
                 this.hudTime.textContent = this.formatTimeDisplay(remaining);
                 if (remaining <= 0) {
                     this.finishTest();
                 }
             } else {
-                this.hudTime.textContent = `${this.formatTimeDisplay(this.tickElapsed)} (Open Flight)`;
+                // Point 3: Live stopwatch counter
+                if (labelEl) labelEl.textContent = "Elapsed Flight Time";
+                this.hudTime.textContent = this.formatTimeDisplay(this.tickElapsed);
             }
         }, 1000);
     }
 
-    /**
-     * Point 3: Dynamic Pilot AI Pacer
-     * Runs natural simulation ticks adjusting speed, jitter, and pauses realistically.
-     */
     startDynamicGhostPacer() {
         clearInterval(this.ghostInterval);
         if (!this.aiSimulator) {
@@ -585,7 +608,6 @@ class TypingEngine {
                 return;
             }
 
-            // Advance AI Pilot simulation tick
             const aiData = this.aiSimulator.tick(tickRateMs / 1000.0, totalChars);
             const ghostIdx = Math.min(this.targetText.length - 1, aiData.progressChars);
             const spans = this.display.querySelectorAll('.char');
@@ -595,7 +617,6 @@ class TypingEngine {
                 this.ghostCaret.style.left = `${spans[ghostIdx].offsetLeft}px`;
                 this.ghostCaret.style.top = `${spans[ghostIdx].offsetTop + 4}px`;
                 
-                // Show dynamic comparative lead/deficit in title tooltip
                 const leadChars = this.currentIndex - ghostIdx;
                 const leadWords = Math.round(leadChars / 5.0);
                 const leadText = (leadWords >= 0) ? `+${leadWords} wds ahead` : `${leadWords} wds behind`;
