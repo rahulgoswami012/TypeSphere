@@ -25,8 +25,8 @@
         </button>
     </div>
 
-    <!-- Point 3: Sits in Natural Position, Sticking Only After Scrolling Past 54px -->
-    <div id="sandbox-sticky-container" style="position: sticky; top: 54px; z-index: 90; background: var(--bg-secondary); padding: 0.65rem 0 1rem; border-bottom: 1.5px solid var(--border-color); margin-bottom: 1.5rem;">
+    <!-- Sticky Telemetry Sandbox: Glides and docks at top: 48px under fixed navbar -->
+    <div id="sandbox-sticky-container" style="position: sticky; top: 48px; z-index: 90; background: var(--bg-secondary); padding: 0.65rem 0 1rem; border-bottom: 1.5px solid var(--border-color); margin-bottom: 1.5rem;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem;">
             <span style="font-size:0.74rem; text-transform:uppercase; color:var(--text-muted); font-weight:800; letter-spacing:0.06em;">
                 Live Cockpit Telemetry Sandbox
@@ -86,19 +86,19 @@
             </div>
         </div>
 
-        <!-- 3. Point 4: Colus, Guka, Mixa Typography (Distinct Lowercase & Uppercase) -->
+        <!-- 3. Colus, Guka, Mixa Typography (Distinct Lowercase & Uppercase) -->
         <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:1.5rem;">
             <div>
                 <h3 style="font-size:1.1rem; font-weight:800; margin-bottom:0.35rem;">3. Typography Character Style</h3>
                 <p style="color:var(--text-secondary); font-size:0.85rem; margin-bottom:0.75rem;">Select your distinct typing typeface:</p>
                 <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
-                    <button type="button" onclick="window.settingsManager.update('font_family', 'Colus')" class="btn btn-sm" data-cfg-font="Colus" style="flex:1; font-family:'Colus','Playfair Display',Georgia,serif; justify-content:center; font-weight:700;">
+                    <button type="button" onclick="window.settingsManager.update('font_family', 'Colus')" class="btn btn-sm font-colus" data-cfg-font="Colus" style="flex:1; justify-content:center; font-weight:700;">
                         Colus (Serif)
                     </button>
-                    <button type="button" onclick="window.settingsManager.update('font_family', 'Guka')" class="btn btn-sm" data-cfg-font="Guka" style="flex:1; font-family:'Guka','Roboto Slab',Rockwell,serif; justify-content:center; font-weight:700;">
+                    <button type="button" onclick="window.settingsManager.update('font_family', 'Guka')" class="btn btn-sm font-guka" data-cfg-font="Guka" style="flex:1; justify-content:center; font-weight:700;">
                         Guka (Slab)
                     </button>
-                    <button type="button" onclick="window.settingsManager.update('font_family', 'Mixa')" class="btn btn-sm" data-cfg-font="Mixa" style="flex:1; font-family:'Mixa','Space Grotesk',sans-serif; justify-content:center; font-weight:700;">
+                    <button type="button" onclick="window.settingsManager.update('font_family', 'Mixa')" class="btn btn-sm font-mixa" data-cfg-font="Mixa" style="flex:1; justify-content:center; font-weight:700;">
                         Mixa (Geometric)
                     </button>
                 </div>
@@ -184,7 +184,7 @@
                     <select id="cfg-default-content-select" onchange="window.settingsManager.update('default_content', this.value)" class="form-select" style="width:100%;">
                         <option value="words" selected>Words & Sentences</option>
                         <option value="paragraphs">Full Passages</option>
-                        <option value="exam">Government & Clerical (SSC)</option>
+                        <option value="exam">Administrative & Clerical (SSC)</option>
                         <option value="professional">Workplace Memos</option>
                         <option value="quotes">Literature & Quotes</option>
                         <option value="code">Programming Code</option>

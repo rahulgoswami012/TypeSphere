@@ -1,3 +1,8 @@
+"""
+TypeSphere - Arcade Hangar & Flight Gaming Controller
+Directs all 11 active educational flight disciplines.
+"""
+
 from flask import Blueprint, render_template, request, jsonify
 from flask_login import current_user
 from app import db
@@ -198,27 +203,9 @@ ARCADE_MASTER_REGISTRY = [
             {'label': '60 Seconds (1 Min)', 'val': '60'},
             {'label': '120 Seconds (2 Min)', 'val': '120'}
         ]
-    },
-    {
-        'slug': 'keyboard_quest',
-        'title': 'Keyboard Quest',
-        'badge': 'BIOMECHANIC MAP',
-        'icon': '🗺️',
-        'category': 'Ergonomic Row Progression',
-        'summary': 'Journey through ergonomic training stages: Home Row anchors, upper extensions, bottom tucks, and number stretches.',
-        'win_condition': 'Maintain typing stream throughout selected flight time with high accuracy.',
-        'lose_condition': 'Timer expires with accuracy below baseline.',
-        'supports': ['Solo Quest', 'Stage Duel'],
-        'default_objective': 'timed',
-        'objective_options': [
-            {'label': '45 Seconds', 'val': '45'},
-            {'label': '1 Minute (60s)', 'val': '60'},
-            {'label': '2 Minutes (120s)', 'val': '120'},
-            {'label': '5 Minutes (300s)', 'val': '300'},
-            {'label': '10 Minutes (600s)', 'val': '600'}
-        ]
     }
 ]
+
 
 @games_bp.route('/')
 def index():
@@ -231,6 +218,7 @@ def index():
         games=ARCADE_MASTER_REGISTRY,
         high_scores=user_high_scores
     )
+
 
 @games_bp.route('/play/<game_slug>')
 def play_arena(game_slug):
@@ -246,6 +234,7 @@ def play_arena(game_slug):
         game=game_info,
         weak_keys=user_weak_keys
     )
+
 
 @games_bp.route('/api/submit-score', methods=['POST'])
 def submit_score():
@@ -287,8 +276,10 @@ def submit_score():
             if score > lb.high_score:
                 lb.high_score = score
                 is_new_pb = True
-            if net_wpm > lb.best_wpm: lb.best_wpm = net_wpm
-            if accuracy > lb.best_accuracy: lb.best_accuracy = accuracy
+            if net_wpm > lb.best_wpm:
+                lb.best_wpm = net_wpm
+            if accuracy > lb.best_accuracy:
+                lb.best_accuracy = accuracy
             lb.updated_at = db.func.now()
 
     db.session.commit()

@@ -21,9 +21,10 @@
             padding: 1.5rem 1rem;
         }
 
+        /* Aeronautical Guilloche Framing */
         .cert-outer-wrapper {
             width: 100%;
-            max-width: 900px;
+            max-width: 920px;
             background: #ffffff;
             border: 12px solid #0f172a;
             outline: 3px solid {{ tier_color }};
@@ -31,8 +32,10 @@
             padding: clamp(1.5rem, 4.5vw, 3.25rem);
             position: relative;
             box-shadow: 0 25px 55px rgba(0, 0, 0, 0.75);
-            background-image: radial-gradient(#e2e8f0 1.2px, transparent 1.2px);
-            background-size: 24px 24px;
+            background-image: 
+                radial-gradient({{ tier_color }}22 1px, transparent 1px),
+                radial-gradient(#e2e8f0 1.2px, transparent 1.2px);
+            background-size: 48px 48px, 16px 16px;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
@@ -99,7 +102,7 @@
             font-size: clamp(0.85rem, 2.2vw, 0.98rem);
             line-height: 1.65;
             color: #334155;
-            max-width: 680px;
+            max-width: 700px;
             margin: 0 auto 1.75rem;
         }
 
@@ -145,8 +148,8 @@
             text-align: left;
         }
         .cert-seal {
-            width: clamp(80px, 16vw, 110px);
-            height: clamp(80px, 16vw, 110px);
+            width: clamp(84px, 17vw, 114px);
+            height: clamp(84px, 17vw, 114px);
             border-radius: 50%;
             border: 3.5px dashed {{ tier_color }};
             display: flex;
@@ -154,11 +157,11 @@
             align-items: center;
             justify-content: center;
             background: #f8fafc;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
             transform: rotate(-8deg);
             flex-shrink: 0;
         }
-        .cert-seal-wings { font-size: 1.4rem; line-height: 1; margin-bottom: 2px; }
+        .cert-seal-wings { font-size: 1.5rem; line-height: 1; margin-bottom: 2px; }
         .cert-seal-tier {
             font-family: 'Cinzel', serif;
             font-size: clamp(0.72rem, 2.2vw, 0.85rem);
@@ -180,7 +183,7 @@
             flex-wrap: wrap;
             justify-content: center;
             width: 100%;
-            max-width: 900px;
+            max-width: 920px;
         }
         .btn {
             background: #151d30;
@@ -244,7 +247,7 @@
 
         <footer class="cert-footer-row">
             <div class="cert-meta-info">
-                <div><strong>Cryptographic Seal:</strong> <span style="font-family:'JetBrains Mono',monospace;">{{ cert_code }}</span></div>
+                <div><strong>Cryptographic Seal:</strong> <span style="font-family:'JetBrains Mono',monospace; font-weight:700;">{{ cert_code }}</span></div>
                 <div><strong>Completed:</strong> {{ test.completed_at.strftime('%B %d, %Y') }} (Indian Standard Time)</div>
                 <div><strong>Discipline:</strong> {{ test.content_category }} &bull; Tier: {{ test.difficulty|capitalize }}</div>
                 <div><strong>Verification Protocol:</strong> SHA-256 Authenticated Flight Ledger</div>

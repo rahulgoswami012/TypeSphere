@@ -24,7 +24,7 @@
         </div>
     </div>
 
-    <!-- 11-Game Uniform Equal-Height Matrix -->
+    <!-- 11-Game Uniform Equal-Height 2-Column Grid -->
     <div class="arcade-cards-grid">
         {% for g in games %}
         <div id="game-card-{{ g.slug }}" class="card arcade-game-card" style="background:var(--bg-card); border-color:var(--border-color); padding:1.25rem;">
@@ -47,14 +47,13 @@
                     {{ g.summary }}
                 </p>
 
-                <!-- Pushed naturally toward bottom of top section -->
                 <div style="background:var(--bg-secondary); border-radius:var(--radius-sm); padding:0.6rem 0.75rem; margin-top:auto; margin-bottom:1rem; font-size:0.78rem;">
                     <div style="margin-bottom:0.25rem;"><strong>Win:</strong> <span style="color:var(--text-primary);">{{ g.win_condition }}</span></div>
                     <div><strong style="color:var(--danger);">Lose:</strong> <span style="color:var(--text-muted);">{{ g.lose_condition }}</span></div>
                 </div>
             </div>
 
-            <!-- Bottom Segment: Anchored Record & Action Button -->
+            <!-- Bottom Segment: Record & Action Button -->
             <div style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem; padding-top:0.75rem; border-top:1px solid var(--border-color);">
                 {% set pb = high_scores.get(g.slug, 0) %}
                 <div style="font-size:0.8rem; color:var(--text-muted);">
@@ -78,7 +77,6 @@ function saveCurrentScroll(slug) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Only restore scroll when returning intentionally from a game
     const isReturnIntent = sessionStorage.getItem('typesphere_arcade_return_intent') === 'true';
     const savedY = sessionStorage.getItem('typesphere_arcade_scroll_y');
 

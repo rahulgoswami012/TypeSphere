@@ -48,7 +48,7 @@
                         <span style="font-size:0.7rem; font-weight:800; background:var(--accent); color:#04101e; padding:0.15rem 0.5rem; border-radius:4px;">OPEN GRID</span>
                     </div>
                     <p style="color:var(--text-secondary); font-size:0.85rem; line-height:1.55; margin-bottom:1.25rem;">
-                        Open grid lobbies with custom durations up to 10 minutes and custom passage support.
+                        Open grid lobbies with custom durations up to 10 minutes and scalable multi-paragraph passages.
                     </p>
                 </div>
                 <button onclick="openCreateModal('public')" class="btn btn-primary" style="width:100%; justify-content:center; font-weight:800;">
@@ -115,7 +115,7 @@
                     </thead>
                     <tbody id="public-rooms-tbody">
                         <tr>
-                            <td colspan="7" style="padding:2.5rem; text-align:center; color:var(--text-muted);">
+                            <td colspan="7" style="padding: 2.5rem; text-align: center; color: var(--text-muted);">
                                 Scanning grid for active flight rooms...
                             </td>
                         </tr>
@@ -906,7 +906,7 @@ function showResultsView(standings) {
         bannerEl.style.background = "var(--accent-glow)";
         const myIndex = standings.findIndex(p => p.sid === mySid);
         const myRank = myIndex + 1;
-        bannerEl.innerHTML = `You completed course in <strong>#${myRank > 0 ? myRank : 'DNF'}</strong>. Practice compounds velocity!`;
+        bannerEl.innerHTML = `You completed the course in <strong>#${myRank > 0 ? myRank : 'DNF'}</strong>. Practice compounds velocity!`;
     }
 
     standings.forEach((p, idx) => {
@@ -919,12 +919,14 @@ function showResultsView(standings) {
             ? '<span style="color:var(--danger); font-weight:700;">DNF / Disconnected</span>' 
             : (p.finished ? '<span style="color:var(--success); font-weight:700;">Finished</span>' : '<span style="color:var(--warning); font-weight:700;">On Course</span>');
 
-        // Elo Delta Readout
-        let eloTag = '<span style="color:var(--text-muted);">-</span>';
+        // Elo Delta Readout (+24 MMR / -16 MMR)
+        let eloTag = '<span style="color:var(--text-muted); font-size:0.8rem;">Guest (Unranked)</span>';
         if (p.elo_delta !== undefined && p.elo_delta !== 0) {
             const sign = p.elo_delta > 0 ? '+' : '';
             const color = p.elo_delta > 0 ? 'var(--success)' : 'var(--danger)';
             eloTag = `<strong style="color:${color}; font-family:var(--font-mono);">${sign}${p.elo_delta} MMR</strong> <span style="font-size:0.75rem; color:var(--text-muted);">(${p.new_elo || ''})</span>`;
+        } else if (p.user_id) {
+            eloTag = `<span style="color:var(--text-muted); font-family:var(--font-mono); font-size:0.85rem;">0 MMR</span>`;
         }
 
         tr.innerHTML = `

@@ -1,8 +1,8 @@
 /**
  * TypeSphere Core Engine
- * Two-tier UI architecture, continuous passage streaming for timed tests,
- * genuine completion points for untimed and custom tests, 5-battery survival mode,
- * dynamic AI pacer simulation, and immediate pre-start HUD duration synchronization.
+ * Continuous passage streaming for timed tests, finite termination for untimed
+ * and custom text, 5-battery survival mode, dynamic AI pacer simulation, Tab restart guard,
+ * and immediate pre-start HUD duration and label synchronization.
  */
 class TypingEngine {
     constructor() {
@@ -30,13 +30,13 @@ class TypingEngine {
         // Behavioral Defaults
         this.blindModeActive = true;
         this.ghostEnabled = false;
-        
+
         this.aiSimulator = null;
         this.ghostInterval = null;
 
         // Keystroke Error Telemetry
-        this.totalMistakes = 0;
-        this.uncorrectedErrors = 0;
+        this.totalMistakes = 0;      // Cumulative mistakes (never decremented)
+        this.uncorrectedErrors = 0;  // Currently incorrect visual spans
         this.streak = 0;
 
         // Runtime Lifecycle
@@ -45,6 +45,7 @@ class TypingEngine {
         this.pausedAt = 0;
         this.totalPausedDuration = 0;
         this.handledByKeyDown = false;
+        this.tickElapsed = 0;
 
         // DOM References
         this.container = document.getElementById('typing-box');
@@ -58,6 +59,7 @@ class TypingEngine {
         this.hudErrors = document.getElementById('hud-errors');
         this.speedometerArc = document.getElementById('speedo-arc');
         this.pauseModal = document.getElementById('pause-modal');
+        this.tabRestartModal = document.getElementById('tab-restart-modal');
         this.mobileProxy = document.getElementById('mobile-text-proxy');
         this.rankNoticeBadge = document.getElementById('rank-eligibility-badge');
         this.survivalHud = document.getElementById('survival-shield-hud');
@@ -110,7 +112,9 @@ class TypingEngine {
             const res = await fetch(`/typing/api/ghost/${testId}`);
             const data = await res.json();
             if (data && data.wpm) {
-                this.aiSimulator = new DynamicPilotAISimulator(this.level, parseFloat(data.wpm));
+                if (typeof DynamicPilotAISimulator !== 'undefined') {
+                    this.aiSimulator = new DynamicPilotAISimulator(this.level, parseFloat(data.wpm));
+                }
                 this.ghostEnabled = true;
                 this.updateControlsUI();
             }
@@ -151,7 +155,7 @@ class TypingEngine {
     }
 
     /**
-     * Point 1 & 3: Immediately updates time and label before flight begins
+     * Immediately updates time and label before flight begins.
      */
     setDuration(dur) {
         this.durationLimit = parseInt(dur, 10);
@@ -169,7 +173,6 @@ class TypingEngine {
             if (labelEl) labelEl.textContent = "Time Remaining";
             timeEl.textContent = this.formatTimeDisplay(this.durationLimit);
         } else {
-            // Point 3: Context-aware label for No Time Limit Mode
             if (labelEl) labelEl.textContent = "Elapsed Flight Time";
             timeEl.textContent = "0s";
         }
@@ -334,11 +337,14 @@ class TypingEngine {
         this.totalMistakes = 0;
         this.uncorrectedErrors = 0;
         this.shieldLives = 5;
+        this.tickElapsed = 0;
 
-        if (!this.aiSimulator) {
-            this.aiSimulator = new DynamicPilotAISimulator(this.level);
-        } else {
-            this.aiSimulator.reset();
+        if (typeof DynamicPilotAISimulator !== 'undefined') {
+            if (!this.aiSimulator) {
+                this.aiSimulator = new DynamicPilotAISimulator(this.level);
+            } else {
+                this.aiSimulator.reset();
+            }
         }
 
         if (this.container) {
@@ -346,6 +352,7 @@ class TypingEngine {
         }
 
         if (this.pauseModal) this.pauseModal.style.display = 'none';
+        if (this.tabRestartModal) this.tabRestartModal.style.display = 'none';
         const floatBar = document.getElementById('paused-floating-bar');
         if (floatBar) floatBar.style.display = 'none';
 
@@ -374,6 +381,34 @@ class TypingEngine {
         return `${totalSeconds}s`;
     }
 
+    requestRestart() {
+        // Tab restart confirmation guard if progress > 20 characters
+        if (this.startTime && !this.isFinished && this.currentIndex > 20) {
+            this.pauseTest();
+            if (this.tabRestartModal) {
+                this.tabRestartModal.style.display = 'flex';
+            } else {
+                if (confirm("Restart flight? Active benchmark progress will be discarded.")) {
+                    this.loadPrompt(false);
+                } else {
+                    this.resumeTest();
+                }
+            }
+        } else {
+            this.loadPrompt(false);
+        }
+    }
+
+    confirmTabRestart() {
+        if (this.tabRestartModal) this.tabRestartModal.style.display = 'none';
+        this.loadPrompt(false);
+    }
+
+    cancelTabRestart() {
+        if (this.tabRestartModal) this.tabRestartModal.style.display = 'none';
+        this.resumeTest();
+    }
+
     bindEvents() {
         window.addEventListener('keydown', (e) => {
             if (this.isPaused) {
@@ -385,7 +420,7 @@ class TypingEngine {
             }
             if (e.key === 'Tab') {
                 e.preventDefault();
-                this.loadPrompt(false);
+                this.requestRestart();
                 return;
             }
             if (e.key === 'Escape') {
@@ -398,7 +433,7 @@ class TypingEngine {
                 return;
             }
             if (e.key === 'Enter' && (this.durationLimit === 0 || this.mode === 'custom')) {
-                if (this.currentIndex >= this.targetText.length - 5) {
+                if (this.currentIndex >= this.targetText.length - 10) {
                     e.preventDefault();
                     this.finishTest();
                     return;
@@ -443,7 +478,9 @@ class TypingEngine {
         this.pausedAt = performance.now() / 1000.0;
         clearInterval(this.timerInterval);
         clearInterval(this.ghostInterval);
-        if (this.pauseModal) this.pauseModal.style.display = 'flex';
+        if (this.pauseModal && (!this.tabRestartModal || this.tabRestartModal.style.display !== 'flex')) {
+            this.pauseModal.style.display = 'flex';
+        }
     }
 
     closePauseModal() {
@@ -458,6 +495,7 @@ class TypingEngine {
         this.totalPausedDuration += (now - this.pausedAt);
         this.isPaused = false;
         if (this.pauseModal) this.pauseModal.style.display = 'none';
+        if (this.tabRestartModal) this.tabRestartModal.style.display = 'none';
         const floatBar = document.getElementById('paused-floating-bar');
         if (floatBar) floatBar.style.display = 'none';
         this.startTick(true);
@@ -483,6 +521,7 @@ class TypingEngine {
         if (this.currentIndex >= spans.length) return;
         const expectedChar = this.targetText[this.currentIndex];
 
+        // Backspace Handling
         if (key === 'Backspace') {
             if (originalEvent) originalEvent.preventDefault();
             if (this.blindModeActive) return;
@@ -514,8 +553,8 @@ class TypingEngine {
         } else {
             spans[this.currentIndex].className = 'char incorrect';
             this.streak = 0;
-            this.totalMistakes++;
-            this.uncorrectedErrors++;
+            this.totalMistakes++;       // Cumulative mistakes count (never decremented)
+            this.uncorrectedErrors++;   // Visual errant span count
             if (window.soundEngine) window.soundEngine.playKey(true);
 
             if (this.mode === 'survival') {
@@ -555,12 +594,15 @@ class TypingEngine {
             window.virtualKeyboard.updateCurrentExpectedKey(this.targetText[this.currentIndex]);
         }
 
+        // Finite Mode vs. Infinite Timed Mode
         const isFiniteMode = (this.durationLimit === 0 || this.mode === 'custom');
         if (!isFiniteMode) {
+            // Infinite continuous chunk streaming for standard timed runs
             if (this.currentIndex >= spans.length - 20) {
                 this.loadPrompt(true);
             }
         } else {
+            // Chunk appending strictly disabled for Untimed & Custom Text runs
             if (this.currentIndex >= spans.length) {
                 this.finishTest();
             } else if (this.currentIndex >= spans.length - 10 && this.manualFinishWrap) {
@@ -586,7 +628,7 @@ class TypingEngine {
                     this.finishTest();
                 }
             } else {
-                // Point 3: Live stopwatch counter
+                // Untimed mode: counts upward
                 if (labelEl) labelEl.textContent = "Elapsed Flight Time";
                 this.hudTime.textContent = this.formatTimeDisplay(this.tickElapsed);
             }
@@ -595,9 +637,10 @@ class TypingEngine {
 
     startDynamicGhostPacer() {
         clearInterval(this.ghostInterval);
-        if (!this.aiSimulator) {
+        if (typeof DynamicPilotAISimulator !== 'undefined' && !this.aiSimulator) {
             this.aiSimulator = new DynamicPilotAISimulator(this.level);
         }
+        if (!this.aiSimulator) return;
 
         const totalChars = Math.max(100, this.targetText.length);
         const tickRateMs = 100;
@@ -616,7 +659,7 @@ class TypingEngine {
                 this.ghostCaret.style.display = 'block';
                 this.ghostCaret.style.left = `${spans[ghostIdx].offsetLeft}px`;
                 this.ghostCaret.style.top = `${spans[ghostIdx].offsetTop + 4}px`;
-                
+
                 const leadChars = this.currentIndex - ghostIdx;
                 const leadWords = Math.round(leadChars / 5.0);
                 const leadText = (leadWords >= 0) ? `+${leadWords} wds ahead` : `${leadWords} wds behind`;
@@ -650,6 +693,15 @@ class TypingEngine {
         const pct = Math.min(1.0, wpm / 150.0);
         const offset = 100 - (pct * 100);
         this.speedometerArc.style.strokeDashoffset = offset;
+
+        // Aeronautical hue transitions
+        if (wpm >= 100) {
+            this.speedometerArc.style.stroke = '#10b981'; // Supersonic
+        } else if (wpm >= 60) {
+            this.speedometerArc.style.stroke = 'var(--accent, #38bdf8)'; // Cruise
+        } else {
+            this.speedometerArc.style.stroke = 'var(--warning, #f59e0b)'; // Sub-threshold
+        }
     }
 
     updateCaretPosition() {
@@ -712,6 +764,13 @@ class TypingEngine {
             const data = await res.json();
             if (data.success && data.test_id) {
                 window.location.href = `/typing/result/${data.test_id}`;
+            } else if (data.success && data.is_guest) {
+                // If cadet has logged high speed, show conversion callout
+                const ribbon = document.getElementById('guest-conversion-ribbon');
+                if (ribbon && (data.metrics.wpm >= 60 || data.metrics.accuracy >= 95)) {
+                    ribbon.style.display = 'flex';
+                }
+                this.reset();
             }
         } catch {
             window.location.reload();

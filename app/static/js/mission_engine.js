@@ -1,7 +1,9 @@
 /**
  * TypeSphere Standalone Mission Execution Engine
- * Handles tactical flight missions (Survival, Accuracy, Endurance, Sprint, Exam, Syntax)
- * with dedicated win/loss conditions, pause/resume states, and automatic DOM event bindings.
+ * Handles all 7 tactical flight disciplines (Daily Recon, Survival, Accuracy,
+ * Supersonic Sprint, Endurance, SSC Exam, and Syntax Infiltration).
+ * Pure in-page resolution (zero alert() popups), failure cause diagnostics,
+ * and seamless cockpit state transitions.
  */
 class MissionExecutionEngine {
     constructor() {
@@ -19,6 +21,7 @@ class MissionExecutionEngine {
         // Mode-Specific Telemetry
         this.shieldLives = 5;
         this.totalMistakes = 0;
+        this.uncorrectedErrors = 0;
         this.correctChars = 0;
         this.keydownHandler = (e) => this.handleInputKey(e);
     }
@@ -32,6 +35,7 @@ class MissionExecutionEngine {
         this.timeline = [];
         this.startTime = null;
         this.totalMistakes = 0;
+        this.uncorrectedErrors = 0;
         this.correctChars = 0;
         this.shieldLives = 5;
         this.remainingSeconds = this.config.duration || 60;
@@ -129,6 +133,7 @@ class MissionExecutionEngine {
 
     handleInputKey(e) {
         if (!this.isRunning || this.isPaused) return;
+        // In Zero-Error or Survival modes, lock backspacing to preserve strict flight conditions
         if (e.key === 'Backspace') {
             if (this.config.modeType === 'survival' || this.config.modeType === 'accuracy') {
                 e.preventDefault();
@@ -178,16 +183,19 @@ class MissionExecutionEngine {
 
             if (!isLastCorrect) {
                 this.totalMistakes++;
+                this.uncorrectedErrors = mistakes;
 
+                // Discipline 2: Shield Integrity Survival (5 battery units)
                 if (this.config.modeType === 'survival') {
                     this.shieldLives = Math.max(0, 5 - this.totalMistakes);
                     this.updateShieldBatteryHUD();
                     if (this.shieldLives <= 0) {
-                        this.concludeMission(false, "Reactor Hull Breach: All 5 shield integrity batteries depleted under excessive keystroke strain.");
+                        this.concludeMission(false, "Reactor Hull Breach: All 5 shield integrity battery cells depleted under excessive keystroke strain.");
                         return;
                     }
                 }
 
+                // Discipline 3: Zero-Error Precision Gauntlet (100% Mandatory)
                 if (this.config.modeType === 'accuracy') {
                     this.concludeMission(false, "Mission Aborted: Zero-error precision protocol breached. A single typographical error compromises flight stealth.");
                     return;
@@ -196,6 +204,7 @@ class MissionExecutionEngine {
         }
 
         this.correctChars = corrects;
+        this.uncorrectedErrors = mistakes;
         this.updateCaret();
 
         const elapsedMin = (now - this.startTime) / 60000.0;
@@ -214,7 +223,7 @@ class MissionExecutionEngine {
         this.timerInterval = setInterval(() => {
             if (!this.isRunning || this.isPaused) return;
             this.remainingSeconds--;
-            
+
             const now = performance.now();
             const elapsedMin = (now - this.startTime) / 60000.0;
             const netWpm = elapsedMin > 0 ? Math.round((this.correctChars / 5.0) / elapsedMin) : 0;
@@ -243,25 +252,40 @@ class MissionExecutionEngine {
     evaluateMissionEnd(finalWpm, finalAcc) {
         const mType = this.config.modeType;
 
+        // Discipline 4: Supersonic Velocity Intercept (70+ Net WPM required)
         if (mType === 'speed_sprint') {
             if (finalWpm >= 70 && finalAcc >= 90) {
                 this.concludeMission(true, `Supersonic Intercept Success! Checkpoint cleared with ${finalWpm} WPM and ${finalAcc}% accuracy.`);
             } else {
                 this.concludeMission(false, `Velocity Threshold Missed: Achieved ${finalWpm} WPM (70+ WPM required). Re-engage with higher burst cadence.`);
             }
-        } else if (mType === 'endurance') {
+        } 
+        // Discipline 5: Atmospheric Endurance Marathon (300 seconds, 92%+ Acc)
+        else if (mType === 'endurance') {
             if (finalAcc >= 92) {
-                this.concludeMission(true, `Endurance Marathon Mastered! Maintained ${finalWpm} WPM through all 300 seconds.`);
+                this.concludeMission(true, `Endurance Marathon Mastered! Maintained steady cadence and ${finalWpm} WPM across the full 300 seconds.`);
             } else {
-                this.concludeMission(false, `Precision Exhaustion: Final accuracy was ${finalAcc}% (92% required across 300s).`);
+                this.concludeMission(false, `Precision Exhaustion: Final accuracy fell to ${finalAcc}% (92% required across 300s flight duration).`);
             }
-        } else if (mType === 'exam') {
+        } 
+        // Discipline 6: Administrative Clerical Steno (SSC Standard: 95%+ Acc)
+        else if (mType === 'exam') {
             if (finalAcc >= 95) {
-                this.concludeMission(true, `Statutory Administrative Benchmark Satisfied! Transcribed with ${finalAcc}% precision.`);
+                this.concludeMission(true, `Statutory Administrative Benchmark Satisfied! Transcribed with ${finalAcc}% precision under official exam conditions.`);
             } else {
-                this.concludeMission(false, `Standard Not Met: ${finalAcc}% accuracy achieved (95%+ required for civil service clearance).`);
+                this.concludeMission(false, `Standard Not Met: ${finalAcc}% accuracy achieved (95%+ required for civil service clerical clearance).`);
             }
-        } else {
+        } 
+        // Discipline 7: Syntax Protocol Infiltration (Code injection)
+        else if (mType === 'syntax') {
+            if (finalAcc >= 92 && this.currentIndex >= this.targetText.length) {
+                this.concludeMission(true, `Syntax Infiltration Successful! Script decrypted and injected without compiler rejections.`);
+            } else {
+                this.concludeMission(false, `Script Infiltration Aborted: Timeout or syntax bracket misalignment detected.`);
+            }
+        } 
+        // Discipline 1 & Standard
+        else {
             this.concludeMission(true, `Mission Objectives Satisfied! Completed flight with ${finalWpm} WPM and ${finalAcc}% accuracy.`);
         }
     }
@@ -328,7 +352,7 @@ class MissionExecutionEngine {
 
 window.missionEngine = new MissionExecutionEngine();
 
-// Automatic Event Bindings
+// Automatic DOM Bindings
 document.addEventListener('DOMContentLoaded', () => {
     const root = document.getElementById('mission-arena-root');
     if (!root) return;

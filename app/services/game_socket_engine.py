@@ -1,14 +1,19 @@
+"""
+TypeSphere Arcade Socket Coordinator
+Manages real-time room creation, telemetry synchronization, and neuromorphic AI pacing ticks.
+"""
+
 import time
 import random
 from flask import request
 from flask_socketio import emit, join_room, leave_room
-from app import socketio, db
-from app.models.game import GameRecord, ArcadeLeaderboard
+from app import socketio
 from app.services.arcade_content_engine import ArcadeContentEngine
 from app.services.ai_typist_engine import AITypistSimulator
 
 ARCADE_ROOMS = {}
 ARCADE_SOCKET_MAP = {}
+
 
 def register_arcade_socket_events():
     @socketio.on('arcade_room_create')
@@ -59,18 +64,19 @@ def register_arcade_socket_events():
         }
 
         if mode == 'solo_ai':
+            ai_sim = AITypistSimulator(difficulty=difficulty)
             ARCADE_ROOMS[room_code]['players']['ai_bot'] = {
-                'name': f"CyberBot ({difficulty.title()})",
+                'name': ai_sim.callsign,
                 'progress': 0.0,
                 'score': 0,
-                'wpm': 0,
+                'wpm': round(ai_sim.current_wpm),
                 'accuracy': 98,
                 'errors': 0,
                 'finished': False,
                 'ready': True,
                 'is_ai': True
             }
-            ARCADE_ROOMS[room_code]['ai_sim'] = AITypistSimulator(difficulty=difficulty)
+            ARCADE_ROOMS[room_code]['ai_sim'] = ai_sim
 
         ARCADE_SOCKET_MAP[sid] = room_code
         join_room(room_code)
@@ -83,16 +89,16 @@ def register_arcade_socket_events():
         player_name = data.get('player_name', 'Pilot')
 
         if room_code not in ARCADE_ROOMS:
-            emit('arcade_error', {'message': f"Room {room_code} not found."})
+            emit('arcade_error', {'message': f"Flight room '{room_code}' was not found."})
             return
 
         room = ARCADE_ROOMS[room_code]
         if room['status'] != 'lobby':
-            emit('arcade_error', {'message': 'Game already in progress.'})
+            emit('arcade_error', {'message': 'This match is already in progress.'})
             return
 
         if len(room['players']) >= 4:
-            emit('arcade_error', {'message': 'Room full.'})
+            emit('arcade_error', {'message': 'Room capacity reached (max 4 pilots).'})
             return
 
         cleanup_socket(sid)
@@ -174,12 +180,14 @@ def register_arcade_socket_events():
 
         bot = room['players']['ai_bot']
         bot['progress'] = prog
-        bot['wpm'] = wpm
+        bot['wpm'] = round(wpm)
         bot['score'] = int(prog * 15)
+        bot['name'] = room['ai_sim'].callsign
         if prog >= 100:
             bot['finished'] = True
 
         emit('arcade_live_telemetry', {'players': room['players']}, room=room_code)
+
 
 def cleanup_socket(sid):
     room_code = ARCADE_SOCKET_MAP.pop(sid, None)

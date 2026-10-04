@@ -27,6 +27,7 @@ class ArcadeRuntimeEngine {
         this.spawnTimer = null;
         this.aiLoopTimer = null;
         this.objectiveCountdownTimer = null;
+        this.moleWindowTimer = null;
         this.activeTarget = null;
         this.inputBuffer = "";
         this.isRunning = false;
@@ -58,9 +59,9 @@ class ArcadeRuntimeEngine {
         this.isPaused = false;
         this.startTime = performance.now();
         this.lastActionTimestamp = this.startTime;
-        this.remainingSeconds = parseInt(this.config.objectiveVal) || 60;
+        this.remainingSeconds = parseInt(this.config.objectiveVal, 10) || 60;
 
-        // Snap viewport directly to top so active workspace is centered
+        // Center active workspace
         window.scrollTo({ top: 0, behavior: 'instant' });
 
         // Dynamic Pilot AI Simulator
@@ -162,10 +163,6 @@ class ArcadeRuntimeEngine {
             return ["recall", "phantom", "quantum", "horizon", "velocity", "kinetic", "matrix", "cadence", "stream"];
         }
 
-        if (slug === 'keyboard_quest') {
-            return ["asdf", "jkl;", "glad", "flask", "half", "fall", "quiet", "write", "power", "tower", "cabin", "zinc", "calm", "jump", "quick", "orbit", "stream", "focus", "clean", "speed"];
-        }
-
         return common;
     }
 
@@ -216,6 +213,7 @@ class ArcadeRuntimeEngine {
             }
         });
 
+        // Solo AI Authoritative Mode (prevents network stuttering)
         if (this.config.playMode === 'solo_ai') {
             const aiTickInterval = 120;
             const totalChars = (this.config.slug === 'speed_racer') ? (this.targetDistanceMeters * 0.4) : 250;
@@ -290,7 +288,6 @@ class ArcadeRuntimeEngine {
             case 'bomb_defuse': this.initBombDefuse(); break;
             case 'typing_ninja': this.initTypingNinja(); break;
             case 'memory_type': this.initMemoryType(); break;
-            case 'keyboard_quest': this.initKeyboardQuest(); break;
             default: this.initFallingWords();
         }
     }
@@ -323,7 +320,7 @@ class ArcadeRuntimeEngine {
         this.racerPassage = this.contentBatch[0] || "Speed is born from economy of movement.";
         this.racerIdx = 0;
         this.playerDistanceMeters = 0;
-        this.targetDistanceMeters = parseInt(this.config.objectiveVal) || 500;
+        this.targetDistanceMeters = parseInt(this.config.objectiveVal, 10) || 500;
         this.renderRacerSpans();
     }
 
@@ -380,7 +377,7 @@ class ArcadeRuntimeEngine {
             const clk = document.getElementById('bubble-clock');
             if (clk) clk.textContent = `${this.remainingSeconds}s`;
             if (this.remainingSeconds <= 0) {
-                this.finishGame(true, `Victory! You defended the ceiling and scored ${this.score} points!`);
+                this.finishGame(true, `Victory! You defended the ceiling barrier and scored ${this.score} points!`);
             }
         }, 1000);
     }
@@ -416,7 +413,7 @@ class ArcadeRuntimeEngine {
         }
     }
 
-    // 3. WHACK-A-WORD
+    // 3. WHACK-A-WORD (Calibrated Exposure: 2600ms - 4200ms)
     initWhackAWord() {
         this.whackLives = 5;
         this.viewport.innerHTML = `
@@ -529,7 +526,7 @@ class ArcadeRuntimeEngine {
     // 5. CIPHER HACKER
     initCipherHacker() {
         this.currentLayer = 1;
-        this.totalLayers = parseInt(this.config.objectiveVal) || 4;
+        this.totalLayers = parseInt(this.config.objectiveVal, 10) || 4;
         this.layerTokens = this.contentBatch[0] || ["0x7FA9", "0xDE4B", "0x91C0"];
         this.tokenIdx = 0;
         this.lockdownSeconds = 60;
@@ -757,7 +754,7 @@ class ArcadeRuntimeEngine {
                 if (shld) shld.textContent = `${Math.max(0, this.shields)}%`;
                 this.registerError();
                 if (this.shields <= 0) {
-                    this.finishGame(false, "Loss: Starship shields vaporized under asteroid bombardment.");
+                    this.finishGame(false, "Loss: Starship shields vaporized under orbital bombardment.");
                     break;
                 }
             }
@@ -768,7 +765,7 @@ class ArcadeRuntimeEngine {
     initBombDefuse() {
         this.bombSeconds = 40;
         this.bombStage = 0;
-        this.maxStages = parseInt(this.config.objectiveVal) || 5;
+        this.maxStages = parseInt(this.config.objectiveVal, 10) || 5;
 
         this.viewport.innerHTML = `
             <div style="text-align:center; padding-top:35px;">
@@ -915,41 +912,6 @@ class ArcadeRuntimeEngine {
             box.style.color = "var(--accent)";
             if (hint) hint.textContent = "Type the sequence completely from mental recall!";
         }, 1500);
-    }
-
-    // 12. KEYBOARD QUEST
-    initKeyboardQuest() {
-        this.questIndex = 0;
-        this.viewport.innerHTML = `
-            <div style="display:flex; justify-content:space-between; padding:12px 25px 0;">
-                <span style="font-weight:700; color:var(--accent);">Ergonomic Row Stream</span>
-                <span style="font-family:var(--font-mono); font-weight:800; color:var(--warning);">Time: <span id="kq-clock">${this.remainingSeconds}s</span></span>
-            </div>
-            <div style="text-align:center; padding-top:35px;">
-                <div id="quest-target-box" style="margin:20px auto; max-width:440px; background:var(--bg-card); border:2px solid var(--accent); border-radius:8px; padding:1.5rem; font-family:var(--font-mono); font-size:2.2rem; font-weight:800;">
-                    ...
-                </div>
-                <div style="font-size:0.85rem; color:var(--text-muted);">Anchor palms on home-row. Execute cleanly.</div>
-            </div>
-        `;
-        this.loadNextQuestTarget();
-
-        this.objectiveCountdownTimer = setInterval(() => {
-            if (this.isPaused) return;
-            this.remainingSeconds--;
-            const clk = document.getElementById('kq-clock');
-            if (clk) clk.textContent = `${this.remainingSeconds}s`;
-            if (this.remainingSeconds <= 0) {
-                this.finishGame(true, `Victory! Completed ergonomic sequence stream with ${this.score} pts!`);
-            }
-        }, 1000);
-    }
-
-    loadNextQuestTarget() {
-        this.questTarget = this.contentBatch[this.questIndex % this.contentBatch.length] || "asdf";
-        this.questBuffer = "";
-        const box = document.getElementById('quest-target-box');
-        if (box) box.innerHTML = `<span class="char untyped">${this.questTarget}</span>`;
     }
 
     // ==========================================================
@@ -1177,29 +1139,7 @@ class ArcadeRuntimeEngine {
             return;
         }
 
-        // 8. KEYBOARD QUEST
-        if (this.config.slug === 'keyboard_quest') {
-            if (this.questTarget.startsWith(this.questBuffer + char)) {
-                this.questBuffer += char;
-                this.correctCharsTyped++;
-                this.registerHit(15);
-                const box = document.getElementById('quest-target-box');
-                if (box) {
-                    box.innerHTML = `<span class="char correct">${this.questBuffer}</span><span class="char untyped">${this.questTarget.slice(this.questBuffer.length)}</span>`;
-                }
-
-                if (this.questBuffer === this.questTarget) {
-                    this.questIndex++;
-                    this.loadNextQuestTarget();
-                }
-                this.syncProgressToServer(0, liveNetWpm);
-            } else {
-                this.registerError();
-            }
-            return;
-        }
-
-        // 9. FALLING WORDS, NINJA, SPACE DEFENDER, ZOMBIE DEFENSE
+        // 8. FALLING WORDS, NINJA, SPACE DEFENDER, ZOMBIE DEFENSE
         const lower = char.toLowerCase();
         if (this.activeTarget) {
             const next = this.activeTarget.word[this.activeTarget.typed.length];
@@ -1288,7 +1228,7 @@ class ArcadeRuntimeEngine {
         if (arenaEl) arenaEl.style.display = 'none';
         if (resultsEl) resultsEl.style.display = 'block';
 
-        // Snap window immediately to top so the results card is centered (Image 2 Fix)
+        // Snap window directly to top so results card is in view
         window.scrollTo({ top: 0, behavior: 'instant' });
 
         const badge = document.getElementById('res-outcome-badge');

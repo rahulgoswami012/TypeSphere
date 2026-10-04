@@ -95,7 +95,7 @@
         </ul>
     </aside>
 
-    <!-- Top Fixed Cockpit Navigation -->
+    <!-- Top Fixed 48px Cockpit Navigation -->
     <nav class="navbar">
         <a href="{{ url_for('typing.test_page') }}" class="brand">
             <span class="brand-sphere-icon">
@@ -139,7 +139,7 @@
         </button>
     </nav>
 
-    <!-- Main Viewport Deck -->
+    <!-- Main Viewport Deck (Workspace Fills Screen to Displace Footer) -->
     <main class="container">
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
@@ -157,7 +157,7 @@
         {% block content %}{% endblock %}
     </main>
 
-    <!-- Telemetry Footer -->
+    <!-- Telemetry Footer (Displaced Below Fold) -->
     <footer class="app-footer">
         <div class="footer-container">
             <div class="footer-grid">

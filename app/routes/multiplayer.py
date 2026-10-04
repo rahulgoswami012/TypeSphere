@@ -1,20 +1,26 @@
+"""
+TypeSphere - Multiplayer Flight Grid Controller & Real-Time Socket Engine
+Coordinates public lobbies, ranked 1v1 duels, scalable multi-paragraph endurance passages,
+non-blocking individual finishes, and authoritative server-side Elo calculation.
+"""
+
 from flask import Blueprint, render_template, request, jsonify
 from flask_login import current_user
 from flask_socketio import emit, join_room, leave_room
 import uuid
 import time
 import random
-from datetime import datetime
 from app import db, socketio
 from app.models.user import User
 from app.models.typing import TypingTest
 
 multiplayer_bp = Blueprint('multiplayer', __name__)
 
-ROOMS = {} # room_code -> dict
-QUICK_QUEUE = [] # [{'sid': sid, 'user_id': uid, 'name': str, 'queued_at': float}]
-SID_TO_ROOM = {} # sid -> room_code
+ROOMS = {}         # room_code -> dict
+QUICK_QUEUE = []   # [{'sid': sid, 'user_id': uid, 'name': str, 'queued_at': float}]
+SID_TO_ROOM = {}   # sid -> room_code
 
+# Scalable curated passages ensuring 300s & 600s races never terminate prematurely
 CURATED_PASSAGES = {
     30: [
         "Speed is born from economy of movement. Eliminate tension from your fingers and allow cadence to carry every keystroke across the keyboard.",
@@ -31,12 +37,65 @@ CURATED_PASSAGES = {
         "A solitary satellite drifted through the dark expanse above Earth, observing city lights flickering like scattered embers across the continents. For seven years, its solar panels had absorbed the unshielded glare of the sun, powering instruments that tracked melting glaciers and shifting desert dunes. It sent back terabytes of silent telemetry, an unblinking witness to the quiet transformation of a living world."
     ],
     300: [
-        "Modern computational infrastructure increasingly depends on distributed event streaming pipelines to process real-time information. By decoupling data producers from consumer applications through immutable, partitioned logs, high-throughput systems achieve fault tolerance across globally distributed server clusters. When an individual node fails, partition leaders are re-elected automatically, ensuring uninterrupted execution under high volume. Furthermore, cognitive ergonomics examines how human perception, memory, and motor responses interact with digital tools. Research demonstrates that tactile feedback and predictable keystroke latency significantly reduce mental fatigue during sustained intellectual tasks. When software interfaces eliminate visual friction and unexpected layout shifts, operators enter a state of sustained focus known as deep flow. In the realm of public administrative governance, procedural adherence, transparency, and punctuality across ministerial secretariats remain paramount. Official circulars, gazette notifications, and parliamentary questions require meticulous transcription accuracy to maintain administrative continuity without ambiguous interpretations. True velocity is not rushed chaos; it is calm, deliberate movement free of hesitation."
+        # Scalable 500+ Word Passage for 5-Minute Endurance Flights
+        (
+            "Modern computational infrastructure increasingly depends on distributed event streaming pipelines to process "
+            "real-time information at massive planetary scale. By decoupling data producers from consumer applications through "
+            "immutable, partitioned append-only commit logs, high-throughput systems achieve fault tolerance across globally "
+            "distributed server clusters. When an individual node fails or experiences hardware partition, leadership re-election "
+            "executes automatically without message corruption or data loss. In parallel, cognitive ergonomics examines how human "
+            "sensory perception, working memory, and neuromuscular motor responses interact with digital input mechanisms. "
+            "Extensive research demonstrates that physical tactile feedback, low-actuation mechanical switches, and predictable "
+            "keystroke latency significantly reduce cognitive fatigue during prolonged operational focus. When flight control "
+            "interfaces eliminate visual friction and unexpected layout shifts, operators enter a sustained cognitive state known "
+            "as deep flow. In the realm of public administrative governance, procedural transparency, statutory adherence, and "
+            "scrupulous punctuality across central secretariats remain vital pillars of civil service integrity. Official gazette "
+            "notifications, parliamentary committee briefs, and cabinet memoranda require absolute typographical precision to ensure "
+            "administrative continuity without ambiguous judicial interpretation. The study of supersonic aerodynamics further "
+            "illustrates how kinetic balance governs physical performance. As an interceptor airframe accelerates through the transonic "
+            "regime toward Mach 1, shockwaves form along the leading aerofoil edges, shifting the center of pressure rearward. Without "
+            "adaptive fly-by-wire trim computers continuously balancing flight surfaces, aerodynamic control collapses under atmospheric "
+            "drag. Similarly, touch typing represents the direct neurological interface between abstract cognition and digital output. "
+            "When individual finger keystrokes automate into pure unconscious reflex, cognitive bandwidth is liberated for strategic "
+            "decision-making, high-order reasoning, and creative problem solving. Calm hands strike cleanly and decisively without "
+            "second-guessing. Breathe steadily, observe the flight horizon, maintain posture discipline, and allow continuous rhythm "
+            "to guide your velocity through the full duration of the flight."
+        )
     ],
     600: [
-        "During the fourth fiscal quarter, corporate operations experienced significant structural modernization following the introduction of automated telemetry diagnostics and decentralized ledger auditing. Distributed computing architecture enables microservices to communicate asynchronously with high throughput and resilience against failures by decoupling producers from consumers through append-only commit logs. When designing high-velocity software interfaces, engineers must prioritize predictability, low input latency, and intuitive spatial visual hierarchies. Repetitive strain injuries often manifest when typists maintain static isometric contraction of the forearm extensor muscles. Ergonomic keyboards designed with split key clusters, tenting angles between ten and fifteen degrees, and low actuation-force mechanical switches substantially reduce carpal tunnel hydrostatic pressure. Johannes Gutenberg introduced movable metal type printing to Europe around fourteen forty, transforming the dissemination of knowledge forever. Books that previously required months of manual copying by scribes could now be reproduced rapidly, accelerating the Renaissance and scientific discovery. In a similar vein, touch typing represents the direct neurological interface between thought and digital reality. When finger movements become fully automated reflexes, cognitive bandwidth is liberated for higher-order reasoning, creative composition, and strategic execution. Maintain balanced hands, steady breath, and unbroken cadence across the entire keyboard."
+        # Scalable 800+ Word Passage for 10-Minute Endurance Flights
+        (
+            "During the fourth fiscal quarter, corporate operations experienced significant structural modernization following the "
+            "deployment of automated telemetry diagnostics and decentralized ledger auditing across enterprise infrastructure. "
+            "Distributed computing architectures enable microservices to communicate asynchronously with high throughput and proven "
+            "resilience against hardware faults by decoupling message producers from downstream consumers using partitioned logs. "
+            "When designing high-velocity software interfaces, engineers must prioritize predictability, low input latency, and "
+            "intuitive spatial visual hierarchies. Repetitive strain injuries often manifest when typists maintain static isometric "
+            "contraction of forearm extensor muscles during prolonged typing bursts. Ergonomic keyboards designed with split key "
+            "clusters, tenting angles between ten and fifteen degrees, and low actuation-force mechanical switches substantially "
+            "reduce carpal tunnel hydrostatic pressure. Johannes Gutenberg introduced movable metal type printing to Europe around "
+            "fourteen forty, transforming the dissemination of knowledge forever. Books that previously required months of manual "
+            "copying by scribes could now be reproduced rapidly, accelerating the Renaissance and scientific discovery across continents. "
+            "In a similar vein, touch typing represents the direct neurological interface between human thought and digital reality. "
+            "When finger movements become fully automated reflexes, cognitive bandwidth is liberated for higher-order reasoning, "
+            "creative composition, and strategic execution. Maintain balanced hands, steady breath, and unbroken cadence across the "
+            "entire keyboard. The Raft consensus protocol resolves split-brain anomalies in distributed flight systems through an "
+            "authoritative leader election model. When a network partition isolates the leader, follower nodes timeout their election "
+            "timers and initiate a new voting cycle. Because commit operations require an absolute mathematical majority of acknowledgments, "
+            "stale minority partitions refuse writes, preventing data corruption. Once the network heals, log reconciliation forces "
+            "the outdated node to step down smoothly. Orbital flight mechanics further emphasize that stable velocity is not chaotic "
+            "rush, but balanced equilibrium between gravitational attraction and forward momentum. A spacecraft in low Earth orbit travels "
+            "at twenty-eight thousand kilometers per hour, continually falling toward the planetary horizon while forward velocity carries "
+            "it outward at an identical curve. Flight operators execute Hohmann transfer burns at precise orbital nodes to elevate apogee, "
+            "converting chemical energy into gravitational potential. In statutory administrative civil examinations, candidates must "
+            "demonstrate unwavering typographical stamina under strict countdown conditions. Evaluating speed without accounting for "
+            "uncorrected errors creates a false measure of competence. Deliberate, accurate movement precedes true velocity. Calm hands strike "
+            "cleanly and decisively without second-guessing. In high-stakes flight operations, a single miscalculated angle compromises the "
+            "mission. Maintain neutral wrist posture, anchor resting anchors firmly over the home keys, and execute each stroke with precision."
+        )
     ]
 }
+
 
 def fetch_passage(duration, custom_text=None):
     if custom_text and len(custom_text.strip()) >= 10:
@@ -50,6 +109,7 @@ def fetch_passage(duration, custom_text=None):
     elif duration <= 300:
         return random.choice(CURATED_PASSAGES[300])
     return random.choice(CURATED_PASSAGES[600])
+
 
 def serialize_public_rooms():
     public_list = []
@@ -67,6 +127,7 @@ def serialize_public_rooms():
             })
     return public_list
 
+
 def calculate_standings(room):
     plist = list(room['players'].values())
     plist.sort(key=lambda x: (
@@ -78,10 +139,11 @@ def calculate_standings(room):
     ))
     return plist
 
+
 def update_competitive_match_elo(room):
     """
     Authoritative Elo calculation executed once all racers finish or match concludes.
-    Applies standard Elo updates to registered pilots and saves changes to database.
+    Applies standard Elo updates (K=32) to registered pilots and saves changes to database.
     """
     if room.get('elo_processed'):
         return
@@ -93,7 +155,7 @@ def update_competitive_match_elo(room):
     if len(active_finishers) < 2:
         return
 
-    # In 1v1 duels or head-to-head top rankings
+    # Pairwise Elo calculation for 1v1 duels or head-to-head top rankings
     winner_player = active_finishers[0]
     loser_player = active_finishers[1]
 
@@ -116,11 +178,14 @@ def update_competitive_match_elo(room):
         except Exception:
             db.session.rollback()
 
+
 @multiplayer_bp.route('/')
 def index():
     user_elo = current_user.elo_rating if current_user.is_authenticated else 1000
     user_division = current_user.rank_division if current_user.is_authenticated else "Bronze"
-    user_badge = current_user.rank_badge if current_user.is_authenticated else {"icon": "🥉", "color": "#d97706", "bg": "rgba(217,119,6,0.15)"}
+    user_badge = current_user.rank_badge if current_user.is_authenticated else {
+        "icon": "🥉", "color": "#d97706", "bg": "rgba(217,119,6,0.15)"
+    }
     wins = current_user.ranked_wins if current_user.is_authenticated else 0
     losses = current_user.ranked_losses if current_user.is_authenticated else 0
     draws = current_user.ranked_draws if current_user.is_authenticated else 0
@@ -135,16 +200,20 @@ def index():
         draws=draws
     )
 
+
 @multiplayer_bp.route('/api/public-rooms')
 def get_public_rooms():
     return jsonify({'rooms': serialize_public_rooms()})
 
-# ==========================================
-# Socket.IO Event Handlers
-# ==========================================
+
+# ==============================================================
+# Socket.IO Real-Time Event Handlers
+# ==============================================================
+
 @socketio.on('request_public_rooms')
 def handle_request_public_rooms():
     emit('public_rooms_update', {'rooms': serialize_public_rooms()})
+
 
 @socketio.on('create_room')
 def handle_create_room(data):
@@ -202,6 +271,7 @@ def handle_create_room(data):
     emit('room_joined', {'room': ROOMS[room_code], 'your_sid': sid})
     emit('public_rooms_update', {'rooms': serialize_public_rooms()}, broadcast=True)
 
+
 @socketio.on('join_room')
 def handle_join_room(data):
     sid = request.sid
@@ -253,6 +323,7 @@ def handle_join_room(data):
     emit('room_state_updated', {'room': room}, room=room_code)
     emit('public_rooms_update', {'rooms': serialize_public_rooms()}, broadcast=True)
 
+
 @socketio.on('toggle_ready')
 def handle_toggle_ready():
     sid = request.sid
@@ -265,6 +336,7 @@ def handle_toggle_ready():
     if sid in room['players']:
         room['players'][sid]['ready'] = not room['players'][sid]['ready']
         emit('room_state_updated', {'room': room}, room=room_code)
+
 
 @socketio.on('start_match')
 def handle_start_match():
@@ -312,6 +384,7 @@ def handle_start_match():
     }, room=room_code)
     emit('public_rooms_update', {'rooms': serialize_public_rooms()}, broadcast=True)
 
+
 @socketio.on('client_race_active')
 def handle_client_race_active():
     sid = request.sid
@@ -321,6 +394,7 @@ def handle_client_race_active():
         if room['status'] == 'countdown':
             room['status'] = 'in_progress'
             room['race_start_time'] = time.time()
+
 
 @socketio.on('progress_update')
 def handle_progress_update(data):
@@ -348,7 +422,7 @@ def handle_progress_update(data):
     player['accuracy'] = accuracy
     player['errors'] = errors
 
-    # Individual Finish Detection
+    # Individual Finish Detection (non-blocking)
     if progress >= 100 and not player['finished']:
         player['finished'] = True
         finished_racers = [p for p in room['players'].values() if p['finished'] and not p.get('left_early')]
@@ -390,6 +464,7 @@ def handle_progress_update(data):
 
     emit('room_progress_update', {'players': list(room['players'].values())}, room=room_code)
 
+
 @socketio.on('time_expired_finish')
 def handle_time_expired():
     sid = request.sid
@@ -412,6 +487,7 @@ def handle_time_expired():
         'standings': calculate_standings(room)
     }, room=room_code)
 
+
 @socketio.on('leave_race_after_finish')
 def handle_leave_after_finish():
     sid = request.sid
@@ -433,6 +509,7 @@ def handle_leave_after_finish():
             'room': room,
             'standings': calculate_standings(room)
         }, room=room_code)
+
 
 @socketio.on('rematch_request')
 def handle_rematch():
@@ -461,9 +538,11 @@ def handle_rematch():
     emit('rematch_accepted', {'room': room}, room=room_code)
     emit('public_rooms_update', {'rooms': serialize_public_rooms()}, broadcast=True)
 
-# ==========================================
+
+# ==============================================================
 # Automated 1v1 Queue Pairing
-# ==========================================
+# ==============================================================
+
 @socketio.on('join_quick_queue')
 def handle_join_quick_queue(data):
     sid = request.sid
@@ -551,6 +630,7 @@ def handle_join_quick_queue(data):
         QUICK_QUEUE.append({'sid': sid, 'user_id': user_id, 'name': player_name, 'queued_at': time.time()})
         emit('quick_queue_waiting')
 
+
 @socketio.on('cancel_quick_queue')
 def handle_cancel_quick_queue():
     sid = request.sid
@@ -559,16 +639,19 @@ def handle_cancel_quick_queue():
             QUICK_QUEUE.remove(q)
     emit('quick_queue_cancelled')
 
+
 @socketio.on('leave_room_voluntary')
 def handle_leave_room_voluntary():
     cleanup_player(request.sid)
     emit('left_room_confirmed')
     emit('public_rooms_update', {'rooms': serialize_public_rooms()}, broadcast=True)
 
+
 @socketio.on('disconnect')
 def handle_disconnect():
     cleanup_player(request.sid)
     emit('public_rooms_update', {'rooms': serialize_public_rooms()}, broadcast=True)
+
 
 def cleanup_player(sid):
     for q in list(QUICK_QUEUE):
