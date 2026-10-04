@@ -9,11 +9,11 @@
 </div>
 
 <div class="card" style="max-width:760px;">
-  <form method="POST">
+  <form method="POST" action="{{ url_for('admin.game_edit', config_id=game.id) }}">
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1.25rem;">
       <div>
         <label style="display:block; font-size:0.75rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.3rem;">Display Title</label>
-        <input type="text" name="display_title" value="{{ game.display_title }}" required style="width:100%; padding:0.6rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff;">
+        <input type="text" name="display_title" value="{{ game.display_title or '' }}" required style="width:100%; padding:0.6rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff;">
       </div>
       <div>
         <label style="display:block; font-size:0.75rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.3rem;">Internal Slug (Locked)</label>
@@ -23,13 +23,13 @@
 
     <div style="margin-bottom:1.25rem;">
       <label style="display:block; font-size:0.75rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.3rem;">Public Discipline Briefing</label>
-      <textarea name="description" rows="3" required style="width:100%; padding:0.65rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff; line-height:1.5;">{{ game.description }}</textarea>
+      <textarea name="description" rows="3" required style="width:100%; padding:0.65rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff; line-height:1.5;">{{ game.description or '' }}</textarea>
     </div>
 
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1.5rem;">
       <div>
         <label style="display:block; font-size:0.75rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.3rem;">Duration Options (CSV)</label>
-        <input type="text" name="durations" value="{{ game.durations }}" placeholder="e.g. 30,60,120" required style="width:100%; padding:0.6rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff; font-family:var(--admin-mono);">
+        <input type="text" name="durations" value="{{ game.durations or '30,60,120' }}" placeholder="e.g. 30,60,120" required style="width:100%; padding:0.6rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff; font-family:var(--admin-mono);">
       </div>
       <div>
         <label style="display:block; font-size:0.75rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.3rem;">Default AI Pacing Level</label>

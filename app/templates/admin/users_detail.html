@@ -60,14 +60,16 @@
           </div>
         </div>
 
-        <!-- Assign New Role Form -->
+        <!-- Assign New Role Form (Safe comparison by ID) -->
+        {% set user_role_ids = user.custom_roles|map(attribute='id')|list %}
         {% if current_user.has_permission('roles.manage') %}
         <form method="POST" action="{{ url_for('admin.assign_user_role', user_id=user.id) }}" style="margin-bottom:1.5rem;">
           <label style="display:block; font-size:0.72rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.35rem;">Delegate New Role</label>
           <div style="display:flex; gap:0.4rem;">
-            <select name="role_id" style="flex:1; padding:0.45rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:4px; color:#fff; font-size:0.84rem;">
+            <select name="role_id" required style="flex:1; padding:0.45rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:4px; color:#fff; font-size:0.84rem;">
+              <option value="" disabled selected>Select custom role...</option>
               {% for r in all_roles %}
-                {% if r not in user.custom_roles %}
+                {% if r.id not in user_role_ids %}
                 <option value="{{ r.id }}">{{ r.name }}</option>
                 {% endif %}
               {% endfor %}
@@ -111,7 +113,7 @@
       {% endif %}
     </div>
 
-    <!-- Network & Session Telemetry (Approximate Location Notice) -->
+    <!-- Network & Session Telemetry -->
     <div class="card">
       <h3 style="font-size:1.05rem; font-weight:800; margin-bottom:0.75rem; border-bottom:1px solid var(--admin-border); padding-bottom:0.4rem;">
         Network & Session Telemetry

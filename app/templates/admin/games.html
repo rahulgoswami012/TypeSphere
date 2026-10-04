@@ -5,7 +5,12 @@
 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
   <div>
     <h1 style="font-size:1.6rem; font-weight:800;">Arcade Hangar Management</h1>
-    <p style="color:var(--admin-text-muted); font-size:0.85rem;">Configure game rules, default AI levels, duration options, and public availability.</p>
+    <p style="color:var(--admin-text-muted); font-size:0.85rem;">
+      Configure rules, duration options, default AI pacing, and <strong>hold & drag rows to rearrange public hangar order</strong>.
+    </p>
+  </div>
+  <div id="reorder-status" style="display:none; font-size:0.8rem; font-weight:700; color:var(--admin-success); background:rgba(16,185,129,0.15); padding:0.35rem 0.85rem; border-radius:4px; border:1px solid var(--admin-success);">
+    ✓ New game order saved!
   </div>
 </div>
 
@@ -25,23 +30,27 @@
   </div>
 </div>
 
-<!-- Games Table -->
+<!-- Games Table with Drag & Drop -->
 <div class="card" style="padding:0; overflow:hidden;">
-  <table>
+  <table id="games-sortable-table">
     <thead>
       <tr>
+        <th style="width:40px; text-align:center;">Order</th>
         <th>Discipline Slug</th>
         <th>Display Title & Summary</th>
         <th>Modes Supported</th>
         <th>Durations</th>
         <th>Default AI</th>
-        <th>Public Availability</th>
+        <th>Status</th>
         <th>Actions</th>
       </tr>
     </thead>
-    <tbody>
+    <tbody id="games-sortable-tbody">
       {% for g in games %}
-      <tr>
+      <tr draggable="true" data-id="{{ g.id }}" class="sortable-game-row" style="cursor:grab;">
+        <td style="text-align:center; color:var(--admin-accent); font-weight:800; font-size:1.2rem; user-select:none;">
+          ⠿
+        </td>
         <td style="font-family:var(--admin-mono); font-weight:700; color:var(--admin-accent);">
           {{ g.game_slug }}
         </td>
@@ -78,4 +87,55 @@
     </tbody>
   </table>
 </div>
+
+<script>
+// Interactive Hold & Rearrange (HTML5 Drag and Drop)
+let draggedRow = null;
+const tbody = document.getElementById('games-sortable-tbody');
+
+tbody.addEventListener('dragstart', (e) => {
+  draggedRow = e.target.closest('tr');
+  draggedRow.style.opacity = '0.5';
+  draggedRow.style.cursor = 'grabbing';
+});
+
+tbody.addEventListener('dragend', () => {
+  if (draggedRow) {
+    draggedRow.style.opacity = '1';
+    draggedRow.style.cursor = 'grab';
+    draggedRow = null;
+    saveReorderedSequence();
+  }
+});
+
+tbody.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  const targetRow = e.target.closest('tr');
+  if (targetRow && targetRow !== draggedRow) {
+    const rect = targetRow.getBoundingClientRect();
+    const next = (e.clientY - rect.top) / (rect.bottom - rect.top) > 0.5;
+    tbody.insertBefore(draggedRow, next ? targetRow.nextSibling : targetRow);
+  }
+});
+
+function saveReorderedSequence() {
+  const rows = document.querySelectorAll('.sortable-game-row');
+  const orderedIds = Array.from(rows).map(r => parseInt(r.dataset.id, 10));
+
+  fetch('/admin/games/reorder', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ordered_ids: orderedIds })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.success) {
+      const banner = document.getElementById('reorder-status');
+      banner.style.display = 'block';
+      setTimeout(() => banner.style.display = 'none', 3000);
+    }
+  })
+  .catch(() => {});
+}
+</script>
 {% endblock %}

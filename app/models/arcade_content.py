@@ -1,18 +1,20 @@
 from datetime import datetime
 from app import db
 
+
 class ArcadeContentItem(db.Model):
     __tablename__ = 'arcade_content_items'
 
     id = db.Column(db.Integer, primary_key=True)
     game_mode = db.Column(db.String(50), nullable=False, index=True)
-    difficulty = db.Column(db.String(20), default='moderate', index=True) # easy, moderate, hard, expert
+    difficulty = db.Column(db.String(20), default='moderate', index=True)
     target_text = db.Column(db.String(255), nullable=False)
     category = db.Column(db.String(50), default='general', index=True)
     associated_keys = db.Column(db.String(64), nullable=True)
     word_length = db.Column(db.Integer, default=5)
     is_active = db.Column(db.Boolean, default=True, index=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
 
 class ArcadeGameConfig(db.Model):
     __tablename__ = 'arcade_game_configs'
@@ -28,3 +30,4 @@ class ArcadeGameConfig(db.Model):
     durations = db.Column(db.String(50), default="60")
     default_ai_level = db.Column(db.String(20), default="moderate")
     is_enabled = db.Column(db.Boolean, default=True)
+    display_order = db.Column(db.Integer, default=1, index=True)

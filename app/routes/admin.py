@@ -2,7 +2,7 @@
 TypeSphere Control Center - Centralized Operational Controller
 Manages users, custom roles, permissions, passage CMS, arcade games,
 tactical challenges, curriculum, certificates, community, website control,
-feature flags, security, analytics, system health, and data retention.
+feature flags, security, analytics, active sessions, and data retention.
 """
 
 import io
@@ -12,6 +12,7 @@ import json
 import hashlib
 import time
 import sys
+import re
 from datetime import datetime, timedelta, date
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, Response, session
 from flask_login import login_required, current_user, login_user
@@ -48,6 +49,44 @@ def enforce_admin_global():
         return redirect(url_for('typing.test_page'))
 
 
+def seed_default_roles_if_empty():
+    """Seeds default operational roles so the Super Admin has ready-made roles to assign."""
+    try:
+        if CustomRole.query.count() == 0:
+            defaults = [
+                ("Content Manager", "Manages typing passages, daily challenges, and curriculum.", ["typing.*", "challenges.*", "academy.*"]),
+                ("Flight Moderator", "Moderates user accounts, leaderboards, and community reviews.", ["users.view", "users.profile", "users.moderate", "reviews.*", "challenges.moderate"]),
+                ("Telemetry Analyst", "Access to traffic, device analytics, and performance curves.", ["analytics.*"]),
+                ("Support Dispatch", "Handles user inquiries, feedback messages, and basic profile inspection.", ["users.view", "users.profile", "feedback.*"])
+            ]
+            all_perms = {p.code: p for p in Permission.query.all()}
+            for r_name, r_desc, p_patterns in defaults:
+                r = CustomRole(name=r_name, description=r_desc, is_active=True, created_by="System")
+                matched = []
+                for pat in p_patterns:
+                    if pat.endswith(".*"):
+                        prefix = pat.split(".*")[0]
+                        matched.extend([p for code, p in all_perms.items() if code.startswith(prefix + ".")])
+                    elif pat in all_perms:
+                        matched.append(all_perms[pat])
+                r.permissions = list(set(matched))
+                db.session.add(r)
+            db.session.commit()
+    except Exception:
+        db.session.rollback()
+
+
+def purge_keyboard_quest_config():
+    """Ensures keyboard_quest is removed from ArcadeGameConfig so only the 11 active disciplines exist."""
+    try:
+        kq = ArcadeGameConfig.query.filter_by(game_slug='keyboard_quest').first()
+        if kq:
+            db.session.delete(kq)
+            db.session.commit()
+    except Exception:
+        db.session.rollback()
+
+
 # ==============================================================
 # 1. COMMAND CENTER DASHBOARD & LIVE OPERATIONS
 # ==============================================================
@@ -57,6 +96,9 @@ def enforce_admin_global():
 @admin_bp.route('/index', endpoint='index')
 @admin_permission_required('analytics.dashboard')
 def dashboard():
+    seed_default_roles_if_empty()
+    purge_keyboard_quest_config()
+
     now = datetime.utcnow()
     today_start = datetime(now.year, now.month, now.day)
     week_start = now - timedelta(days=7)
@@ -67,7 +109,7 @@ def dashboard():
     new_week = User.query.filter(User.created_at >= week_start).count()
     new_month = User.query.filter(User.created_at >= month_start).count()
     suspended_users = User.query.filter((User.is_suspended == True) | (User.is_banned == True)).count()
-    active_now = User.query.filter(User.last_active >= (now - timedelta(minutes=15))).count()
+    active_now = User.query.filter(User.last_active >= (now - timedelta(minutes=30))).count()
 
     total_tests = TypingTest.query.count()
     tests_today = TypingTest.query.filter(TypingTest.completed_at >= today_start).count()
@@ -115,12 +157,116 @@ def dashboard():
 
 
 # ==============================================================
-# 2. ROLE BUILDER & CUSTOM ROLE MANAGEMENT
+# 2. LIVE ACTIVE SESSIONS WITH MAKE & MODEL PARSER
+# ==============================================================
+
+def parse_device_make_model(user_agent: str, os_name: str, dev_type: str) -> str:
+    """Extracts hardware make and model from client User-Agent strings."""
+    if not user_agent:
+        return f"{os_name} Workstation" if os_name else "Standard Computer"
+
+    ua = user_agent
+
+    # Mobile & Tablet device identification
+    if "iPhone" in ua:
+        if "iPhone16" in ua or "iPhone15" in ua: return "Apple iPhone 15 / 16"
+        if "iPhone14" in ua: return "Apple iPhone 14"
+        if "iPhone13" in ua: return "Apple iPhone 13"
+        return "Apple iPhone"
+    if "iPad" in ua: return "Apple iPad"
+    if "Samsung" in ua or "SM-" in ua or "GT-" in ua:
+        match = re.search(r'(SM-[A-Z0-9]+)', ua)
+        return f"Samsung Galaxy ({match.group(1)})" if match else "Samsung Galaxy"
+    if "Pixel" in ua:
+        match = re.search(r'(Pixel\s[0-9a-zA-Z]+)', ua)
+        return f"Google {match.group(1)}" if match else "Google Pixel"
+    if "Xiaomi" in ua or "Redmi" in ua or "POCO" in ua:
+        return "Xiaomi / Redmi Mobile"
+    if "OnePlus" in ua: return "OnePlus Mobile"
+
+    # Desktop / Laptop identification
+    if "Macintosh" in ua or "Mac OS X" in ua: return "Apple Mac (MacBook / iMac)"
+    if "Windows NT 10.0" in ua: return "Windows 10 / 11 PC"
+    if "Windows NT" in ua: return "Windows PC"
+    if "X11; Linux" in ua or "Ubuntu" in ua: return "Linux Workstation"
+    if "CrOS" in ua: return "Google Chromebook"
+
+    return f"{os_name} Station" if os_name else "Standard Device"
+
+
+@admin_bp.route('/sessions')
+@admin_permission_required('users.view')
+def live_sessions():
+    """Displays active sessions (guests, registered pilots, and admins) within the last 30 minutes."""
+    cutoff = datetime.utcnow() - timedelta(minutes=30)
+    
+    recent_traffic = db.session.query(VisitorTraffic).filter(
+        VisitorTraffic.created_at >= cutoff
+    ).order_by(VisitorTraffic.created_at.desc()).limit(60).all()
+
+    seen_sessions = set()
+    active_sessions = []
+    registered_active = 0
+    guest_active = 0
+
+    for t in recent_traffic:
+        identifier = f"{t.ip_address}-{t.session_id}"
+        if identifier in seen_sessions:
+            continue
+        seen_sessions.add(identifier)
+
+        user_role = "guest"
+        username = "Guest Flight"
+        callsign = None
+
+        if t.user_id:
+            user = User.query.get(t.user_id)
+            if user:
+                username = f"@{user.username}"
+                callsign = user.display_callsign
+                if user.is_super_admin:
+                    user_role = "super_admin"
+                else:
+                    user_role = "pilot"
+                registered_active += 1
+        else:
+            guest_active += 1
+
+        dev_model = parse_device_make_model(None, t.os, t.device_type)
+        
+        # Approximate location formatting
+        loc_str = "India (Approximate)" if "127.0.0.1" not in t.ip_address else "Local Network"
+
+        active_sessions.append({
+            'username': username,
+            'callsign': callsign,
+            'user_role': user_role,
+            'ip_address': t.ip_address,
+            'location_approx': loc_str,
+            'device_type': t.device_type,
+            'device_model': dev_model,
+            'os': t.os,
+            'browser': t.browser,
+            'last_seen': to_ist(t.created_at)
+        })
+
+    return render_template(
+        'admin/sessions.html',
+        sessions=active_sessions,
+        active_count=len(active_sessions),
+        registered_active=registered_active,
+        guest_active=guest_active
+    )
+
+
+# ==============================================================
+# 3. ROLE BUILDER & CUSTOM ROLE MANAGEMENT
 # ==============================================================
 
 @admin_bp.route('/roles')
 @admin_permission_required('roles.view')
 def roles_list():
+    seed_default_roles_if_empty()
     roles = CustomRole.query.order_by(CustomRole.id.asc()).all()
     total_roles = len(roles)
     active_roles = sum(1 for r in roles if r.is_active)
@@ -274,7 +420,7 @@ def role_duplicate(role_id):
 
 
 # ==============================================================
-# 3. USER MANAGEMENT & MULTI-ROLE ASSIGNMENT
+# 4. USER MANAGEMENT & MULTI-ROLE ASSIGNMENT
 # ==============================================================
 
 @admin_bp.route('/users')
@@ -321,6 +467,7 @@ def users_list():
 @admin_bp.route('/users/<int:user_id>/profile')
 @admin_permission_required('users.profile')
 def user_detail(user_id):
+    seed_default_roles_if_empty()
     user = User.query.get_or_404(user_id)
     tests = TypingTest.query.filter_by(user_id=user.id).order_by(TypingTest.completed_at.desc()).limit(15).all()
     games = GameRecord.query.filter_by(user_id=user.id).order_by(GameRecord.created_at.desc()).limit(10).all()
@@ -354,6 +501,10 @@ def user_detail(user_id):
 def assign_user_role(user_id):
     user = User.query.get_or_404(user_id)
     role_id = request.form.get('role_id', type=int)
+
+    if not role_id:
+        flash("Please select a valid custom role to assign.", "warning")
+        return redirect(url_for('admin.user_detail', user_id=user.id))
 
     if user.is_super_admin:
         flash("The Super Admin possesses universal clearance; delegated roles do not apply.", "warning")
@@ -505,7 +656,7 @@ def stop_impersonation():
 
 
 # ==============================================================
-# 4. GLOBAL COMMAND PALETTE SEARCH API (Ctrl + K)
+# 5. GLOBAL COMMAND PALETTE SEARCH API (Ctrl + K)
 # ==============================================================
 
 @admin_bp.route('/api/search')
@@ -575,7 +726,8 @@ def admin_global_search():
     # 5. System Navigation
     shortcuts = [
         ('Dashboard', 'Command Center Overview', url_for('admin.dashboard')),
-        ('Arcade Hangar Manager', 'Configure arcade game rules & availability', url_for('admin.games_list')),
+        ('Live Active Sessions', 'Monitor real-time guest & pilot hardware models', url_for('admin.live_sessions')),
+        ('Arcade Hangar Manager', 'Configure arcade game rules & reorder disciplines', url_for('admin.games_list')),
         ('Tactical Challenges', 'Daily challenge & mission control', url_for('admin.challenges_manage')),
         ('Academy Curriculum', 'Manage curriculum tracks & stages', url_for('admin.academy_manage')),
         ('Certificates Hub', 'Verify & audit pilot flight certificates', url_for('admin.certificates_manage')),
@@ -603,7 +755,7 @@ def admin_global_search():
 
 
 # ==============================================================
-# 5. TYPING PASSAGE CMS
+# 6. TYPING PASSAGE CMS
 # ==============================================================
 
 @admin_bp.route('/passages')
@@ -739,13 +891,17 @@ def passage_toggle(passage_id):
 
 
 # ==============================================================
-# 6. ARCADE GAME MANAGER
+# 7. ARCADE GAME MANAGER & DRAG-AND-DROP REORDER
 # ==============================================================
 
 @admin_bp.route('/games')
 @admin_permission_required('games.view')
 def games_list():
-    games = ArcadeGameConfig.query.order_by(ArcadeGameConfig.id.asc()).all()
+    purge_keyboard_quest_config()
+    games = ArcadeGameConfig.query.filter(
+        ArcadeGameConfig.game_slug != 'keyboard_quest'
+    ).order_by(ArcadeGameConfig.display_order.asc(), ArcadeGameConfig.id.asc()).all()
+    
     total_games = len(games)
     active_games = sum(1 for g in games if g.is_enabled)
     return render_template('admin/games.html', games=games, total_games=total_games, active_games=active_games)
@@ -783,8 +939,31 @@ def game_toggle(config_id):
     return redirect(url_for('admin.games_list'))
 
 
+@admin_bp.route('/games/reorder', methods=['POST'])
+@admin_permission_required('games.edit')
+def reorder_games():
+    """Receives drag-and-drop ordered game IDs and persists display sequence."""
+    payload = request.get_json(silent=True) or {}
+    ordered_ids = payload.get('ordered_ids', [])
+
+    if not ordered_ids:
+        return jsonify({'success': False, 'message': 'No sequence array provided.'}), 400
+
+    try:
+        for idx, gid in enumerate(ordered_ids, start=1):
+            g = ArcadeGameConfig.query.get(gid)
+            if g:
+                g.display_order = idx
+        db.session.commit()
+        log_admin_action('GAMES_REORDER', 'arcade_game', details=f"Reordered {len(ordered_ids)} disciplines")
+        return jsonify({'success': True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 # ==============================================================
-# 7. TACTICAL MISSIONS & DAILY CHALLENGE MANAGEMENT
+# 8. TACTICAL MISSIONS & DAILY CHALLENGE MANAGEMENT
 # ==============================================================
 
 @admin_bp.route('/challenges')
@@ -849,7 +1028,7 @@ def delete_daily_challenge(challenge_id):
 
 
 # ==============================================================
-# 8. ACADEMY CURRICULUM CMS
+# 9. ACADEMY CURRICULUM CMS
 # ==============================================================
 
 @admin_bp.route('/academy')
@@ -885,7 +1064,7 @@ def stage_edit(stage_id):
 
 
 # ==============================================================
-# 9. CERTIFICATES VERIFIER & REVOCATION HUB
+# 10. CERTIFICATES VERIFIER & REVOCATION HUB
 # ==============================================================
 
 @admin_bp.route('/certificates')
@@ -940,7 +1119,7 @@ def certificate_restore(test_id):
 
 
 # ==============================================================
-# 10. COMMUNITY REVIEWS, FEEDBACK & ANNOUNCEMENTS
+# 11. COMMUNITY REVIEWS, FEEDBACK & ANNOUNCEMENTS
 # ==============================================================
 
 @admin_bp.route('/community')
@@ -1043,7 +1222,7 @@ def respond_feedback(feedback_id):
 
 
 # ==============================================================
-# 11. SECURITY & ACTIVE IP MANAGEMENT
+# 12. SECURITY & ACTIVE IP MANAGEMENT
 # ==============================================================
 
 @admin_bp.route('/security')
@@ -1108,7 +1287,7 @@ def handle_unblock_ip(block_id):
 
 
 # ==============================================================
-# 12. WEBSITE CONTROL, MAINTENANCE & DYNAMIC NAVIGATION CMS
+# 13. WEBSITE CONTROL, MAINTENANCE & DYNAMIC NAVIGATION CMS
 # ==============================================================
 
 @admin_bp.route('/website')
@@ -1217,7 +1396,7 @@ def delete_navigation_item(item_id):
 
 
 # ==============================================================
-# 13. RUNTIME FEATURE FLAGS ENGINE
+# 14. RUNTIME FEATURE FLAGS ENGINE
 # ==============================================================
 
 @admin_bp.route('/flags')
@@ -1272,7 +1451,7 @@ def toggle_feature_flag(flag_id):
 
 
 # ==============================================================
-# 14. 5-DIMENSION ANALYTICS HUB
+# 15. 5-DIMENSION ANALYTICS HUB
 # ==============================================================
 
 @admin_bp.route('/analytics')
@@ -1332,14 +1511,13 @@ def traffic_analytics():
 
 
 # ==============================================================
-# 15. SYSTEM HEALTH & DATA RETENTION MANAGEMENT (HARDENED)
+# 16. SYSTEM HEALTH & DATA RETENTION MANAGEMENT
 # ==============================================================
 
 @admin_bp.route('/system/health')
 @admin_permission_required('website.health')
 def system_health():
     """Real-time operational system health diagnostics."""
-    # Resilient Database Ping Test
     t0 = time.perf_counter()
     try:
         with db.engine.connect() as conn:
@@ -1352,7 +1530,6 @@ def system_health():
 
     db_engine = getattr(db.engine, 'name', 'sqlite').upper()
 
-    # SQLite file size if applicable
     db_size_mb = None
     if "SQLITE" in db_engine:
         try:
@@ -1363,7 +1540,6 @@ def system_health():
             pass
 
     def safe_count(model):
-        """Safely executes table count without cascading query failures."""
         try:
             return model.query.count()
         except Exception:
@@ -1462,7 +1638,7 @@ def data_cleanup():
 
 
 # ==============================================================
-# 16. AUDIT LOGS, LEADERBOARD, SETTINGS & EXPORTS
+# 17. AUDIT LOGS, LEADERBOARD, SETTINGS & EXPORTS
 # ==============================================================
 
 @admin_bp.route('/audit-logs')
