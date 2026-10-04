@@ -1,33 +1,134 @@
 {% extends 'admin/base_admin.html' %}
-{% block title %}Security Center | TypeSphere Control Center{% endblock %}
+{% block title %}Security & Threat Watch | TypeSphere Control Center{% endblock %}
 
 {% block admin_content %}
 <div style="margin-bottom:1.5rem;">
-  <h1 style="font-size:1.6rem; font-weight:800;">Security Center & Incident Monitor</h1>
-  <p style="color:var(--admin-text-muted); font-size:0.85rem;">Audit anomalous requests, failed logins, and access boundary violations.</p>
+  <h1 style="font-size:1.6rem; font-weight:800;">Security Center & Threat Watch</h1>
+  <p style="color:var(--admin-text-muted); font-size:0.85rem;">Audit anomalous requests, failed logins, and enforce active IP restriction rules.</p>
 </div>
 
+<!-- Metrics HUD -->
 <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:1rem; margin-bottom:1.5rem;">
   <div class="card" style="margin:0;">
-    <div style="font-size:0.75rem; color:var(--admin-text-muted);">FAILED LOGIN ATTEMPTS</div>
-    <div style="font-size:1.8rem; font-weight:800; color:var(--admin-warning);">{{ failed_logins }}</div>
+    <div style="font-size:0.72rem; color:var(--admin-text-muted); font-weight:700; text-transform:uppercase;">FAILED LOGINS</div>
+    <div style="font-size:1.8rem; font-weight:800; color:var(--admin-warning); margin-top:0.2rem;">{{ failed_logins }}</div>
   </div>
   <div class="card" style="margin:0;">
-    <div style="font-size:0.75rem; color:var(--admin-text-muted);">CRITICAL INCIDENTS</div>
-    <div style="font-size:1.8rem; font-weight:800; color:var(--admin-danger);">{{ critical_events }}</div>
+    <div style="font-size:0.72rem; color:var(--admin-text-muted); font-weight:700; text-transform:uppercase;">CRITICAL INCIDENTS</div>
+    <div style="font-size:1.8rem; font-weight:800; color:var(--admin-danger); margin-top:0.2rem;">{{ critical_events }}</div>
+  </div>
+  <div class="card" style="margin:0;">
+    <div style="font-size:0.72rem; color:var(--admin-text-muted); font-weight:700; text-transform:uppercase;">RESTRICTED IPS</div>
+    <div style="font-size:1.8rem; font-weight:800; color:var(--admin-accent); margin-top:0.2rem;">{{ blocked_ips|length }}</div>
   </div>
 </div>
 
-<div class="card" style="padding:0; overflow:hidden;">
+<!-- Active IP Restriction Console -->
+<div class="card" style="margin-bottom:1.5rem;">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:0.5rem; border-bottom:1px solid var(--admin-border); padding-bottom:0.5rem;">
+    <div>
+      <h3 style="font-size:1.1rem; font-weight:800; margin:0;">Active IP Restriction Ledger</h3>
+      <p style="color:var(--admin-text-muted); font-size:0.8rem; margin-top:0.15rem;">Requests from restricted IPs are intercepted at the middleware boundary.</p>
+    </div>
+  </div>
+
+  <!-- Manual IP Block Form -->
+  <form method="POST" action="{{ url_for('admin.handle_block_ip') }}" style="background:var(--admin-elevated); padding:1rem; border-radius:6px; margin-bottom:1.25rem;">
+    <div style="display:grid; grid-template-columns: 180px 1fr 140px auto; gap:0.75rem; align-items:flex-end;">
+      <div>
+        <label style="display:block; font-size:0.72rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.25rem;">IP Address</label>
+        <input type="text" name="ip_address" placeholder="e.g. 192.168.1.100" required style="width:100%; padding:0.45rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:4px; color:#fff; font-family:var(--admin-mono); font-size:0.82rem;">
+      </div>
+      <div>
+        <label style="display:block; font-size:0.72rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.25rem;">Restriction Reason</label>
+        <input type="text" name="reason" placeholder="e.g. Automated rate violation or credential stuffing" required style="width:100%; padding:0.45rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:4px; color:#fff; font-size:0.82rem;">
+      </div>
+      <div>
+        <label style="display:block; font-size:0.72rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.25rem;">Duration</label>
+        <select name="duration_hours" style="width:100%; padding:0.45rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:4px; color:#fff; font-size:0.82rem;">
+          <option value="24" selected>24 Hours</option>
+          <option value="72">3 Days</option>
+          <option value="168">7 Days</option>
+          <option value="720">30 Days</option>
+        </select>
+      </div>
+      <div>
+        <button type="submit" class="btn btn-sm btn-danger" style="height:34px; padding:0 1rem; font-weight:700;">
+          + Restrict IP
+        </button>
+      </div>
+    </div>
+  </form>
+
+  <!-- Blocked IPs Table -->
   <table>
     <thead>
       <tr>
-        <th>Event</th>
+        <th>Restricted IP</th>
+        <th>Reason</th>
+        <th>Restricted By</th>
+        <th>Created</th>
+        <th>Status / Expiration</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for b in blocked_ips %}
+      <tr>
+        <td style="font-family:var(--admin-mono); font-weight:700; color:var(--admin-danger);">{{ b.ip_address }}</td>
+        <td style="font-size:0.82rem; color:var(--admin-text-muted);">{{ b.reason }}</td>
+        <td>{{ b.blocked_by }}</td>
+        <td style="font-size:0.78rem; color:var(--admin-text-muted);">{{ b.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+        <td>
+          {% if b.is_permanent %}
+            <span class="badge badge-danger">PERMANENT</span>
+          {% elif b.expires_at %}
+            <span class="badge badge-warning">Expires {{ b.expires_at.strftime('%m-%d %H:%M') }}</span>
+          {% else %}
+            <span class="badge badge-warning">ACTIVE</span>
+          {% endif %}
+        </td>
+        <td>
+          <form method="POST" action="{{ url_for('admin.handle_unblock_ip', block_id=b.id) }}" style="display:inline;">
+            <button type="submit" class="btn btn-sm" onclick="return confirm('Lift restriction on {{ b.ip_address }}?');">
+              Lift Restriction
+            </button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" style="text-align:center; padding:1.5rem; color:var(--admin-text-muted);">Zero active IP restrictions. Platform perimeter nominal.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Security Events Stream -->
+<div class="card" style="padding:0; overflow:hidden;">
+  <div style="padding:1rem 1.25rem; border-bottom:1px solid var(--admin-border); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem;">
+    <h3 style="font-size:1.1rem; font-weight:800; margin:0;">Security Events Stream</h3>
+    <form method="GET" style="display:flex; gap:0.5rem;">
+      <input type="text" name="q" value="{{ search or '' }}" placeholder="Search IP, identifier, detail..." style="padding:0.35rem 0.65rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:4px; color:#fff; font-size:0.8rem;">
+      <select name="severity" style="padding:0.35rem 0.65rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:4px; color:#fff; font-size:0.8rem;">
+        <option value="">All Severities</option>
+        <option value="CRITICAL" {% if severity_filter == 'CRITICAL' %}selected{% endif %}>Critical</option>
+        <option value="HIGH" {% if severity_filter == 'HIGH' %}selected{% endif %}>High</option>
+        <option value="MEDIUM" {% if severity_filter == 'MEDIUM' %}selected{% endif %}>Medium</option>
+        <option value="LOW" {% if severity_filter == 'LOW' %}selected{% endif %}>Low</option>
+      </select>
+      <button type="submit" class="btn btn-sm btn-primary">Filter</button>
+    </form>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Event Classification</th>
         <th>Severity</th>
-        <th>Identifier</th>
-        <th>IP Address</th>
+        <th>Account / Target</th>
+        <th>Origin IP</th>
         <th>Description</th>
-        <th>Time</th>
+        <th>Timestamp (IST)</th>
       </tr>
     </thead>
     <tbody>
@@ -40,8 +141,10 @@
         <td>{{ ev.identifier or 'N/A' }}</td>
         <td style="font-family:var(--admin-mono); font-size:0.8rem;">{{ ev.ip_address or 'Unknown' }}</td>
         <td style="font-size:0.8rem; max-width:350px;">{{ ev.description }}</td>
-        <td style="color:var(--admin-text-muted); font-size:0.78rem;">{{ ev.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+        <td style="color:var(--admin-text-muted); font-size:0.78rem;">{{ to_ist(ev.created_at).strftime('%Y-%m-%d %H:%M:%S') }} IST</td>
       </tr>
+      {% else %}
+      <tr><td colspan="6" style="text-align:center; padding:2rem; color:var(--admin-text-muted);">No security events recorded.</td></tr>
       {% endfor %}
     </tbody>
   </table>

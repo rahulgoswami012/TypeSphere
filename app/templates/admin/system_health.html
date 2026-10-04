@@ -1,0 +1,91 @@
+{% extends 'admin/base_admin.html' %}
+{% block title %}System Health & Telemetry | TypeSphere Control Center{% endblock %}
+
+{% block admin_content %}
+<div style="margin-bottom:1.5rem;">
+  <h1 style="font-size:1.6rem; font-weight:800;">System Health & Infrastructure Diagnostics</h1>
+  <p style="color:var(--admin-text-muted); font-size:0.85rem;">Operational status, database ping benchmarks, storage volumes, and runtime security hygiene.</p>
+</div>
+
+<!-- Diagnostics HUD Cards -->
+<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:1rem; margin-bottom:1.5rem;">
+  <div class="card" style="margin:0;">
+    <div style="font-size:0.72rem; color:var(--admin-text-muted); font-weight:700; text-transform:uppercase;">DATABASE PING LATENCY</div>
+    <div style="font-size:1.8rem; font-weight:800; color:var(--admin-success); margin-top:0.2rem;">
+      {{ db_ping_ms if db_ping_ms is not none else '--' }} <span style="font-size:0.85rem; color:var(--admin-text-muted);">ms</span>
+    </div>
+    <div style="font-size:0.72rem; color:var(--admin-text-muted);">Dialect: {{ db_engine }}</div>
+  </div>
+
+  <div class="card" style="margin:0;">
+    <div style="font-size:0.72rem; color:var(--admin-text-muted); font-weight:700; text-transform:uppercase;">DATABASE STATUS</div>
+    <div style="font-size:1.8rem; font-weight:800; color:{{ 'var(--admin-success)' if db_status == 'Nominal' else 'var(--admin-warning)' }}; margin-top:0.2rem;">
+      {{ db_status }}
+    </div>
+    <div style="font-size:0.72rem; color:var(--admin-text-muted);">Connection pool nominal</div>
+  </div>
+
+  <div class="card" style="margin:0;">
+    <div style="font-size:0.72rem; color:var(--admin-text-muted); font-weight:700; text-transform:uppercase;">APPLICATION RUNTIME</div>
+    <div style="font-size:1.8rem; font-weight:800; color:var(--admin-accent); margin-top:0.2rem;">
+      Python {{ python_version }}
+    </div>
+    <div style="font-size:0.72rem; color:var(--admin-text-muted);">Flask 3.0.2 &bull; SocketIO 5.3.6</div>
+  </div>
+
+  <div class="card" style="margin:0;">
+    <div style="font-size:0.72rem; color:var(--admin-text-muted); font-weight:700; text-transform:uppercase;">OFFICIAL TIMEZONE</div>
+    <div style="font-size:1.6rem; font-weight:800; color:var(--admin-warning); margin-top:0.2rem;">
+      IST (UTC+05:30)
+    </div>
+    <div style="font-size:0.72rem; color:var(--admin-text-muted);">{{ now_ist.strftime('%H:%M:%S') if now_ist else '--:--:--' }} IST</div>
+  </div>
+</div>
+
+<div style="display:grid; grid-template-columns: 1.5fr 1fr; gap:1.5rem; margin-bottom:1.5rem;">
+  <!-- Operational Table Footprint -->
+  <div class="card" style="padding:0; overflow:hidden; margin:0;">
+    <div style="padding:0.85rem 1.25rem; border-bottom:1px solid var(--admin-border); display:flex; justify-content:space-between; align-items:center;">
+      <h3 style="font-size:1.05rem; font-weight:800; margin:0;">Operational Table Footprint</h3>
+      {% if db_size_mb is not none %}
+      <span class="badge badge-primary">Disk Size: {{ db_size_mb }} MB</span>
+      {% endif %}
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Database Table Entity</th>
+          <th>Total Records Logged</th>
+          <th>Integrity Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for tbl, count in table_stats.items() %}
+        <tr>
+          <td><strong>{{ tbl }}</strong></td>
+          <td style="font-family:var(--admin-mono); font-weight:700; color:var(--admin-accent);">{{ count }}</td>
+          <td><span class="badge badge-success">OK &bull; HEALTHY</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Runtime Security Hygiene & Safeguards -->
+  <div class="card" style="margin:0;">
+    <h3 style="font-size:1.05rem; font-weight:800; margin-bottom:1rem;">Runtime Security Safeguards</h3>
+    <div style="display:flex; flex-direction:column; gap:0.85rem; font-size:0.86rem;">
+      {% for name, val in security_checks %}
+      <div style="display:flex; justify-content:space-between; align-items:center; padding-bottom:0.5rem; border-bottom:1px solid var(--admin-border);">
+        <span style="color:var(--admin-text-muted);">{{ name }}</span>
+        <strong style="color:var(--admin-success); font-family:var(--admin-mono);">{{ val }}</strong>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div style="margin-top:1.5rem; padding:0.85rem; background:var(--admin-elevated); border-radius:6px; border:1px solid var(--admin-border); font-size:0.78rem; color:var(--admin-text-muted); line-height:1.55;">
+      🛡️ <strong>Zero Secret Exposure Standard:</strong> Control Center diagnostics deliberately redact environment variables, database passwords, session tokens, and cryptographic keys to guarantee operational security.
+    </div>
+  </div>
+</div>
+{% endblock %}

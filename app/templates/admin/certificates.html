@@ -1,0 +1,89 @@
+{% extends 'admin/base_admin.html' %}
+{% block title %}Flight Certificates Audit | Control Center{% endblock %}
+
+{% block admin_content %}
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
+  <div>
+    <h1 style="font-size:1.6rem; font-weight:800;">Flight Wings & Certificates Audit</h1>
+    <p style="color:var(--admin-text-muted); font-size:0.85rem;">Verify cryptographic pilot certificates, audit qualification standards, and revoke credentials.</p>
+  </div>
+</div>
+
+<!-- Search Bar -->
+<div class="card" style="padding:1rem; margin-bottom:1.25rem;">
+  <form method="GET" style="display:flex; gap:0.5rem;">
+    <input type="text" name="q" value="{{ search or '' }}" placeholder="Search by pilot username or callsign..." style="flex:1; padding:0.5rem 0.75rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff;">
+    <button type="submit" class="btn btn-primary">Search</button>
+  </form>
+</div>
+
+<!-- Certificates Table -->
+<div class="card" style="padding:0; overflow:hidden;">
+  <table>
+    <thead>
+      <tr>
+        <th>Test ID</th>
+        <th>Pilot & Callsign</th>
+        <th>Speed & Accuracy</th>
+        <th>Wings Tier</th>
+        <th>Verification Hash</th>
+        <th>Completed (IST)</th>
+        <th>Status</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for t in tests.items %}
+      {% set hash_source = "TS-" ~ t.id ~ "-" ~ t.user_id ~ "-" ~ t.wpm ~ "-" ~ t.accuracy ~ "-" ~ t.completed_at.isoformat() %}
+      {% set cert_code = "TS-" ~ hashlib.sha256(hash_source.encode()).hexdigest()[:10]|upper %}
+      <tr>
+        <td>#{{ t.id }}</td>
+        <td>
+          <div style="font-weight:700;">{{ t.user.username }}</div>
+          <div style="font-size:0.75rem; color:var(--admin-accent); font-family:var(--admin-mono);">[{{ t.user.display_callsign }}]</div>
+        </td>
+        <td>
+          <strong style="color:var(--admin-accent);">{{ t.wpm }} WPM</strong> &bull; {{ t.accuracy }}%
+        </td>
+        <td>
+          {% if t.wpm >= 70 and t.accuracy >= 98 %}
+            <span class="badge" style="background:#f59e0b22; color:#f59e0b; border:1px solid #f59e0b;">GOLD WINGS</span>
+          {% elif t.wpm >= 50 and t.accuracy >= 92 %}
+            <span class="badge" style="background:#94a3b822; color:#94a3b8; border:1px solid #94a3b8;">SILVER WINGS</span>
+          {% else %}
+            <span class="badge" style="background:#d9770622; color:#d97706; border:1px solid #d97706;">BRONZE WINGS</span>
+          {% endif %}
+        </td>
+        <td><code style="font-family:var(--admin-mono); font-size:0.8rem; color:var(--admin-accent);">{{ cert_code }}</code></td>
+        <td style="font-size:0.78rem; color:var(--admin-text-muted);">{{ to_ist(t.completed_at).strftime('%Y-%m-%d %H:%M') }} IST</td>
+        <td>
+          {% if t.suspicious %}
+            <span class="badge badge-danger">REVOKED</span>
+            <div style="font-size:0.72rem; color:var(--admin-danger); margin-top:2px;">{{ t.suspicion_reason or 'Flagged' }}</div>
+          {% else %}
+            <span class="badge badge-success">VALID</span>
+          {% endif %}
+        </td>
+        <td>
+          <div style="display:flex; gap:0.4rem;">
+            <a href="{{ url_for('typing.certificate_page', test_id=t.id) }}" target="_blank" class="btn btn-sm">Inspect Certificate</a>
+            {% if t.suspicious %}
+            <form method="POST" action="{{ url_for('admin.certificate_restore', test_id=t.id) }}">
+              <button type="submit" class="btn btn-sm">Restore</button>
+            </form>
+            {% else %}
+            <form method="POST" action="{{ url_for('admin.certificate_revoke', test_id=t.id) }}" onsubmit="return confirm('Revoke this official certificate?');">
+              <input type="hidden" name="reason" value="Administrative revocation">
+              <button type="submit" class="btn btn-sm btn-danger">Revoke</button>
+            </form>
+            {% endif %}
+          </div>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="8" style="text-align:center; padding:2rem; color:var(--admin-text-muted);">No certificate records found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -1,0 +1,92 @@
+{% extends 'admin/base_admin.html' %}
+{% block title %}Feature Flags | TypeSphere Control Center{% endblock %}
+
+{% block admin_content %}
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
+  <div>
+    <h1 style="font-size:1.6rem; font-weight:800;">Runtime Feature Flags</h1>
+    <p style="color:var(--admin-text-muted); font-size:0.85rem;">Toggle experimental platform modules and UI features without code redeployment.</p>
+  </div>
+</div>
+
+<!-- Flags Table -->
+<div class="card" style="padding:0; overflow:hidden; margin-bottom:1.5rem;">
+  <table>
+    <thead>
+      <tr>
+        <th>Flag Key</th>
+        <th>Feature Name & Description</th>
+        <th>Target Environment</th>
+        <th>Last Updated By</th>
+        <th>State</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for f in flags %}
+      <tr>
+        <td style="font-family:var(--admin-mono); font-weight:700; color:var(--admin-accent);">
+          {{ f.key }}
+        </td>
+        <td>
+          <div style="font-weight:700; color:var(--admin-text-main);">{{ f.label }}</div>
+          <div style="font-size:0.78rem; color:var(--admin-text-muted);">{{ f.description }}</div>
+        </td>
+        <td><span class="badge badge-primary">{{ f.environment|upper }}</span></td>
+        <td style="color:var(--admin-text-muted); font-size:0.8rem;">{{ f.updated_by or 'SuperAdmin' }}</td>
+        <td>
+          <span class="badge {{ 'badge-success' if f.is_enabled else 'badge-danger' }}">
+            {{ 'ENABLED' if f.is_enabled else 'DISABLED' }}
+          </span>
+        </td>
+        <td>
+          <form method="POST" action="{{ url_for('admin.toggle_feature_flag', flag_id=f.id) }}">
+            <button type="submit" class="btn btn-sm {{ 'btn-danger' if f.is_enabled else 'btn-primary' }}">
+              {{ 'Disable' if f.is_enabled else 'Enable' }}
+            </button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="6" style="text-align:center; padding:2rem; color:var(--admin-text-muted);">
+          No custom feature flags registered. Use the form below to establish one.
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Create Feature Flag Form -->
+<div class="card" style="max-width:680px;">
+  <h3 style="font-size:1.05rem; font-weight:800; margin-bottom:0.75rem; border-bottom:1px solid var(--admin-border); padding-bottom:0.4rem;">
+    + Register New Feature Flag
+  </h3>
+  <form method="POST" action="{{ url_for('admin.create_feature_flag') }}">
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1rem;">
+      <div>
+        <label style="display:block; font-size:0.72rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.3rem;">Flag Key (Unique)</label>
+        <input type="text" name="key" placeholder="e.g. experimental_multiplayer" required style="width:100%; padding:0.55rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:4px; color:#fff; font-family:var(--admin-mono); font-size:0.82rem;">
+      </div>
+      <div>
+        <label style="display:block; font-size:0.72rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.3rem;">Display Label</label>
+        <input type="text" name="label" placeholder="e.g. Experimental Multiplayer Grid" required style="width:100%; padding:0.55rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:4px; color:#fff;">
+      </div>
+    </div>
+    <div style="margin-bottom:1rem;">
+      <label style="display:block; font-size:0.72rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.3rem;">Scope Description</label>
+      <input type="text" name="description" placeholder="Summarize feature scope..." style="width:100%; padding:0.55rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:4px; color:#fff;">
+    </div>
+    <div style="margin-bottom:1.25rem;">
+      <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; font-size:0.85rem;">
+        <input type="checkbox" name="is_enabled">
+        <span>Enable immediately upon registration</span>
+      </label>
+    </div>
+    <button type="submit" class="btn btn-primary" style="padding:0.6rem 1.5rem; font-weight:800;">
+      Register Flag &rarr;
+    </button>
+  </form>
+</div>
+{% endblock %}

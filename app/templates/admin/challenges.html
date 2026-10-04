@@ -1,0 +1,88 @@
+{% extends 'admin/base_admin.html' %}
+{% block title %}Tactical Missions & Daily Challenges | Control Center{% endblock %}
+
+{% block admin_content %}
+<div style="margin-bottom:1.5rem;">
+  <h1 style="font-size:1.6rem; font-weight:800;">Tactical Missions & Daily Recon</h1>
+  <p style="color:var(--admin-text-muted); font-size:0.85rem;">Publish synchronized 24H daily briefings and monitor mission completions.</p>
+</div>
+
+<!-- Metrics HUD -->
+<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:1rem; margin-bottom:1.5rem;">
+  <div class="card" style="margin:0;">
+    <div style="font-size:0.72rem; color:var(--admin-text-muted); font-weight:700; text-transform:uppercase;">TODAY'S DATE (IST)</div>
+    <div style="font-size:1.6rem; font-weight:800; color:var(--admin-accent); margin-top:0.2rem;">{{ today_date.strftime('%B %d, %Y') }}</div>
+  </div>
+  <div class="card" style="margin:0;">
+    <div style="font-size:0.72rem; color:var(--admin-text-muted); font-weight:700; text-transform:uppercase;">STATUS OF TODAY'S RUN</div>
+    <div style="font-size:1.6rem; font-weight:800; color:{{ 'var(--admin-success)' if current_daily else 'var(--admin-warning)' }}; margin-top:0.2rem;">
+      {{ 'PUBLISHED' if current_daily else 'CALIBRATING...' }}
+    </div>
+  </div>
+  <div class="card" style="margin:0;">
+    <div style="font-size:0.72rem; color:var(--admin-text-muted); font-weight:700; text-transform:uppercase;">TOTAL MISSIONS EXECUTED</div>
+    <div style="font-size:1.6rem; font-weight:800; margin-top:0.2rem;">{{ total_missions_completed }}</div>
+  </div>
+</div>
+
+<!-- Publish / Calibrate Daily Challenge Form -->
+<div class="card" style="max-width:840px; margin-bottom:1.5rem;">
+  <h3 style="font-size:1.1rem; font-weight:800; margin-bottom:0.75rem; border-bottom:1px solid var(--admin-border); padding-bottom:0.4rem;">
+    {{ 'Update Today\'s Daily Briefing' if current_daily else 'Publish Today\'s Synchronized Briefing' }}
+  </h3>
+  <form method="POST" action="{{ url_for('admin.publish_daily_challenge') }}">
+    <div style="display:grid; grid-template-columns:180px 1fr; gap:1rem; margin-bottom:1rem;">
+      <div>
+        <label style="display:block; font-size:0.72rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.3rem;">Target Date (IST)</label>
+        <input type="date" name="target_date" value="{{ today_date.isoformat() }}" required style="width:100%; padding:0.6rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff; font-family:var(--admin-mono); font-size:0.85rem;">
+      </div>
+      <div>
+        <label style="display:block; font-size:0.72rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.3rem;">Briefing Title</label>
+        <input type="text" name="title" value="{{ current_daily.title if current_daily else 'The Kinetic Equilibrium' }}" required style="width:100%; padding:0.6rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff;">
+      </div>
+    </div>
+
+    <div style="margin-bottom:1.25rem;">
+      <label style="display:block; font-size:0.72rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.3rem;">Briefing Passage Text</label>
+      <textarea name="content" rows="4" required placeholder="Enter the official synchronized passage text..." style="width:100%; padding:0.75rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff; font-family:var(--admin-mono); line-height:1.6;">{{ current_daily.content if current_daily else '' }}</textarea>
+    </div>
+
+    <button type="submit" class="btn btn-primary" style="padding:0.65rem 1.75rem; font-weight:800;">
+      Publish Briefing &rarr;
+    </button>
+  </form>
+</div>
+
+<!-- Past Daily Challenges History -->
+<div class="card" style="padding:0; overflow:hidden;">
+  <div style="padding:1rem 1.25rem; border-bottom:1px solid var(--admin-border);">
+    <h3 style="font-size:1.05rem; font-weight:800; margin:0;">Daily Challenge Historical Archive</h3>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Date (IST)</th>
+        <th>Briefing Title</th>
+        <th>Passage Excerpt</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for d in past_dailies %}
+      <tr>
+        <td style="font-family:var(--admin-mono); font-weight:700; color:var(--admin-accent);">{{ d.target_date.strftime('%Y-%m-%d') }}</td>
+        <td><strong>{{ d.title }}</strong></td>
+        <td style="font-size:0.82rem; color:var(--admin-text-muted); max-width:440px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ d.content }}</td>
+        <td>
+          <form method="POST" action="{{ url_for('admin.delete_daily_challenge', challenge_id=d.id) }}" onsubmit="return confirm('Delete this challenge?');" style="display:inline;">
+            <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="4" style="text-align:center; padding:1.5rem; color:var(--admin-text-muted);">No archived daily challenges.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

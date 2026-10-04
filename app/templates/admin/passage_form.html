@@ -1,62 +1,99 @@
 {% extends 'admin/base_admin.html' %}
-{% block title %}{{ action }} Passage | Control Center{% endblock %}
+{% block title %}{{ action }} Passage | TypeSphere Control Center{% endblock %}
 
 {% block admin_content %}
 <div style="margin-bottom:1.5rem;">
-  <a href="{{ url_for('admin.passages_list') }}" style="color:var(--admin-accent); font-size:0.85rem; text-decoration:none;">&larr; Back to Passages</a>
+  <a href="{{ url_for('admin.passages_list') }}" style="color:var(--admin-accent); font-size:0.85rem; text-decoration:none;">&larr; Return to Passage Library</a>
   <h1 style="font-size:1.6rem; font-weight:800; margin-top:0.4rem;">{{ action }} Typing Passage</h1>
+  <p style="color:var(--admin-text-muted); font-size:0.85rem;">Configure title, category, difficulty tier, and programming syntax tags.</p>
 </div>
 
-<div class="card" style="max-width:850px;">
+<div class="card" style="max-width:880px;">
   <form method="POST">
     <div style="display:grid; grid-template-columns: 2fr 1fr; gap:1rem; margin-bottom:1.25rem;">
       <div>
-        <label style="display:block; font-size:0.75rem; color:var(--admin-text-muted); margin-bottom:0.3rem;">PASSAGE TITLE</label>
-        <input type="text" name="title" value="{{ passage.title if passage else '' }}" required style="width:100%; padding:0.6rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff;">
+        <label style="display:block; font-size:0.75rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.3rem;">Passage Title</label>
+        <input type="text" name="title" value="{{ passage.title if passage else '' }}" required placeholder="e.g. Supersonic Shockwave Physics" style="width:100%; padding:0.6rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff;">
       </div>
       <div>
-        <label style="display:block; font-size:0.75rem; color:var(--admin-text-muted); margin-bottom:0.3rem;">SOURCE / AUTHOR</label>
+        <label style="display:block; font-size:0.75rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.3rem;">Author / Source</label>
         <input type="text" name="source" value="{{ passage.source if passage else 'Administrator' }}" style="width:100%; padding:0.6rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff;">
       </div>
     </div>
 
-    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem; margin-bottom:1.25rem;">
+    <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:1rem; margin-bottom:1.25rem;">
       <div>
-        <label style="display:block; font-size:0.75rem; color:var(--admin-text-muted); margin-bottom:0.3rem;">CATEGORY</label>
+        <label style="display:block; font-size:0.75rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.3rem;">Category</label>
         <select name="category" style="width:100%; padding:0.6rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff;">
-          {% for cat in ['General', 'Daily Life', 'Education', 'Technology', 'Science', 'Business', 'History', 'Literature', 'Professional'] %}
+          {% for cat in ['General', 'Literature', 'Education', 'Technology', 'Science', 'Business', 'Competitive Exam', 'Professional'] %}
           <option value="{{ cat }}" {% if passage and passage.category == cat %}selected{% endif %}>{{ cat }}</option>
           {% endfor %}
         </select>
       </div>
+
       <div>
-        <label style="display:block; font-size:0.75rem; color:var(--admin-text-muted); margin-bottom:0.3rem;">DIFFICULTY TIER</label>
+        <label style="display:block; font-size:0.75rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.3rem;">Difficulty Tier</label>
         <select name="difficulty" style="width:100%; padding:0.6rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff;">
           {% for diff in ['Easy', 'Medium', 'Hard', 'Expert'] %}
           <option value="{{ diff }}" {% if passage and passage.difficulty == diff %}selected{% endif %}>{{ diff }}</option>
           {% endfor %}
         </select>
       </div>
+
+      <div>
+        <label style="display:block; font-size:0.75rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.3rem;">Programming Syntax</label>
+        <select name="code_lang" id="code-lang-select" style="width:100%; padding:0.6rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff;">
+          <option value="">None (Standard Prose)</option>
+          {% for lang in ['python', 'javascript', 'html', 'css', 'sql', 'java', 'c', 'cpp'] %}
+          <option value="{{ lang }}" {% if passage and passage.code_lang == lang %}selected{% endif %}>{{ lang|upper }}</option>
+          {% endfor %}
+        </select>
+      </div>
     </div>
 
-    <div style="margin-bottom:1.5rem;">
-      <label style="display:block; font-size:0.75rem; color:var(--admin-text-muted); margin-bottom:0.3rem;">COMPLETE PASSAGE TEXT</label>
-      <textarea name="content" rows="8" required style="width:100%; padding:0.75rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff; font-family:var(--admin-mono); line-height:1.6;">{{ passage.content if passage else '' }}</textarea>
+    <div style="margin-bottom:1.25rem;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.35rem;">
+        <label style="font-size:0.75rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700;">Complete Passage Text</label>
+        <span id="passage-metrics" style="font-size:0.75rem; color:var(--admin-accent); font-family:var(--admin-mono);">0 words | 0 characters</span>
+      </div>
+      <textarea id="passage-content" name="content" rows="8" required placeholder="Paste or type passage here..." oninput="updatePassageMetrics()" style="width:100%; padding:0.75rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff; font-family:var(--admin-mono); line-height:1.65;">{{ passage.content if passage else '' }}</textarea>
+    </div>
+
+    <!-- Live Preview Box -->
+    <div style="background:var(--admin-elevated); padding:1rem; border-radius:6px; margin-bottom:1.25rem; border:1px solid var(--admin-border);">
+      <div style="font-size:0.72rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.4rem;">Live Viewport Preview</div>
+      <div id="live-preview" style="font-family:var(--admin-mono); font-size:0.95rem; color:var(--admin-text-muted); line-height:1.6; max-height:100px; overflow-y:auto; word-break:break-word;">
+        {{ passage.content if passage else 'Passage preview will render here...' }}
+      </div>
     </div>
 
     {% if passage %}
     <div style="margin-bottom:1.5rem;">
       <label style="display:flex; align-items:center; gap:0.5rem; font-size:0.85rem; cursor:pointer;">
         <input type="checkbox" name="is_active" {% if passage.is_active %}checked{% endif %}>
-        <span>Enable this passage in active test selection</span>
+        <span>Enable this passage in active test selection rotation</span>
       </label>
     </div>
     {% endif %}
 
     <div style="display:flex; justify-content:flex-end; gap:0.75rem;">
       <a href="{{ url_for('admin.passages_list') }}" class="btn">Cancel</a>
-      <button type="submit" class="btn btn-primary">{{ action }} Passage</button>
+      <button type="submit" class="btn btn-primary" style="padding:0.65rem 1.75rem; font-weight:800;">
+        {{ action }} Passage &rarr;
+      </button>
     </div>
   </form>
 </div>
+
+<script>
+  function updatePassageMetrics() {
+    const text = document.getElementById('passage-content').value;
+    const chars = text.length;
+    const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+    document.getElementById('passage-metrics').textContent = `${words} words | ${chars} characters`;
+    const preview = document.getElementById('live-preview');
+    preview.textContent = text || 'Passage preview will render here...';
+  }
+  document.addEventListener('DOMContentLoaded', updatePassageMetrics);
+</script>
 {% endblock %}

@@ -1,65 +1,73 @@
 {% extends 'admin/base_admin.html' %}
-{% block title %}Traffic Telemetry | TypeSphere Control Center{% endblock %}
+{% block title %}5-Dimension Telemetry Analytics | Control Center{% endblock %}
 
 {% block admin_content %}
-<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
   <div>
-    <h1 style="font-size:1.6rem; font-weight:800;">Traffic & Visitor Intelligence</h1>
-    <p style="color:var(--admin-text-muted); font-size:0.85rem;">Aggregated session telemetry over the last {{ days }} days.</p>
+    <h1 style="font-size:1.6rem; font-weight:800;">Platform Telemetry & Analytics Hub</h1>
+    <p style="color:var(--admin-text-muted); font-size:0.85rem;">Aggregated operational data over the last {{ days }} days.</p>
   </div>
   <div style="display:flex; gap:0.4rem;">
-    <a href="{{ url_for('admin.traffic_analytics', days=7) }}" class="btn btn-sm">7 Days</a>
-    <a href="{{ url_for('admin.traffic_analytics', days=30) }}" class="btn btn-sm">30 Days</a>
-    <a href="{{ url_for('admin.traffic_analytics', days=90) }}" class="btn btn-sm">90 Days</a>
+    <a href="{{ url_for('admin.traffic_analytics', days=7) }}" class="btn btn-sm {{ 'btn-primary' if days == 7 else '' }}">7 Days</a>
+    <a href="{{ url_for('admin.traffic_analytics', days=30) }}" class="btn btn-sm {{ 'btn-primary' if days == 30 else '' }}">30 Days</a>
+    <a href="{{ url_for('admin.traffic_analytics', days=90) }}" class="btn btn-sm {{ 'btn-primary' if days == 90 else '' }}">90 Days</a>
   </div>
 </div>
 
-<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:1rem; margin-bottom:1.5rem;">
+<!-- 1. Top-Level Dimension Metrics -->
+<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:1rem; margin-bottom:1.5rem;">
   <div class="card" style="margin:0;">
-    <div style="font-size:0.75rem; color:var(--admin-text-muted);">TOTAL PAGE VIEWS</div>
-    <div style="font-size:1.8rem; font-weight:800; color:var(--admin-accent);">{{ total_views }}</div>
+    <div style="font-size:0.72rem; color:var(--admin-text-muted); font-weight:700; text-transform:uppercase;">PAGEVIEWS</div>
+    <div style="font-size:1.8rem; font-weight:800; color:var(--admin-accent); margin-top:0.2rem;">{{ total_views }}</div>
+    <div style="font-size:0.72rem; color:var(--admin-text-muted);">{{ unique_sessions }} unique sessions</div>
   </div>
   <div class="card" style="margin:0;">
-    <div style="font-size:0.75rem; color:var(--admin-text-muted);">UNIQUE SESSIONS</div>
-    <div style="font-size:1.8rem; font-weight:800; color:var(--admin-success);">{{ unique_sessions }}</div>
+    <div style="font-size:0.72rem; color:var(--admin-text-muted); font-weight:700; text-transform:uppercase;">NEW PILOT SIGNUPS</div>
+    <div style="font-size:1.8rem; font-weight:800; color:var(--admin-success); margin-top:0.2rem;">+{{ user_signups }}</div>
+    <div style="font-size:0.72rem; color:var(--admin-text-muted);">Registered accounts</div>
   </div>
   <div class="card" style="margin:0;">
-    <div style="font-size:0.75rem; color:var(--admin-text-muted);">AUTHENTICATED VIEWS</div>
-    <div style="font-size:1.8rem; font-weight:800;">{{ registered_views }}</div>
+    <div style="font-size:0.72rem; color:var(--admin-text-muted); font-weight:700; text-transform:uppercase;">FLIGHTS EXECUTED</div>
+    <div style="font-size:1.8rem; font-weight:800; margin-top:0.2rem;">{{ tests_count }}</div>
+    <div style="font-size:0.72rem; color:var(--admin-text-muted);">Benchmark runs logged</div>
   </div>
   <div class="card" style="margin:0;">
-    <div style="font-size:0.75rem; color:var(--admin-text-muted);">GUEST / ANONYMOUS</div>
-    <div style="font-size:1.8rem; font-weight:800; color:var(--admin-warning);">{{ guest_views }}</div>
+    <div style="font-size:0.72rem; color:var(--admin-text-muted); font-weight:700; text-transform:uppercase;">MEAN FLEET VELOCITY</div>
+    <div style="font-size:1.8rem; font-weight:800; color:var(--admin-warning); margin-top:0.2rem;">{{ avg_speed }} <span style="font-size:0.85rem; color:var(--admin-text-muted);">WPM</span></div>
+    <div style="font-size:0.72rem; color:var(--admin-text-muted);">{{ avg_acc }}% accuracy average</div>
   </div>
 </div>
 
-<div style="display:grid; grid-template-columns: 2fr 1fr; gap:1.5rem;">
+<!-- 2. Dual Breakdown Columns -->
+<div style="display:grid; grid-template-columns: 1.5fr 1fr; gap:1.5rem; margin-bottom:1.5rem;">
+  <!-- Popular Routes -->
   <div class="card" style="margin:0;">
-    <h3 style="font-size:1.05rem; margin-bottom:1rem;">Top Entry & Route Volumes</h3>
+    <h3 style="font-size:1.05rem; font-weight:800; margin-bottom:1rem;">Entry & Endpoint Traffic</h3>
     <table>
       <thead>
         <tr>
           <th>Endpoint Path</th>
-          <th>Views</th>
+          <th>Hit Volume</th>
         </tr>
       </thead>
       <tbody>
         {% for path, count in popular_pages %}
         <tr>
           <td><code style="font-family:var(--admin-mono); color:var(--admin-accent);">{{ path }}</code></td>
-          <td><strong>{{ count }}</strong></td>
+          <td><strong>{{ count }}</strong> views</td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
 
+  <!-- Devices & Browsers -->
   <div class="card" style="margin:0;">
-    <h3 style="font-size:1.05rem; margin-bottom:1rem;">Device & Client Mix</h3>
-    <div style="margin-bottom:1.5rem;">
-      <div style="font-size:0.75rem; color:var(--admin-text-muted); margin-bottom:0.5rem;">PLATFORM TYPE</div>
+    <h3 style="font-size:1.05rem; font-weight:800; margin-bottom:1rem;">Device & Client Mix</h3>
+    <div style="margin-bottom:1.25rem;">
+      <div style="font-size:0.72rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.4rem;">DEVICE PLATFORM</div>
       {% for dev, count in devices %}
-      <div style="display:flex; justify-content:space-between; margin-bottom:0.3rem;">
+      <div style="display:flex; justify-content:space-between; margin-bottom:0.35rem; font-size:0.85rem;">
         <span>{{ dev|capitalize }}</span>
         <strong>{{ count }}</strong>
       </div>
@@ -67,14 +75,61 @@
     </div>
 
     <div>
-      <div style="font-size:0.75rem; color:var(--admin-text-muted); margin-bottom:0.5rem;">BROWSER ENGINE</div>
+      <div style="font-size:0.72rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.4rem;">BROWSER CLIENT</div>
       {% for b, count in browsers %}
-      <div style="display:flex; justify-content:space-between; margin-bottom:0.3rem;">
+      <div style="display:flex; justify-content:space-between; margin-bottom:0.35rem; font-size:0.85rem;">
         <span>{{ b }}</span>
         <strong>{{ count }}</strong>
       </div>
       {% endfor %}
     </div>
+  </div>
+</div>
+
+<!-- 3. Arcade & Benchmark Modes Distribution -->
+<div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.5rem;">
+  <div class="card" style="margin:0;">
+    <h3 style="font-size:1.05rem; font-weight:800; margin-bottom:1rem;">Benchmark Mode Popularity</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Discipline Mode</th>
+          <th>Completed Runs</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m, cnt in mode_distribution %}
+        <tr>
+          <td><strong>{{ m }}</strong></td>
+          <td>{{ cnt }} flights</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="2" style="text-align:center; color:var(--admin-text-muted);">No runs recorded in window.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card" style="margin:0;">
+    <h3 style="font-size:1.05rem; font-weight:800; margin-bottom:1rem;">Top Arcade Disciplines</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Arcade Discipline</th>
+          <th>Plays Logged</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for g, cnt in arcade_plays %}
+        <tr>
+          <td><strong style="color:var(--admin-accent);">{{ g|replace('_', ' ')|upper }}</strong></td>
+          <td>{{ cnt }} games</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="2" style="text-align:center; color:var(--admin-text-muted);">No arcade sessions in window.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
   </div>
 </div>
 {% endblock %}

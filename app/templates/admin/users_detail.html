@@ -1,87 +1,208 @@
 {% extends 'admin/base_admin.html' %}
-{% block title %}User @{{ user.username }} | Control Center{% endblock %}
+{% block title %}Pilot Dossier: @{{ user.username }} | TypeSphere Control Center{% endblock %}
 
 {% block admin_content %}
 <div style="margin-bottom:1.5rem;">
-  <a href="{{ url_for('admin.users_list') }}" style="color:var(--admin-accent); font-size:0.85rem; text-decoration:none;">&larr; Back to Directory</a>
-  <h1 style="font-size:1.6rem; font-weight:800; margin-top:0.4rem;">User Profile: @{{ user.username }}</h1>
-</div>
-
-<div style="display:grid; grid-template-columns: 1fr 2fr; gap:1.5rem; margin-bottom:1.5rem;">
-  <!-- Moderation & Role Card -->
-  <div class="card">
-    <h3 style="font-size:1.1rem; margin-bottom:1rem;">Account Management</h3>
-    <div style="margin-bottom:1.25rem;">
-      <div style="font-size:0.75rem; color:var(--admin-text-muted);">EMAIL</div>
-      <div style="font-weight:600;">{{ user.email }}</div>
+  <a href="{{ url_for('admin.users_list') }}" style="color:var(--admin-accent); font-size:0.85rem; text-decoration:none;">&larr; Return to User Directory</a>
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.4rem; flex-wrap:wrap; gap:1rem;">
+    <div>
+      <h1 style="font-size:1.6rem; font-weight:800; margin:0;">
+        Pilot Dossier: @{{ user.username }}
+        {% if user.callsign %}<span style="color:var(--admin-accent); font-family:var(--admin-mono);">[{{ user.display_callsign }}]</span>{% endif %}
+      </h1>
+      <span style="font-size:0.8rem; color:var(--admin-text-muted);">
+        Account ID #{{ user.id }} &bull; Registered {{ user.created_at.strftime('%B %d, %Y') }}
+      </span>
     </div>
 
-    <!-- Role Form -->
-    <form method="POST" action="{{ url_for('admin.update_user_role', user_id=user.id) }}" style="margin-bottom:1.5rem;">
-      <label style="display:block; font-size:0.75rem; color:var(--admin-text-muted); margin-bottom:0.3rem;">AUTHORITY ROLE</label>
-      <select name="role" style="width:100%; padding:0.5rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff; margin-bottom:0.6rem;">
-        {% for r in roles %}
-        <option value="{{ r }}" {% if user.role == r %}selected{% endif %}>{{ r|upper }}</option>
-        {% endfor %}
-      </select>
-      <button type="submit" class="btn btn-sm btn-primary" style="width:100%; justify-content:center;">Update Role</button>
-    </form>
-
-    <!-- Account Actions -->
-    <h4 style="font-size:0.85rem; color:var(--admin-text-muted); margin-bottom:0.6rem;">ACCOUNT MODERATION</h4>
-    <form method="POST" action="{{ url_for('admin.moderate_user', user_id=user.id) }}" style="display:flex; flex-direction:column; gap:0.5rem;">
-      <input type="text" name="reason" placeholder="Enter reason for action..." style="padding:0.45rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff; font-size:0.8rem;" required>
-      
-      {% if user.is_suspended %}
-      <button type="submit" name="action" value="unsuspend" class="btn btn-sm">Lift Suspension</button>
-      {% else %}
-      <button type="submit" name="action" value="suspend" class="btn btn-sm btn-danger">Suspend Account</button>
-      {% endif %}
-
-      {% if user.is_banned %}
-      <button type="submit" name="action" value="unban" class="btn btn-sm">Lift Ban</button>
-      {% else %}
-      <button type="submit" name="action" value="ban" class="btn btn-sm btn-danger">Permanent Ban</button>
-      {% endif %}
-
-      {% if current_user.is_super_admin and user.id != current_user.id %}
-      <button type="submit" name="action" value="delete" class="btn btn-sm btn-danger" onclick="return confirm('Permanently erase this account and tests?');">Delete User</button>
-      {% endif %}
-    </form>
-
-    <!-- Impersonation Action -->
-    {% if current_user.is_super_admin and user.id != current_user.id %}
-    <form method="POST" action="{{ url_for('admin.impersonate_user', user_id=user.id) }}" style="margin-top:1.5rem;">
-      <button type="submit" class="btn btn-sm" style="width:100%; justify-content:center; border-color:#f59e0b; color:#f59e0b;">👤 Impersonate User</button>
+    {% if not user.is_super_admin and current_user.has_permission('users.impersonate') and user.id != current_user.id %}
+    <form method="POST" action="{{ url_for('admin.impersonate_user', user_id=user.id) }}">
+      <button type="submit" class="btn btn-sm" style="border-color:var(--admin-warning); color:var(--admin-warning);">
+        👤 Impersonate Pilot
+      </button>
     </form>
     {% endif %}
   </div>
+</div>
 
-  <!-- Activity & Test Record -->
-  <div class="card">
-    <h3 style="font-size:1.1rem; margin-bottom:1rem;">Recent Activity Stream</h3>
-    <table>
-      <thead>
-        <tr>
-          <th>Action</th>
-          <th>Feature</th>
-          <th>IP Address</th>
-          <th>Time</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for act in activities %}
-        <tr>
-          <td><span class="badge badge-primary">{{ act.action }}</span></td>
-          <td>{{ act.feature }}</td>
-          <td style="font-family:var(--admin-mono); font-size:0.8rem;">{{ act.ip_address or 'Unknown' }}</td>
-          <td style="color:var(--admin-text-muted); font-size:0.8rem;">{{ act.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
-        </tr>
-        {% else %}
-        <tr><td colspan="4" style="text-align:center; color:var(--admin-text-muted);">No activity records for this account.</td></tr>
+<div style="display:grid; grid-template-columns: 1fr 2fr; gap:1.5rem; margin-bottom:1.5rem;">
+  <!-- Left Column: Multi-Role Assignment & Account Moderation -->
+  <div>
+    <!-- Roles & Permissions Card -->
+    <div class="card">
+      <h3 style="font-size:1.05rem; font-weight:800; margin-bottom:0.75rem; border-bottom:1px solid var(--admin-border); padding-bottom:0.4rem;">
+        Delegated Roles
+      </h3>
+
+      {% if user.is_super_admin %}
+        <div style="padding:0.75rem; background:rgba(245, 158, 11, 0.15); border:1px solid var(--admin-warning); border-radius:6px; font-size:0.85rem; color:#fef08a; margin-bottom:1rem;">
+          👑 <strong>Super Administrator</strong><br>
+          This account possesses universal, non-transferable authority across all operational sectors.
+        </div>
+      {% else %}
+        <!-- Active Custom Roles List -->
+        <div style="margin-bottom:1.25rem;">
+          <div style="font-size:0.75rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.4rem;">Assigned Custom Roles:</div>
+          <div style="display:flex; flex-direction:column; gap:0.4rem;">
+            {% for r in user.custom_roles %}
+            <div style="display:flex; justify-content:space-between; align-items:center; background:var(--admin-elevated); padding:0.45rem 0.75rem; border-radius:4px; font-size:0.84rem;">
+              <div>
+                <strong>{{ r.name }}</strong>
+                <span style="font-size:0.72rem; color:var(--admin-text-muted);">({{ r.permissions|length }} perms)</span>
+              </div>
+              <form method="POST" action="{{ url_for('admin.remove_user_role', user_id=user.id, role_id=r.id) }}" style="display:inline;">
+                <button type="submit" class="btn btn-sm btn-danger" style="padding:0.15rem 0.4rem; font-size:0.7rem;">&times; Remove</button>
+              </form>
+            </div>
+            {% else %}
+            <span style="color:var(--admin-text-muted); font-size:0.82rem;">No custom roles assigned (Standard Pilot).</span>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Assign New Role Form -->
+        {% if current_user.has_permission('roles.manage') %}
+        <form method="POST" action="{{ url_for('admin.assign_user_role', user_id=user.id) }}" style="margin-bottom:1.5rem;">
+          <label style="display:block; font-size:0.72rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.35rem;">Delegate New Role</label>
+          <div style="display:flex; gap:0.4rem;">
+            <select name="role_id" style="flex:1; padding:0.45rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:4px; color:#fff; font-size:0.84rem;">
+              {% for r in all_roles %}
+                {% if r not in user.custom_roles %}
+                <option value="{{ r.id }}">{{ r.name }}</option>
+                {% endif %}
+              {% endfor %}
+            </select>
+            <button type="submit" class="btn btn-sm btn-primary">Assign</button>
+          </div>
+        </form>
+        {% endif %}
+      {% endif %}
+
+      <!-- Moderation Actions -->
+      <h3 style="font-size:1.05rem; font-weight:800; margin-bottom:0.75rem; border-bottom:1px solid var(--admin-border); padding-bottom:0.4rem;">
+        Account Moderation
+      </h3>
+      {% if user.is_super_admin %}
+        <div style="font-size:0.8rem; color:var(--admin-text-muted);">Protected Account: Moderation disabled.</div>
+      {% else %}
+        <form method="POST" action="{{ url_for('admin.moderate_user', user_id=user.id) }}" style="display:flex; flex-direction:column; gap:0.6rem;">
+          <input type="text" name="reason" placeholder="Reason for moderation action..." required style="padding:0.5rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:4px; color:#fff; font-size:0.82rem;">
+          
+          <div style="display:flex; gap:0.5rem;">
+            {% if user.is_suspended %}
+            <button type="submit" name="action" value="unsuspend" class="btn btn-sm" style="flex:1; justify-content:center;">Lift Suspension</button>
+            {% else %}
+            <button type="submit" name="action" value="suspend" class="btn btn-sm btn-danger" style="flex:1; justify-content:center;">Suspend Pilot</button>
+            {% endif %}
+
+            {% if user.is_banned %}
+            <button type="submit" name="action" value="unban" class="btn btn-sm" style="flex:1; justify-content:center;">Lift Ban</button>
+            {% else %}
+            <button type="submit" name="action" value="ban" class="btn btn-sm btn-danger" style="flex:1; justify-content:center;">Permanent Ban</button>
+            {% endif %}
+          </div>
+
+          {% if current_user.has_permission('users.delete') %}
+          <button type="submit" name="action" value="delete" class="btn btn-sm btn-danger" onclick="return confirm('Permanently erase account @{{ user.username }}? This action is irreversible.');" style="justify-content:center; margin-top:0.4rem;">
+            ⚠️ Delete Pilot Account
+          </button>
+          {% endif %}
+        </form>
+      {% endif %}
+    </div>
+
+    <!-- Network & Session Telemetry (Approximate Location Notice) -->
+    <div class="card">
+      <h3 style="font-size:1.05rem; font-weight:800; margin-bottom:0.75rem; border-bottom:1px solid var(--admin-border); padding-bottom:0.4rem;">
+        Network & Session Telemetry
+      </h3>
+      {% if recent_traffic %}
+        <div style="display:flex; flex-direction:column; gap:0.5rem; font-size:0.82rem;">
+          <div><span style="color:var(--admin-text-muted);">Last Origin IP:</span> <strong style="font-family:var(--admin-mono); color:var(--admin-accent);">{{ recent_traffic.ip_address or 'Unknown' }}</strong></div>
+          <div><span style="color:var(--admin-text-muted);">Device Category:</span> <strong>{{ recent_traffic.device_type|capitalize }}</strong></div>
+          <div><span style="color:var(--admin-text-muted);">Browser Engine:</span> <strong>{{ recent_traffic.browser }}</strong></div>
+          <div><span style="color:var(--admin-text-muted);">Operating System:</span> <strong>{{ recent_traffic.os }}</strong></div>
+          <div><span style="color:var(--admin-text-muted);">Inferred Network:</span> <strong>Residential / Estimated</strong></div>
+          <div style="font-size:0.72rem; color:var(--admin-text-muted); border-top:1px solid var(--admin-border); padding-top:0.4rem; margin-top:0.2rem;">
+            ℹ️ <em>IP-derived location telemetry is approximate. Strict privacy standards prevent physical GPS tracking.</em>
+          </div>
+        </div>
+      {% else %}
+        <div style="font-size:0.82rem; color:var(--admin-text-muted);">No active network session records captured.</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Right Column: Flight Telemetry Dossier & Activity Timeline -->
+  <div>
+    <!-- Performance Telemetry HUD -->
+    <div class="card" style="margin-bottom:1.5rem;">
+      <h3 style="font-size:1.05rem; font-weight:800; margin-bottom:1rem;">Verified Flight Performance</h3>
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(115px, 1fr)); gap:0.75rem;">
+        <div style="background:var(--admin-elevated); padding:0.65rem; border-radius:6px; text-align:center;">
+          <div style="font-size:0.68rem; color:var(--admin-text-muted); text-transform:uppercase; font-weight:700;">Flights Logged</div>
+          <div style="font-size:1.4rem; font-weight:800; color:var(--admin-accent);">{{ user.tests.count() }}</div>
+        </div>
+        <div style="background:var(--admin-elevated); padding:0.65rem; border-radius:6px; text-align:center;">
+          <div style="font-size:0.68rem; color:var(--admin-text-muted); text-transform:uppercase; font-weight:700;">Division MMR</div>
+          <div style="font-size:1.4rem; font-weight:800; color:var(--admin-warning);">{{ user.elo_rating }}</div>
+        </div>
+        <div style="background:var(--admin-elevated); padding:0.65rem; border-radius:6px; text-align:center;">
+          <div style="font-size:0.68rem; color:var(--admin-text-muted); text-transform:uppercase; font-weight:700;">Rank Record</div>
+          <div style="font-size:1.2rem; font-weight:800;">{{ user.ranked_wins }}W - {{ user.ranked_losses }}L</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Effective Permissions Inspector -->
+    <div class="card" style="margin-bottom:1.5rem;">
+      <h3 style="font-size:1.05rem; font-weight:800; margin-bottom:0.5rem;">Effective Capabilities Inspector</h3>
+      <p style="color:var(--admin-text-muted); font-size:0.8rem; margin-bottom:1rem;">Dynamic union of permissions calculated across all assigned roles.</p>
+      
+      <div style="max-height:220px; overflow-y:auto; display:flex; flex-direction:column; gap:0.65rem; padding-right:0.4rem;">
+        {% for category, perm_tuples in grouped_effective.items() %}
+        <div style="background:var(--admin-elevated); padding:0.65rem 0.85rem; border-radius:4px; font-size:0.8rem;">
+          <div style="font-weight:700; color:var(--admin-accent); margin-bottom:0.35rem; text-transform:uppercase; font-size:0.72rem;">{{ category }}</div>
+          <div style="display:flex; flex-wrap:wrap; gap:0.35rem;">
+            {% for p, is_granted in perm_tuples %}
+              <span style="padding:0.12rem 0.4rem; border-radius:3px; font-size:0.72rem; font-weight:700; background:{{ 'rgba(16, 185, 129, 0.15)' if is_granted else 'rgba(255,255,255,0.03)' }}; color:{{ 'var(--admin-success)' if is_granted else 'var(--admin-text-muted)' }};">
+                {{ '✓' if is_granted else '✕' }} {{ p.name }}
+              </span>
+            {% endfor %}
+          </div>
+        </div>
         {% endfor %}
-      </tbody>
-    </table>
+      </div>
+    </div>
+
+    <!-- Chronological Activity Timeline -->
+    <div class="card">
+      <h3 style="font-size:1.05rem; font-weight:800; margin-bottom:1rem;">Chronological Activity Stream</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Event Action</th>
+            <th>Operational Sector</th>
+            <th>Details</th>
+            <th>Timestamp (IST)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for act in activities %}
+          <tr>
+            <td><span class="badge badge-primary">{{ act.action }}</span></td>
+            <td>{{ act.feature }}</td>
+            <td style="font-size:0.8rem; color:var(--admin-text-muted);">{{ act.details or '-' }}</td>
+            <td style="color:var(--admin-text-muted); font-size:0.78rem;">
+              {{ to_ist(act.created_at).strftime('%Y-%m-%d %H:%M:%S') }} IST
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="4" style="text-align:center; color:var(--admin-text-muted); padding:1.5rem;">No historical activity entries logged.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </div>
 </div>
 {% endblock %}

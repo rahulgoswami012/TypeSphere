@@ -1,0 +1,96 @@
+{% extends 'admin/base_admin.html' %}
+{% block title %}Roles & Delegated Permissions | TypeSphere Control Center{% endblock %}
+
+{% block admin_content %}
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
+  <div>
+    <h1 style="font-size:1.6rem; font-weight:800;">Roles & Delegated Permissions</h1>
+    <p style="color:var(--admin-text-muted); font-size:0.85rem;">Manage custom delegated roles and fine-grained operational permissions.</p>
+  </div>
+  <a href="{{ url_for('admin.role_create') }}" class="btn btn-primary">+ Build Custom Role</a>
+</div>
+
+<!-- High-Level Role Metrics -->
+<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:1rem; margin-bottom:1.5rem;">
+  <div class="card" style="margin:0;">
+    <div style="font-size:0.72rem; color:var(--admin-text-muted); font-weight:700; text-transform:uppercase;">TOTAL CUSTOM ROLES</div>
+    <div style="font-size:1.8rem; font-weight:800; color:var(--admin-accent); margin-top:0.2rem;">{{ total_roles }}</div>
+  </div>
+  <div class="card" style="margin:0;">
+    <div style="font-size:0.72rem; color:var(--admin-text-muted); font-weight:700; text-transform:uppercase;">ACTIVE ROLES</div>
+    <div style="font-size:1.8rem; font-weight:800; color:var(--admin-success); margin-top:0.2rem;">{{ active_roles }}</div>
+  </div>
+  <div class="card" style="margin:0;">
+    <div style="font-size:0.72rem; color:var(--admin-text-muted); font-weight:700; text-transform:uppercase;">DISABLED ROLES</div>
+    <div style="font-size:1.8rem; font-weight:800; color:var(--admin-warning); margin-top:0.2rem;">{{ disabled_roles }}</div>
+  </div>
+  <div class="card" style="margin:0;">
+    <div style="font-size:0.72rem; color:var(--admin-text-muted); font-weight:700; text-transform:uppercase;">DELEGATED PILOTS</div>
+    <div style="font-size:1.8rem; font-weight:800; margin-top:0.2rem;">{{ delegated_users_count }}</div>
+  </div>
+</div>
+
+<!-- Roles Table -->
+<div class="card" style="padding:0; overflow:hidden;">
+  <table>
+    <thead>
+      <tr>
+        <th>Role Designation</th>
+        <th>Description</th>
+        <th>Assigned Users</th>
+        <th>Permissions</th>
+        <th>Status</th>
+        <th>Last Updated</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in roles %}
+      <tr>
+        <td>
+          <div style="font-weight:700; font-size:0.92rem; color:var(--admin-text-main);">{{ r.name }}</div>
+          {% if r.is_system %}
+            <span style="font-size:0.65rem; color:var(--admin-accent); text-transform:uppercase; font-weight:800;">System Role</span>
+          {% endif %}
+        </td>
+        <td style="color:var(--admin-text-muted); max-width:280px; font-size:0.82rem;">{{ r.description or 'No description provided' }}</td>
+        <td><strong>{{ r.users.count() }}</strong> pilots</td>
+        <td>
+          <span class="badge badge-primary">{{ r.permissions|length }} permissions</span>
+        </td>
+        <td>
+          <span class="badge {{ 'badge-success' if r.is_active else 'badge-danger' }}">
+            {{ 'ACTIVE' if r.is_active else 'DISABLED' }}
+          </span>
+        </td>
+        <td style="color:var(--admin-text-muted); font-size:0.8rem;">
+          {{ r.updated_at.strftime('%Y-%m-%d') if r.updated_at else r.created_at.strftime('%Y-%m-%d') }}
+        </td>
+        <td>
+          <div style="display:flex; gap:0.35rem; align-items:center;">
+            <a href="{{ url_for('admin.role_edit', role_id=r.id) }}" class="btn btn-sm">Edit</a>
+            <form method="POST" action="{{ url_for('admin.role_duplicate', role_id=r.id) }}" style="display:inline;">
+              <button type="submit" class="btn btn-sm" title="Clone role permissions">Clone</button>
+            </form>
+            <form method="POST" action="{{ url_for('admin.role_toggle', role_id=r.id) }}" style="display:inline;">
+              <button type="submit" class="btn btn-sm">{{ 'Disable' if r.is_active else 'Enable' }}</button>
+            </form>
+            {% if not r.is_system %}
+            <form method="POST" action="{{ url_for('admin.role_delete', role_id=r.id) }}" onsubmit="return confirm('Permanently delete role \'{{ r.name }}\'?');" style="display:inline;">
+              <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+            </form>
+            {% endif %}
+          </div>
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="7" style="padding:2.5rem; text-align:center; color:var(--admin-text-muted);">
+          No custom roles created yet. The Super Admin holds universal clearance. Click <strong>"+ Build Custom Role"</strong> to delegate capabilities.
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

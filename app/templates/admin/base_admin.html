@@ -6,21 +6,22 @@
   <title>{% block title %}TypeSphere Control Center{% endblock %}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700;800&display=swap" rel="stylesheet">
   <style>
     :root {
-      --admin-bg: #090d16;
-      --admin-surface: #111726;
-      --admin-elevated: #1a2236;
-      --admin-border: #232d44;
-      --admin-accent: #3b82f6;
-      --admin-accent-glow: rgba(59, 130, 246, 0.2);
+      --admin-bg: #070a12;
+      --admin-surface: #0e1320;
+      --admin-elevated: #151c2e;
+      --admin-border: #1f2940;
+      --admin-border-focus: #38bdf8;
+      --admin-accent: #38bdf8;
+      --admin-accent-glow: rgba(56, 189, 248, 0.22);
       --admin-success: #10b981;
       --admin-warning: #f59e0b;
-      --admin-danger: #ef4444;
+      --admin-danger: #f43f5e;
       --admin-text-main: #f8fafc;
       --admin-text-muted: #94a3b8;
-      --admin-font: 'Plus Jakarta Sans', sans-serif;
+      --admin-font: 'Plus Jakarta Sans', -apple-system, sans-serif;
       --admin-mono: 'JetBrains Mono', monospace;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -30,8 +31,9 @@
       font-family: var(--admin-font);
       display: flex;
       min-height: 100vh;
+      overflow-x: hidden;
     }
-    /* Dedicated Sidebar */
+
     .admin-sidebar {
       width: 260px;
       background: var(--admin-surface);
@@ -43,43 +45,54 @@
       top: 0;
       height: 100vh;
       overflow-y: auto;
+      z-index: 200;
     }
     .sidebar-brand {
-      padding: 1.5rem;
-      font-size: 1.25rem;
+      padding: 1.15rem 1.25rem;
+      font-size: 1.1rem;
       font-weight: 800;
       color: var(--admin-accent);
       border-bottom: 1px solid var(--admin-border);
       display: flex;
       align-items: center;
       gap: 0.5rem;
+      letter-spacing: -0.01em;
+    }
+    .sidebar-brand-badge {
+      font-size: 0.65rem;
+      background: var(--admin-accent-glow);
+      color: var(--admin-accent);
+      padding: 0.15rem 0.45rem;
+      border-radius: 4px;
+      font-weight: 800;
+      text-transform: uppercase;
     }
     .sidebar-section-title {
       font-size: 0.68rem;
       text-transform: uppercase;
-      letter-spacing: 0.1em;
+      letter-spacing: 0.08em;
       color: var(--admin-text-muted);
-      padding: 1.25rem 1.5rem 0.4rem;
-      font-weight: 700;
+      padding: 1rem 1.25rem 0.35rem;
+      font-weight: 800;
     }
     .sidebar-nav { list-style: none; }
     .sidebar-link {
       display: flex;
       align-items: center;
-      gap: 0.75rem;
-      padding: 0.65rem 1.5rem;
+      gap: 0.65rem;
+      padding: 0.48rem 1.25rem;
       color: var(--admin-text-muted);
       text-decoration: none;
-      font-size: 0.88rem;
+      font-size: 0.85rem;
       font-weight: 600;
-      transition: all 0.15s;
+      transition: all 0.15s ease;
     }
     .sidebar-link:hover, .sidebar-link.active {
       color: var(--admin-text-main);
       background: var(--admin-elevated);
       border-left: 3px solid var(--admin-accent);
     }
-    /* Main Content */
+
     .admin-main {
       flex: 1;
       display: flex;
@@ -87,33 +100,35 @@
       min-width: 0;
     }
     .admin-topbar {
-      height: 65px;
+      height: 52px;
       background: var(--admin-surface);
       border-bottom: 1px solid var(--admin-border);
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 0 2rem;
+      padding: 0 1.5rem;
       position: sticky;
       top: 0;
       z-index: 100;
     }
     .admin-content {
-      padding: 2rem;
+      padding: 1.5rem;
       flex: 1;
     }
+
     .card {
       background: var(--admin-surface);
       border: 1px solid var(--admin-border);
       border-radius: 8px;
-      padding: 1.5rem;
-      margin-bottom: 1.5rem;
+      padding: 1.25rem;
+      margin-bottom: 1.25rem;
+      position: relative;
     }
     .btn {
-      padding: 0.55rem 1rem;
+      padding: 0.45rem 0.9rem;
       border-radius: 6px;
       font-weight: 600;
-      font-size: 0.85rem;
+      font-size: 0.84rem;
       cursor: pointer;
       text-decoration: none;
       display: inline-flex;
@@ -122,93 +137,194 @@
       border: 1px solid var(--admin-border);
       background: var(--admin-elevated);
       color: var(--admin-text-main);
+      transition: all 0.15s ease;
     }
-    .btn-primary { background: var(--admin-accent); border-color: var(--admin-accent); }
-    .btn-danger { background: var(--admin-danger); border-color: var(--admin-danger); color: #fff; }
-    .btn-sm { padding: 0.35rem 0.65rem; font-size: 0.78rem; }
+    .btn:hover { border-color: var(--admin-accent); color: #fff; }
+    .btn-primary { background: var(--admin-accent); border-color: var(--admin-accent); color: #04101e; font-weight: 700; }
+    .btn-primary:hover { background: #0284c7; border-color: #0284c7; color: #fff; }
+    .btn-danger { background: rgba(244, 63, 94, 0.15); border-color: var(--admin-danger); color: var(--admin-danger); }
+    .btn-danger:hover { background: var(--admin-danger); color: #fff; }
+    .btn-sm { padding: 0.3rem 0.6rem; font-size: 0.78rem; }
+    
     .badge {
       display: inline-block;
-      padding: 0.2rem 0.5rem;
+      padding: 0.18rem 0.5rem;
       border-radius: 4px;
       font-size: 0.72rem;
       font-weight: 700;
       text-transform: uppercase;
+      letter-spacing: 0.04em;
     }
     .badge-primary { background: var(--admin-accent-glow); color: var(--admin-accent); }
     .badge-success { background: rgba(16, 185, 129, 0.15); color: var(--admin-success); }
-    .badge-danger { background: rgba(239, 68, 68, 0.15); color: var(--admin-danger); }
+    .badge-danger { background: rgba(244, 63, 94, 0.15); color: var(--admin-danger); }
     .badge-warning { background: rgba(245, 158, 11, 0.15); color: var(--admin-warning); }
-    table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
-    th { text-align: left; padding: 0.75rem 1rem; color: var(--admin-text-muted); font-size: 0.75rem; text-transform: uppercase; border-bottom: 1px solid var(--admin-border); }
-    td { padding: 0.85rem 1rem; border-bottom: 1px solid var(--admin-border); }
+
+    table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+    th { text-align: left; padding: 0.7rem 0.85rem; color: var(--admin-text-muted); font-size: 0.72rem; text-transform: uppercase; border-bottom: 1px solid var(--admin-border); letter-spacing: 0.05em; }
+    td { padding: 0.75rem 0.85rem; border-bottom: 1px solid var(--admin-border); }
     tr:hover td { background: rgba(255, 255, 255, 0.02); }
-    .impersonation-bar {
-      background: #7c2d12;
-      color: #fed7aa;
-      padding: 0.5rem 1.5rem;
-      font-size: 0.85rem;
+
+    .cmd-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(4, 7, 14, 0.85);
+      backdrop-filter: blur(8px);
+      z-index: 5000;
+      display: none;
+      align-items: flex-start;
+      justify-content: center;
+      padding-top: 10vh;
+    }
+    .cmd-dialog {
+      background: var(--admin-surface);
+      border: 1.5px solid var(--admin-accent);
+      border-radius: 8px;
+      width: 100%;
+      max-width: 600px;
+      box-shadow: 0 25px 65px rgba(0, 0, 0, 0.85);
+      overflow: hidden;
+    }
+    .cmd-search-input {
+      width: 100%;
+      background: var(--admin-elevated);
+      border: none;
+      border-bottom: 1px solid var(--admin-border);
+      padding: 1rem 1.25rem;
+      font-size: 1.05rem;
+      color: #fff;
+      outline: none;
+      font-family: inherit;
+    }
+    .cmd-results {
+      max-height: 360px;
+      overflow-y: auto;
+      padding: 0.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+    .cmd-item {
+      padding: 0.65rem 1rem;
+      border-radius: 6px;
       display: flex;
       justify-content: space-between;
       align-items: center;
+      text-decoration: none;
+      color: var(--admin-text-main);
+      font-size: 0.88rem;
+    }
+    .cmd-item:hover, .cmd-item.selected {
+      background: var(--admin-elevated);
+      color: var(--admin-accent);
+    }
+    .cmd-footer {
+      padding: 0.55rem 1.25rem;
+      border-top: 1px solid var(--admin-border);
+      font-size: 0.75rem;
+      color: var(--admin-text-muted);
+      display: flex;
+      justify-content: space-between;
+    }
+    .kbd-badge {
+      background: var(--admin-elevated);
+      border: 1px solid var(--admin-border);
+      color: var(--admin-text-muted);
+      padding: 0.15rem 0.4rem;
+      border-radius: 4px;
+      font-family: var(--admin-mono);
+      font-size: 0.72rem;
     }
   </style>
 </head>
 <body>
-  <!-- Impersonation Notice Bar -->
   {% if session.get('admin_impersonator_id') %}
-  <div class="impersonation-bar" style="position:fixed; top:0; left:0; right:0; z-index:9999;">
-    <span>⚠️ You are simulating user account: <strong>{{ current_user.username }}</strong></span>
-    <a href="{{ url_for('admin.stop_impersonation') }}" style="color:#fff; text-decoration:underline; font-weight:700;">Exit Simulation</a>
+  <div style="position:fixed; top:0; left:0; right:0; background:#b45309; color:#fff; padding:0.4rem 1.5rem; font-size:0.82rem; z-index:9999; display:flex; justify-content:space-between; align-items:center;">
+    <span>⚠️ You are simulating flight session as pilot: <strong>@{{ current_user.username }}</strong></span>
+    <a href="{{ url_for('admin.stop_impersonation') }}" style="color:#fff; font-weight:800; text-decoration:underline;">Exit Simulation &rarr;</a>
   </div>
   {% endif %}
 
-  <!-- Administrator Dedicated Sidebar -->
   <aside class="admin-sidebar">
     <div class="sidebar-brand">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-      TypeSphere Admin
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+      TypeSphere
+      <span class="sidebar-brand-badge">CONTROL</span>
     </div>
 
-    <div class="sidebar-section-title">Overview</div>
+    <!-- 1. Command Center -->
+    <div class="sidebar-section-title">Command Center</div>
     <ul class="sidebar-nav">
-      <li><a href="{{ url_for('admin.dashboard') }}" class="sidebar-link">📊 Dashboard</a></li>
+      <li><a href="{{ url_for('admin.dashboard') }}" class="sidebar-link">📊 Operational Overview</a></li>
       <li><a href="{{ url_for('admin.traffic_analytics') }}" class="sidebar-link">📈 Traffic & Analytics</a></li>
     </ul>
 
-    <div class="sidebar-section-title">Directory & Content</div>
+    <!-- 2. People & Access -->
+    <div class="sidebar-section-title">People & Access</div>
     <ul class="sidebar-nav">
-      <li><a href="{{ url_for('admin.users_list') }}" class="sidebar-link">👥 User Accounts</a></li>
-      <li><a href="{{ url_for('admin.passages_list') }}" class="sidebar-link">📝 Passage Library</a></li>
+      <li><a href="{{ url_for('admin.users_list') }}" class="sidebar-link">👥 User Directory</a></li>
+      <li><a href="{{ url_for('admin.roles_list') }}" class="sidebar-link">🛡️ Roles & Permissions</a></li>
+    </ul>
+
+    <!-- 3. Content Operations -->
+    <div class="sidebar-section-title">Flight Content</div>
+    <ul class="sidebar-nav">
+      <li><a href="{{ url_for('admin.passages_list') }}" class="sidebar-link">📝 Typing Passages</a></li>
+      <li><a href="{{ url_for('admin.games_list') }}" class="sidebar-link">🕹️ Arcade Hangar</a></li>
+      <li><a href="{{ url_for('admin.challenges_manage') }}" class="sidebar-link">🔥 Tactical Missions</a></li>
+      <li><a href="{{ url_for('admin.academy_manage') }}" class="sidebar-link">🎓 Academy Curriculum</a></li>
+      <li><a href="{{ url_for('admin.certificates_manage') }}" class="sidebar-link">🪽 Flight Certificates</a></li>
+      <li><a href="{{ url_for('admin.community_manage') }}" class="sidebar-link">💬 Reviews & Community</a></li>
       <li><a href="{{ url_for('admin.leaderboard_manage') }}" class="sidebar-link">🏆 Leaderboard Verifier</a></li>
     </ul>
 
-    <div class="sidebar-section-title">Auditing & Security</div>
+    <!-- 4. Security & Audit -->
+    <div class="sidebar-section-title">Security & Audit</div>
     <ul class="sidebar-nav">
-      <li><a href="{{ url_for('admin.security_center') }}" class="sidebar-link">🛡️ Security Events</a></li>
+      <li><a href="{{ url_for('admin.security_center') }}" class="sidebar-link">🚨 Threat Watch & IP Blocks</a></li>
       <li><a href="{{ url_for('admin.audit_logs') }}" class="sidebar-link">📜 Action Audit Trail</a></li>
     </ul>
 
-    <div class="sidebar-section-title">Control</div>
+    <!-- 5. System Configuration & Data -->
+    <div class="sidebar-section-title">System & Infrastructure</div>
     <ul class="sidebar-nav">
-      <li><a href="{{ url_for('admin.system_settings') }}" class="sidebar-link">⚙️ System Parameters</a></li>
+      <li><a href="{{ url_for('admin.website_control') }}" class="sidebar-link">🎛️ Website Control CMS</a></li>
+      <li><a href="{{ url_for('admin.feature_flags_list') }}" class="sidebar-link">🚩 Feature Flags</a></li>
+      <li><a href="{{ url_for('admin.system_health') }}" class="sidebar-link">🩺 System Health</a></li>
+      <li><a href="{{ url_for('admin.data_management') }}" class="sidebar-link">💾 Data Retention</a></li>
+      <li><a href="{{ url_for('admin.system_settings') }}" class="sidebar-link">⚙️ Runtime Parameters</a></li>
     </ul>
 
-    <div style="margin-top:auto; padding:1.5rem; border-top:1px solid var(--admin-border);">
-      <a href="{{ url_for('typing.test_page') }}" class="btn" style="width:100%; justify-content:center;">🌐 View Public Website</a>
+    <!-- Bottom Super Admin Identity Strip -->
+    <div style="margin-top:auto; padding:1.25rem; border-top:1px solid var(--admin-border); background:rgba(0,0,0,0.2);">
+      <div style="font-size:0.72rem; color:var(--admin-text-muted); text-transform:uppercase; font-weight:700;">Clearance Level</div>
+      <div style="font-weight:800; font-size:0.92rem; color:var(--admin-accent); margin-top:0.15rem;">
+        {{ 'SUPER ADMIN' if current_user.is_super_admin else current_user.role|upper }}
+      </div>
+      <div style="font-size:0.78rem; color:var(--admin-text-muted); margin-bottom:0.75rem;">@{{ current_user.username }}</div>
+      <a href="{{ url_for('typing.test_page') }}" class="btn btn-sm" style="width:100%; justify-content:center;">🌐 Public Flight Deck</a>
     </div>
   </aside>
 
-  <!-- Content Workspace -->
   <div class="admin-main">
     <header class="admin-topbar">
-      <div>
-        <span class="badge badge-primary">{{ current_user.role|upper }}</span>
-        <span style="font-size:0.9rem; margin-left:0.5rem; font-weight:600;">{{ current_user.username }}</span>
-      </div>
-      <div style="display:flex; gap:0.5rem;">
-        <a href="{{ url_for('admin.export_csv', data_type='users') }}" class="btn btn-sm">Export Users CSV</a>
-        <a href="{{ url_for('admin.export_csv', data_type='tests') }}" class="btn btn-sm">Export Tests CSV</a>
-        <a href="{{ url_for('auth.logout') }}" class="btn btn-sm btn-danger">Sign Out</a>
+      <button type="button" onclick="openCmdPalette()" class="btn btn-sm" style="border-color:var(--admin-border); background:var(--admin-elevated); color:var(--admin-text-muted); gap:0.6rem;">
+        <span>🔍 Search Users, Roles, Passages, Endpoints...</span>
+        <span class="kbd-badge">Ctrl + K</span>
+      </button>
+
+      <div style="display:flex; align-items:center; gap:1rem;">
+        <div style="display:flex; align-items:center; gap:0.4rem; font-size:0.78rem; font-weight:700; color:var(--admin-success);">
+          <span style="width:7px; height:7px; border-radius:50%; background:var(--admin-success); box-shadow:0 0 8px var(--admin-success);"></span>
+          SYSTEM NOMINAL
+        </div>
+        <div style="font-family:var(--admin-mono); font-size:0.82rem; color:var(--admin-accent); font-weight:700;" id="admin-ist-clock">
+          --:-- IST
+        </div>
+        <div style="display:flex; gap:0.4rem;">
+          <a href="{{ url_for('admin.export_csv', data_type='users') }}" class="btn btn-sm">Export Users</a>
+          <a href="{{ url_for('auth.logout') }}" class="btn btn-sm btn-danger">Exit</a>
+        </div>
       </div>
     </header>
 
@@ -216,7 +332,7 @@
       {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
           {% for category, msg in messages %}
-            <div style="padding:0.75rem 1rem; border-radius:6px; margin-bottom:1.5rem; background:var(--admin-surface); border-left:4px solid var(--admin-accent);">
+            <div style="padding:0.75rem 1rem; border-radius:6px; margin-bottom:1.25rem; font-size:0.88rem; background:var(--admin-surface); border-left:4px solid {{ 'var(--admin-danger)' if category in ['danger', 'error'] else ('var(--admin-warning)' if category == 'warning' else 'var(--admin-accent)') }};">
               {{ msg }}
             </div>
           {% endfor %}
@@ -226,5 +342,102 @@
       {% block admin_content %}{% endblock %}
     </div>
   </div>
+
+  <!-- Global Command Palette Modal (Ctrl + K) -->
+  <div id="admin-cmd-palette" class="cmd-overlay" onclick="if(event.target===this)closeCmdPalette()">
+    <div class="cmd-dialog">
+      <input type="text" id="cmd-input" class="cmd-search-input" placeholder="Type a user callsign, role, passage, or endpoint..." autocomplete="off">
+      <div id="cmd-results" class="cmd-results">
+        <div style="padding:1.5rem; text-align:center; color:var(--admin-text-muted); font-size:0.85rem;">
+          Type at least 2 characters to search across TypeSphere Control Center.
+        </div>
+      </div>
+      <div class="cmd-footer">
+        <span>Navigate: <span class="kbd-badge">&uarr;</span> <span class="kbd-badge">&darr;</span></span>
+        <span>Close: <span class="kbd-badge">ESC</span></span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function updateIstClock() {
+      const now = new Date();
+      const istTime = new Intl.DateTimeFormat('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      }).format(now);
+      const clockEl = document.getElementById('admin-ist-clock');
+      if (clockEl) clockEl.textContent = `${istTime} IST`;
+    }
+    setInterval(updateIstClock, 1000);
+    updateIstClock();
+
+    function openCmdPalette() {
+      const p = document.getElementById('admin-cmd-palette');
+      p.style.display = 'flex';
+      const input = document.getElementById('cmd-input');
+      input.value = '';
+      setTimeout(() => input.focus(), 40);
+    }
+    function closeCmdPalette() {
+      document.getElementById('admin-cmd-palette').style.display = 'none';
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        openCmdPalette();
+      } else if (e.key === 'Escape') {
+        closeCmdPalette();
+      }
+    });
+
+    let searchDebounce = null;
+    const cmdInput = document.getElementById('cmd-input');
+    if (cmdInput) {
+      cmdInput.addEventListener('input', (e) => {
+        clearTimeout(searchDebounce);
+        const q = e.target.value.trim();
+        if (q.length < 2) {
+          document.getElementById('cmd-results').innerHTML = `
+            <div style="padding:1.5rem; text-align:center; color:var(--admin-text-muted); font-size:0.85rem;">
+              Type at least 2 characters to search...
+            </div>
+          `;
+          return;
+        }
+
+        searchDebounce = setTimeout(() => {
+          fetch(`/admin/api/search?q=${encodeURIComponent(q)}`)
+            .then(res => res.json())
+            .then(data => {
+              const box = document.getElementById('cmd-results');
+              box.innerHTML = '';
+              if (!data.results || data.results.length === 0) {
+                box.innerHTML = `<div style="padding:1.5rem; text-align:center; color:var(--admin-text-muted);">No records found matching "${q}".</div>`;
+                return;
+              }
+              data.results.forEach(item => {
+                const a = document.createElement('a');
+                a.href = item.url;
+                a.className = 'cmd-item';
+                a.innerHTML = `
+                  <div>
+                    <strong style="color:var(--admin-accent);">${item.title}</strong>
+                    <div style="font-size:0.75rem; color:var(--admin-text-muted);">${item.subtitle}</div>
+                  </div>
+                  <span class="badge badge-primary">${item.category}</span>
+                `;
+                box.appendChild(a);
+              });
+            })
+            .catch(() => {});
+        }, 150);
+      });
+    }
+  </script>
 </body>
 </html>

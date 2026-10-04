@@ -1,0 +1,121 @@
+{% extends 'admin/base_admin.html' %}
+{% block title %}Website Control & Navigation | Control Center{% endblock %}
+
+{% block admin_content %}
+<div style="margin-bottom:1.5rem;">
+  <h1 style="font-size:1.6rem; font-weight:800;">Website Control & Navigation CMS</h1>
+  <p style="color:var(--admin-text-muted); font-size:0.85rem;">Administer public flight deck navigation, maintenance locks, and branding statements.</p>
+</div>
+
+<!-- Maintenance Mode Protocol Card -->
+<div class="card" style="border:1.5px solid {{ 'var(--admin-danger)' if is_maintenance else 'var(--admin-border)' }}; margin-bottom:1.5rem;">
+  <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+    <div>
+      <div style="display:flex; align-items:center; gap:0.5rem;">
+        <span class="badge {{ 'badge-danger' if is_maintenance else 'badge-success' }}">
+          {{ 'MAINTENANCE ENGAGED' if is_maintenance else 'SYSTEM NOMINAL' }}
+        </span>
+        <h3 style="font-size:1.15rem; font-weight:800; margin:0;">Cockpit Maintenance Protocol</h3>
+      </div>
+      <p style="color:var(--admin-text-muted); font-size:0.85rem; margin-top:0.35rem; line-height:1.5;">
+        When engaged, non-administrative visitors are presented with the flight calibration screen. Admins bypass automatically.
+      </p>
+    </div>
+
+    <form method="POST" action="{{ url_for('admin.toggle_maintenance') }}" style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
+      <input type="text" name="maintenance_message" value="{{ maintenance_msg }}" placeholder="Custom return message..." style="padding:0.45rem 0.75rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:4px; color:#fff; font-size:0.82rem; min-width:280px;">
+      <button type="submit" class="btn {{ 'btn-success' if is_maintenance else 'btn-danger' }}" style="font-weight:800;">
+        {{ 'Disengage Maintenance' if is_maintenance else 'Engage Maintenance Mode' }}
+      </button>
+    </form>
+  </div>
+</div>
+
+<!-- Dynamic Navigation Items Table -->
+<div class="card" style="padding:0; overflow:hidden; margin-bottom:1.5rem;">
+  <div style="padding:1rem 1.25rem; border-bottom:1px solid var(--admin-border); display:flex; justify-content:space-between; align-items:center;">
+    <div>
+      <h3 style="font-size:1.1rem; font-weight:800; margin:0;">Public Navigation Link Directory</h3>
+      <p style="color:var(--admin-text-muted); font-size:0.8rem; margin-top:0.2rem;">Single source of truth driving the 48px fixed cockpit navbar.</p>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th style="width:60px;">Order</th>
+        <th>Link Label</th>
+        <th>Destination URL</th>
+        <th>Guest Visibility</th>
+        <th>Pilot Visibility</th>
+        <th>Status</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in nav_items %}
+      <tr>
+        <form method="POST" action="{{ url_for('admin.edit_navigation_item', item_id=item.id) }}">
+          <td>
+            <input type="number" name="nav_order" value="{{ item.nav_order }}" style="width:50px; padding:0.3rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:4px; color:#fff; font-family:var(--admin-mono); text-align:center;">
+          </td>
+          <td>
+            <input type="text" name="label" value="{{ item.label }}" style="padding:0.35rem 0.55rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:4px; color:#fff; font-weight:700;">
+          </td>
+          <td>
+            <input type="text" name="url" value="{{ item.url }}" style="padding:0.35rem 0.55rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:4px; color:#fff; font-family:var(--admin-mono); font-size:0.8rem;">
+          </td>
+          <td>
+            <label style="cursor:pointer;"><input type="checkbox" name="for_guests" {% if item.for_guests %}checked{% endif %}> Guests</label>
+          </td>
+          <td>
+            <label style="cursor:pointer;"><input type="checkbox" name="for_pilots" {% if item.for_pilots %}checked{% endif %}> Pilots</label>
+          </td>
+          <td>
+            <label style="cursor:pointer;"><input type="checkbox" name="is_visible" {% if item.is_visible %}checked{% endif %}> Active</label>
+          </td>
+          <td>
+            <div style="display:flex; gap:0.3rem;">
+              <button type="submit" class="btn btn-sm btn-primary">Save</button>
+            </form>
+            <form method="POST" action="{{ url_for('admin.delete_navigation_item', item_id=item.id) }}" onsubmit="return confirm('Remove navigation link?');" style="display:inline;">
+              <button type="submit" class="btn btn-sm btn-danger">&times;</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Add Navigation Item Form -->
+<div class="card" style="max-width:760px;">
+  <h3 style="font-size:1.05rem; font-weight:800; margin-bottom:0.75rem; border-bottom:1px solid var(--admin-border); padding-bottom:0.4rem;">
+    + Add Public Navigation Link
+  </h3>
+  <form method="POST" action="{{ url_for('admin.add_navigation_item') }}">
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1rem;">
+      <div>
+        <label style="display:block; font-size:0.72rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.3rem;">Link Text Label</label>
+        <input type="text" name="label" placeholder="e.g. 🛸 Space Radar" required style="width:100%; padding:0.55rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:4px; color:#fff;">
+      </div>
+      <div>
+        <label style="display:block; font-size:0.72rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.3rem;">Destination URL</label>
+        <input type="text" name="url" placeholder="e.g. /typing/radar" required style="width:100%; padding:0.55rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:4px; color:#fff; font-family:var(--admin-mono); font-size:0.85rem;">
+      </div>
+    </div>
+    <div style="display:flex; gap:1.5rem; margin-bottom:1.25rem;">
+      <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer; font-size:0.85rem;">
+        <input type="checkbox" name="for_guests" checked> Show to Guests (Unauthenticated)
+      </label>
+      <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer; font-size:0.85rem;">
+        <input type="checkbox" name="for_pilots" checked> Show to Active Pilots (Authenticated)
+      </label>
+    </div>
+    <button type="submit" class="btn btn-primary" style="padding:0.6rem 1.5rem; font-weight:800;">
+      Add Navigation Link &rarr;
+    </button>
+  </form>
+</div>
+{% endblock %}

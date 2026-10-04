@@ -34,7 +34,11 @@ def create_app(config_class=Config):
     from app.models.game import GameRecord, ArcadeLeaderboard
     from app.models.arcade_content import ArcadeContentItem, ArcadeGameConfig
     from app.models.plan import UserSubscription
-    from app.models.admin import RolePermission, AdminAuditLog, UserActivity, VisitorTraffic, SecurityEvent, PlatformConfig
+    from app.models.admin import (
+        RolePermission, AdminAuditLog, UserActivity, VisitorTraffic,
+        SecurityEvent, PlatformConfig, Permission, CustomRole,
+        role_permissions, user_roles, BlockedIP, FeatureFlag
+    )
 
     @login_manager.user_loader
     def load_user(user_id):
@@ -94,6 +98,10 @@ def create_app(config_class=Config):
                 conn.commit()
         except Exception:
             pass
+
+        # Seed canonical system permissions
+        from app.services.admin_security import ensure_permissions_seeded
+        ensure_permissions_seeded()
 
     # Register Blueprints
     from app.routes.auth import auth_bp

@@ -1,0 +1,96 @@
+{% extends 'admin/base_admin.html' %}
+{% block title %}{{ action }} Custom Role | TypeSphere Control Center{% endblock %}
+
+{% block admin_content %}
+<div style="margin-bottom:1.5rem;">
+  <a href="{{ url_for('admin.roles_list') }}" style="color:var(--admin-accent); font-size:0.85rem; text-decoration:none;">&larr; Return to Roles</a>
+  <h1 style="font-size:1.6rem; font-weight:800; margin-top:0.4rem;">{{ action }} Delegated Custom Role</h1>
+  <p style="color:var(--admin-text-muted); font-size:0.85rem;">Configure role metadata and select granular server-side permissions.</p>
+</div>
+
+<form method="POST">
+  <div class="card" style="max-width:880px;">
+    <h3 style="font-size:1.1rem; font-weight:800; margin-bottom:1rem; border-bottom:1px solid var(--admin-border); padding-bottom:0.5rem;">
+      1. Role Identification
+    </h3>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.25rem; margin-bottom:1.25rem;">
+      <div>
+        <label style="display:block; font-size:0.75rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.35rem;">Role Designation Name</label>
+        <input type="text" name="name" value="{{ role.name if role else '' }}" placeholder="e.g. Content Manager or Junior Moderator" required style="width:100%; padding:0.65rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff;">
+      </div>
+      <div>
+        <label style="display:block; font-size:0.75rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.35rem;">Active Status</label>
+        <label style="display:flex; align-items:center; gap:0.5rem; margin-top:0.6rem; cursor:pointer; font-size:0.88rem;">
+          <input type="checkbox" name="is_active" {% if not role or role.is_active %}checked{% endif %}>
+          <span>Role is Active (Permissions apply to assigned users)</span>
+        </label>
+      </div>
+    </div>
+    <div>
+      <label style="display:block; font-size:0.75rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.35rem;">Operational Description</label>
+      <input type="text" name="description" value="{{ role.description if role else '' }}" placeholder="Summarize the scope of authority granted by this role..." style="width:100%; padding:0.65rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff;">
+    </div>
+  </div>
+
+  <!-- Granular Permissions Builder -->
+  <div class="card" style="max-width:880px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem; border-bottom:1px solid var(--admin-border); padding-bottom:0.5rem;">
+      <div>
+        <h3 style="font-size:1.1rem; font-weight:800; margin:0;">2. Granular Permissions Matrix</h3>
+        <p style="color:var(--admin-text-muted); font-size:0.8rem; margin-top:0.2rem;">Select specific capabilities. Server-side middleware verifies every action.</p>
+      </div>
+      <button type="button" onclick="toggleAllCheckboxes()" class="btn btn-sm">Toggle All</button>
+    </div>
+
+    {% set active_codes = role.permissions|map(attribute='code')|list if role else [] %}
+
+    <div style="display:flex; flex-direction:column; gap:1.5rem;">
+      {% for category, perms in grouped_perms.items() %}
+      <div style="background:var(--admin-elevated); border:1px solid var(--admin-border); border-radius:6px; padding:1rem;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; border-bottom:1px solid var(--admin-border); padding-bottom:0.4rem;">
+          <strong style="color:var(--admin-accent); font-size:0.92rem; text-transform:uppercase; letter-spacing:0.04em;">
+            {{ category }}
+          </strong>
+          <button type="button" onclick="toggleCategoryGroup('{{ category|replace(' ', '_') }}')" class="btn btn-sm" style="padding:0.15rem 0.45rem; font-size:0.72rem;">
+            Select Sector
+          </button>
+        </div>
+
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(250px, 1fr)); gap:0.65rem;" class="cat-group-{{ category|replace(' ', '_') }}">
+          {% for p in perms %}
+          <label style="display:flex; align-items:flex-start; gap:0.5rem; font-size:0.84rem; cursor:pointer;">
+            <input type="checkbox" name="permissions" value="{{ p.id }}" {% if p.code in active_codes %}checked{% endif %} style="margin-top:0.2rem;">
+            <div>
+              <div style="font-weight:600; color:var(--admin-text-main);">{{ p.name }}</div>
+              <div style="font-size:0.72rem; color:var(--admin-text-muted); font-family:var(--admin-mono);">[{{ p.code }}]</div>
+            </div>
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div style="display:flex; justify-content:flex-end; gap:0.75rem; margin-top:1.5rem;">
+      <a href="{{ url_for('admin.roles_list') }}" class="btn">Cancel</a>
+      <button type="submit" class="btn btn-primary" style="padding:0.65rem 2rem; font-weight:800;">
+        Save Role Configuration &rarr;
+      </button>
+    </div>
+  </div>
+</form>
+
+<script>
+  function toggleAllCheckboxes() {
+    const all = document.querySelectorAll('input[name="permissions"]');
+    const anyUnchecked = Array.from(all).some(cb => !cb.checked);
+    all.forEach(cb => cb.checked = anyUnchecked);
+  }
+
+  function toggleCategoryGroup(catClass) {
+    const group = document.querySelectorAll('.cat-group-' + catClass + ' input[type="checkbox"]');
+    const anyUnchecked = Array.from(group).some(cb => !cb.checked);
+    group.forEach(cb => cb.checked = anyUnchecked);
+  }
+</script>
+{% endblock %}

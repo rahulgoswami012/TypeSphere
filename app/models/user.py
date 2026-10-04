@@ -1,9 +1,16 @@
+"""
+TypeSphere - Pilot & User Entity Model
+Maintains authentication, Callsigns, Elo ratings, biometric profiles,
+multi-role custom authorizations, and Super Admin protection.
+"""
+
 from datetime import datetime
 import re
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin
 from app import db
-from app.utils.timezone import to_ist
+from app.models.admin import user_roles, CustomRole
+
 
 class User(UserMixin, db.Model):
     __tablename__ = 'users'
@@ -18,7 +25,7 @@ class User(UserMixin, db.Model):
     flight_squadron = db.Column(db.String(64), default='Vanguard Flight Division')
     avatar_flight_badge = db.Column(db.String(32), default='apex_wings')
 
-    # Authority Roles
+    # Authority & Account Classification
     role = db.Column(db.String(32), default='user', nullable=False, index=True)
     is_verified = db.Column(db.Boolean, default=True, nullable=True)
 
@@ -41,6 +48,14 @@ class User(UserMixin, db.Model):
     user_settings = db.relationship('UserSettings', uselist=False, backref='user', cascade="all, delete-orphan")
     achievements = db.relationship('UserAchievement', backref='user', lazy='dynamic', cascade="all, delete-orphan")
 
+    # Multi-Role Dynamic Association
+    custom_roles = db.relationship(
+        'CustomRole',
+        secondary=user_roles,
+        back_populates='users',
+        lazy='joined'
+    )
+
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
 
@@ -55,19 +70,81 @@ class User(UserMixin, db.Model):
         return (clean[:10] if clean else "PILOT").upper()
 
     @property
-    def is_admin(self):
-        return self.role in ['super_admin', 'admin', 'moderator', 'content_manager', 'analyst']
+    def is_super_admin(self) -> bool:
+        """
+        True if the user holds Super Admin authority.
+        Encompasses 'super_admin', legacy primary 'admin', or username 'admin'.
+        """
+        return self.role in ['super_admin', 'admin'] or self.username.lower() == 'admin'
 
     @property
-    def is_super_admin(self):
-        return self.role == 'super_admin'
+    def is_admin(self) -> bool:
+        """
+        True if the user is a Super Admin, holds an administrative role,
+        or has at least one active custom delegated role.
+        """
+        if self.is_super_admin:
+            return True
+        if self.role in ['moderator', 'content_manager', 'analyst']:
+            return True
+        return any(r.is_active for r in self.custom_roles)
 
     @property
-    def is_active_account(self):
+    def is_active_account(self) -> bool:
         return not self.is_banned and not self.is_suspended
 
     @property
-    def rank_division(self):
+    def effective_permissions(self) -> set:
+        """
+        Calculates the complete union of active permissions across all assigned roles.
+        Super Administrators inherently possess universal clearance '*'.
+        """
+        if self.is_super_admin:
+            return {'*'}
+
+        perms = set()
+        for role in self.custom_roles:
+            if role.is_active:
+                for p in role.permissions:
+                    perms.add(p.code)
+
+        # Legacy role compatibility mapping
+        legacy_role_map = {
+            'moderator': {'users.view', 'users.profile', 'users.moderate', 'reviews.view', 'reviews.moderate', 'security.audit_logs'},
+            'content_manager': {'typing.*', 'challenges.manage', 'academy.manage', 'reviews.view'},
+            'analyst': {'analytics.*'}
+        }
+        if self.role in legacy_role_map:
+            perms.update(legacy_role_map[self.role])
+
+        return perms
+
+    def has_permission(self, permission_code: str) -> bool:
+        """
+        Authoritative server-side evaluation.
+        The Super Admin possesses unrestricted clearance.
+        """
+        if self.is_super_admin:
+            return True
+
+        if self.is_banned or self.is_suspended:
+            return False
+
+        effective = self.effective_permissions
+        if '*' in effective:
+            return True
+
+        if permission_code in effective:
+            return True
+
+        category_wildcard = permission_code.split('.')[0] + '.*' if '.' in permission_code else None
+        if category_wildcard and category_wildcard in effective:
+            return True
+
+        return False
+
+    @property
+    def rank_division(self) -> str:
         elo = self.elo_rating or 1000
         if elo >= 1900: return "Grandmaster"
         if elo >= 1700: return "Diamond"
@@ -77,7 +154,7 @@ class User(UserMixin, db.Model):
         return "Bronze"
 
     @property
-    def rank_badge(self):
+    def rank_badge(self) -> dict:
         division = self.rank_division
         badges = {
             "Grandmaster": {"icon": "👑", "color": "#ec4899", "bg": "rgba(236,72,153,0.15)"},

@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cockpit Maintenance Protocol | TypeSphere</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;700;800;900&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #060911;
+      color: #f1f5f9;
+      font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      text-align: center;
+    }
+    .maint-card {
+      background: #0d1222;
+      border: 1.5px solid #f59e0b;
+      border-radius: 12px;
+      padding: 3rem 2rem;
+      max-width: 580px;
+      width: 100%;
+      box-shadow: 0 25px 65px rgba(0, 0, 0, 0.8), 0 0 25px rgba(245, 158, 11, 0.15);
+    }
+    .maint-icon { font-size: 3.5rem; margin-bottom: 1rem; }
+    .maint-badge {
+      display: inline-block;
+      background: rgba(245, 158, 11, 0.15);
+      border: 1px solid #f59e0b;
+      color: #f59e0b;
+      font-size: 0.75rem;
+      font-weight: 800;
+      padding: 0.2rem 0.65rem;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 0.75rem;
+    }
+    .maint-title { font-size: 1.85rem; font-weight: 900; margin-bottom: 0.75rem; color: #fff; }
+    .maint-desc { font-size: 0.95rem; line-height: 1.6; color: #94a3b8; margin-bottom: 2rem; }
+    .status-clock {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.82rem;
+      color: #38bdf8;
+      border-top: 1px solid #212c47;
+      padding-top: 1.25rem;
+    }
+    .btn {
+      display: inline-block;
+      background: #131b31;
+      border: 1px solid #212c47;
+      color: #f1f5f9;
+      padding: 0.65rem 1.4rem;
+      border-radius: 6px;
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 0.85rem;
+      transition: all 0.15s ease;
+    }
+    .btn:hover { border-color: #38bdf8; color: #fff; }
+  </style>
+</head>
+<body>
+  <div class="maint-card">
+    <div class="maint-icon">🛩️</div>
+    <div class="maint-badge">Flight Deck Calibration</div>
+    <h1 class="maint-title">Systems Standby</h1>
+    <p class="maint-desc">{{ message }}</p>
+    <div style="margin-bottom: 1.75rem;">
+      <a href="/auth/login" class="btn">Authorized Operator Login &rarr;</a>
+    </div>
+    <div class="status-clock">
+      Official Indian Standard Time: (IST, UTC+05:30) &bull; TypeSphere Control Tower
+    </div>
+  </div>
+</body>
+</html>

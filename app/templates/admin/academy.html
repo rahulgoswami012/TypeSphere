@@ -1,0 +1,61 @@
+{% extends 'admin/base_admin.html' %}
+{% block title %}Academy Curriculum CMS | Control Center{% endblock %}
+
+{% block admin_content %}
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
+  <div>
+    <h1 style="font-size:1.6rem; font-weight:800;">Touch Typing Academy Curriculum</h1>
+    <p style="color:var(--admin-text-muted); font-size:0.85rem;">Manage tracks, stages, practice materials, and passing criteria.</p>
+  </div>
+</div>
+
+<div style="display:flex; flex-direction:column; gap:1.5rem;">
+  {% for track, stages in grouped_stages.items() %}
+  <div class="card" style="padding:0; overflow:hidden;">
+    <div style="padding:0.85rem 1.25rem; background:var(--admin-elevated); border-bottom:1px solid var(--admin-border); display:flex; justify-content:space-between; align-items:center;">
+      <h3 style="font-size:1.05rem; font-weight:800; margin:0; text-transform:uppercase; color:var(--admin-accent);">
+        {{ track }} Track ({{ stages|length }} Stages)
+      </h3>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Stage #</th>
+          <th>Title & Slug</th>
+          <th>Focus Keys</th>
+          <th>Pass Requirements</th>
+          <th>Verified Attempts</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for st in stages %}
+        <tr>
+          <td><strong style="color:var(--admin-accent);">Stage {{ st.stage_number }}</strong></td>
+          <td>
+            <div style="font-weight:700;">{{ st.title }}</div>
+            <div style="font-size:0.75rem; color:var(--admin-text-muted); font-family:var(--admin-mono);">slug: {{ st.slug }}</div>
+          </td>
+          <td>
+            {% if st.focus_keys %}
+              <span class="badge badge-warning" style="font-family:var(--admin-mono);">{{ st.focus_keys }}</span>
+            {% else %}
+              <span style="color:var(--admin-text-muted);">-</span>
+            {% endif %}
+          </td>
+          <td>
+            <span style="color:var(--admin-accent); font-weight:700;">{{ st.min_wpm_to_pass|int }} WPM</span> / 
+            <span style="color:var(--admin-success); font-weight:700;">{{ st.min_accuracy_to_pass|int }}% Acc</span>
+          </td>
+          <td>{{ st.required_attempts }} required</td>
+          <td>
+            <a href="{{ url_for('admin.stage_edit', stage_id=st.id) }}" class="btn btn-sm">Edit Stage</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

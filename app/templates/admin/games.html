@@ -1,0 +1,81 @@
+{% extends 'admin/base_admin.html' %}
+{% block title %}Arcade Game Management | TypeSphere Control Center{% endblock %}
+
+{% block admin_content %}
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
+  <div>
+    <h1 style="font-size:1.6rem; font-weight:800;">Arcade Hangar Management</h1>
+    <p style="color:var(--admin-text-muted); font-size:0.85rem;">Configure game rules, default AI levels, duration options, and public availability.</p>
+  </div>
+</div>
+
+<!-- Metrics HUD -->
+<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:1rem; margin-bottom:1.5rem;">
+  <div class="card" style="margin:0;">
+    <div style="font-size:0.72rem; color:var(--admin-text-muted); font-weight:700; text-transform:uppercase;">TOTAL DISCIPLINES</div>
+    <div style="font-size:1.8rem; font-weight:800; color:var(--admin-accent); margin-top:0.2rem;">{{ total_games }}</div>
+  </div>
+  <div class="card" style="margin:0;">
+    <div style="font-size:0.72rem; color:var(--admin-text-muted); font-weight:700; text-transform:uppercase;">ACTIVE IN HANGAR</div>
+    <div style="font-size:1.8rem; font-weight:800; color:var(--admin-success); margin-top:0.2rem;">{{ active_games }}</div>
+  </div>
+  <div class="card" style="margin:0;">
+    <div style="font-size:0.72rem; color:var(--admin-text-muted); font-weight:700; text-transform:uppercase;">DEACTIVATED</div>
+    <div style="font-size:1.8rem; font-weight:800; color:var(--admin-warning); margin-top:0.2rem;">{{ total_games - active_games }}</div>
+  </div>
+</div>
+
+<!-- Games Table -->
+<div class="card" style="padding:0; overflow:hidden;">
+  <table>
+    <thead>
+      <tr>
+        <th>Discipline Slug</th>
+        <th>Display Title & Summary</th>
+        <th>Modes Supported</th>
+        <th>Durations</th>
+        <th>Default AI</th>
+        <th>Public Availability</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for g in games %}
+      <tr>
+        <td style="font-family:var(--admin-mono); font-weight:700; color:var(--admin-accent);">
+          {{ g.game_slug }}
+        </td>
+        <td>
+          <div style="font-weight:700; font-size:0.92rem;">{{ g.display_title }}</div>
+          <div style="font-size:0.78rem; color:var(--admin-text-muted); max-width:320px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+            {{ g.description }}
+          </div>
+        </td>
+        <td>
+          <div style="display:flex; gap:0.25rem; flex-wrap:wrap;">
+            {% if g.allows_solo_ai %}<span class="badge badge-primary">Solo AI</span>{% endif %}
+            {% if g.allows_1v1 %}<span class="badge badge-warning">1v1</span>{% endif %}
+            {% if g.allows_multiplayer %}<span class="badge badge-success">Multiplayer</span>{% endif %}
+          </div>
+        </td>
+        <td style="font-family:var(--admin-mono); font-size:0.8rem;">{{ g.durations }}s</td>
+        <td><span class="badge badge-primary">{{ g.default_ai_level|upper }}</span></td>
+        <td>
+          <span class="badge {{ 'badge-success' if g.is_enabled else 'badge-danger' }}">
+            {{ 'ENABLED' if g.is_enabled else 'DISABLED' }}
+          </span>
+        </td>
+        <td>
+          <div style="display:flex; gap:0.4rem;">
+            <a href="{{ url_for('admin.game_edit', config_id=g.id) }}" class="btn btn-sm">Configure</a>
+            <form method="POST" action="{{ url_for('admin.game_toggle', config_id=g.id) }}" style="display:inline;">
+              <button type="submit" class="btn btn-sm">{{ 'Disable' if g.is_enabled else 'Enable' }}</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

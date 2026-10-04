@@ -1,0 +1,108 @@
+{% extends 'admin/base_admin.html' %}
+{% block title %}Data Retention & Management | TypeSphere Control Center{% endblock %}
+
+{% block admin_content %}
+<div style="margin-bottom:1.5rem;">
+  <h1 style="font-size:1.6rem; font-weight:800;">Data Retention & Database Pruning</h1>
+  <p style="color:var(--admin-text-muted); font-size:0.85rem;">Execute controlled maintenance routines to prune stale temporary records while preserving historical dossiers.</p>
+</div>
+
+<!-- Volume Overview Cards -->
+<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:1rem; margin-bottom:1.5rem;">
+  <div class="card" style="margin:0;">
+    <div style="font-size:0.72rem; color:var(--admin-text-muted); font-weight:700; text-transform:uppercase;">TRAFFIC RECORDS</div>
+    <div style="font-size:1.8rem; font-weight:800; color:var(--admin-accent); margin-top:0.2rem;">{{ counts.traffic }}</div>
+  </div>
+  <div class="card" style="margin:0;">
+    <div style="font-size:0.72rem; color:var(--admin-text-muted); font-weight:700; text-transform:uppercase;">SECURITY EVENTS</div>
+    <div style="font-size:1.8rem; font-weight:800; color:var(--admin-warning); margin-top:0.2rem;">{{ counts.security }}</div>
+  </div>
+  <div class="card" style="margin:0;">
+    <div style="font-size:0.72rem; color:var(--admin-text-muted); font-weight:700; text-transform:uppercase;">GUEST FLIGHT TESTS</div>
+    <div style="font-size:1.8rem; font-weight:800; margin-top:0.2rem;">{{ counts.guests_tests }}</div>
+  </div>
+  <div class="card" style="margin:0;">
+    <div style="font-size:0.72rem; color:var(--admin-text-muted); font-weight:700; text-transform:uppercase;">RESTRICTED IPS</div>
+    <div style="font-size:1.8rem; font-weight:800; color:var(--admin-danger); margin-top:0.2rem;">{{ counts.blocked_ips }}</div>
+  </div>
+</div>
+
+<!-- Maintenance Routine Pruning Forms -->
+<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:1.25rem;">
+  <!-- 1. Prune Visitor Traffic -->
+  <div class="card" style="margin:0; display:flex; flex-direction:column; justify-content:space-between;">
+    <div>
+      <h3 style="font-size:1.1rem; font-weight:800; margin-bottom:0.4rem; color:var(--admin-accent);">1. Prune Anonymous Traffic Logs</h3>
+      <p style="color:var(--admin-text-muted); font-size:0.85rem; line-height:1.55; margin-bottom:1rem;">
+        Cleanses high-volume HTTP request logs while retaining aggregated visitor summaries. Recommended quarterly.
+      </p>
+    </div>
+    <form method="POST" action="{{ url_for('admin.data_cleanup') }}" onsubmit="return confirm('Prune visitor traffic logs older than selected window?');">
+      <input type="hidden" name="target" value="traffic">
+      <div style="display:flex; gap:0.5rem; margin-bottom:0.75rem;">
+        <select name="retention_days" style="flex:1; padding:0.5rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:4px; color:#fff; font-size:0.84rem;">
+          <option value="30">Older than 30 Days</option>
+          <option value="60" selected>Older than 60 Days</option>
+          <option value="90">Older than 90 Days</option>
+          <option value="180">Older than 180 Days</option>
+        </select>
+        <button type="submit" class="btn btn-sm btn-danger">Execute Prune</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- 2. Prune Non-Critical Security Events -->
+  <div class="card" style="margin:0; display:flex; flex-direction:column; justify-content:space-between;">
+    <div>
+      <h3 style="font-size:1.1rem; font-weight:800; margin-bottom:0.4rem; color:var(--admin-warning);">2. Clear Resolved Security Events</h3>
+      <p style="color:var(--admin-text-muted); font-size:0.85rem; line-height:1.55; margin-bottom:1rem;">
+        Purges low and medium-severity security events older than the cutoff. <strong>Critical incidents are permanently preserved.</strong>
+      </p>
+    </div>
+    <form method="POST" action="{{ url_for('admin.data_cleanup') }}" onsubmit="return confirm('Clear non-critical security events?');">
+      <input type="hidden" name="target" value="security">
+      <div style="display:flex; gap:0.5rem; margin-bottom:0.75rem;">
+        <select name="retention_days" style="flex:1; padding:0.5rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:4px; color:#fff; font-size:0.84rem;">
+          <option value="60">Older than 60 Days</option>
+          <option value="90" selected>Older than 90 Days</option>
+          <option value="180">Older than 180 Days</option>
+        </select>
+        <button type="submit" class="btn btn-sm btn-danger">Execute Prune</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- 3. Prune Expired IP Blocks -->
+  <div class="card" style="margin:0; display:flex; flex-direction:column; justify-content:space-between;">
+    <div>
+      <h3 style="font-size:1.1rem; font-weight:800; margin-bottom:0.4rem;">3. Purge Expired IP Restrictions</h3>
+      <p style="color:var(--admin-text-muted); font-size:0.85rem; line-height:1.55; margin-bottom:1rem;">
+        Removes temporary IP blocks whose duration window has elapsed. Permanent blocks remain active.
+      </p>
+    </div>
+    <form method="POST" action="{{ url_for('admin.data_cleanup') }}" onsubmit="return confirm('Purge expired temporary IP restrictions?');">
+      <input type="hidden" name="target" value="expired_ips">
+      <button type="submit" class="btn btn-sm" style="width:100%; justify-content:center;">
+        🧹 Purge Expired IP Records
+      </button>
+    </form>
+  </div>
+
+  <!-- 4. Prune Stale Guest Flight Records -->
+  <div class="card" style="margin:0; display:flex; flex-direction:column; justify-content:space-between;">
+    <div>
+      <h3 style="font-size:1.1rem; font-weight:800; margin-bottom:0.4rem;">4. Prune Stale Guest Flights</h3>
+      <p style="color:var(--admin-text-muted); font-size:0.85rem; line-height:1.55; margin-bottom:1rem;">
+        Purges anonymous unauthenticated guest test sessions older than 30 days. Authenticated pilot records are never affected.
+      </p>
+    </div>
+    <form method="POST" action="{{ url_for('admin.data_cleanup') }}" onsubmit="return confirm('Purge unauthenticated guest test records older than 30 days?');">
+      <input type="hidden" name="target" value="guest_tests">
+      <input type="hidden" name="retention_days" value="30">
+      <button type="submit" class="btn btn-sm btn-danger" style="width:100%; justify-content:center;">
+        Prune Stale Guest Tests (>30d)
+      </button>
+    </form>
+  </div>
+</div>
+{% endblock %}

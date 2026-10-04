@@ -1,77 +1,134 @@
 {% extends 'admin/base_admin.html' %}
-{% block title %}User Management | TypeSphere Control Center{% endblock %}
+{% block title %}User Directory | TypeSphere Control Center{% endblock %}
 
 {% block admin_content %}
 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
   <div>
     <h1 style="font-size:1.6rem; font-weight:800;">User Account Directory</h1>
-    <p style="color:var(--admin-text-muted); font-size:0.85rem;">Inspect user activity, modify roles, and enforce moderation actions.</p>
+    <p style="color:var(--admin-text-muted); font-size:0.85rem;">Inspect user telemetry, assign custom roles, and enforce moderation policies.</p>
   </div>
 </div>
 
 <!-- Filters Bar -->
-<div class="card" style="padding:1rem; margin-bottom:1.5rem;">
+<div class="card" style="padding:1rem; margin-bottom:1.25rem;">
   <form method="GET" style="display:flex; gap:0.75rem; flex-wrap:wrap;">
-    <input type="text" name="q" value="{{ search }}" placeholder="Search username or email..." style="flex:1; min-width:200px; padding:0.5rem 0.75rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff;">
+    <input type="text" name="q" value="{{ search }}" placeholder="Search username, callsign, or email..." style="flex:1; min-width:220px; padding:0.5rem 0.75rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff;">
     
-    <select name="role" style="padding:0.5rem 0.75rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff;">
-      <option value="">All Roles</option>
-      {% for r in roles %}
-      <option value="{{ r }}" {% if role_filter == r %}selected{% endif %}>{{ r|upper }}</option>
-      {% endfor %}
-    </select>
-
     <select name="status" style="padding:0.5rem 0.75rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff;">
       <option value="">All Statuses</option>
       <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active</option>
       <option value="suspended" {% if status_filter == 'suspended' %}selected{% endif %}>Suspended</option>
       <option value="banned" {% if status_filter == 'banned' %}selected{% endif %}>Banned</option>
+      <option value="super_admin" {% if status_filter == 'super_admin' %}selected{% endif %}>Super Admin</option>
     </select>
 
-    <button type="submit" class="btn btn-primary">Filter</button>
+    <select name="role_id" style="padding:0.5rem 0.75rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff;">
+      <option value="">All Delegated Roles</option>
+      {% for r in roles %}
+      <option value="{{ r.id }}" {% if role_id_filter == r.id|string %}selected{% endif %}>{{ r.name }}</option>
+      {% endfor %}
+    </select>
+
+    <button type="submit" class="btn btn-primary">Filter Pilots</button>
   </form>
 </div>
 
-<!-- Users Table -->
-<div class="card" style="padding:0; overflow:hidden;">
-  <table>
-    <thead>
-      <tr>
-        <th>ID</th>
-        <th>User</th>
-        <th>Role</th>
-        <th>Elo Rating</th>
-        <th>Status</th>
-        <th>Joined</th>
-        <th>Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for u in users.items %}
-      <tr>
-        <td>#{{ u.id }}</td>
-        <td>
-          <div style="font-weight:700;">{{ u.username }}</div>
-          <div style="font-size:0.78rem; color:var(--admin-text-muted);">{{ u.email }}</div>
-        </td>
-        <td><span class="badge badge-primary">{{ u.role|upper }}</span></td>
-        <td style="font-family:var(--admin-mono); font-weight:700;">{{ u.elo_rating }}</td>
-        <td>
-          {% if u.is_banned %}
-          <span class="badge badge-danger">Banned</span>
-          {% elif u.is_suspended %}
-          <span class="badge badge-warning">Suspended</span>
-          {% else %}
-          <span class="badge badge-success">Active</span>
-          {% endif %}
-        </td>
-        <td style="color:var(--admin-text-muted); font-size:0.8rem;">{{ u.created_at.strftime('%Y-%m-%d') }}</td>
-        <td>
-          <a href="{{ url_for('admin.user_detail', user_id=u.id) }}" class="btn btn-sm">Inspect</a>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</div>
+<!-- Bulk Actions Toolbar -->
+<form method="POST" action="{{ url_for('admin.users_bulk_action') }}" id="bulk-action-form">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; padding:0 0.25rem;">
+    <div style="font-size:0.8rem; color:var(--admin-text-muted);">
+      <span id="selected-count">0</span> pilot(s) selected
+    </div>
+    <div style="display:flex; gap:0.5rem;">
+      <button type="submit" name="action" value="suspend" class="btn btn-sm btn-danger" onclick="return confirm('Suspend all selected pilots?');">
+        Bulk Suspend
+      </button>
+      <button type="submit" name="action" value="unsuspend" class="btn btn-sm" onclick="return confirm('Lift suspension on selected pilots?');">
+        Bulk Unsuspend
+      </button>
+    </div>
+  </div>
+
+  <!-- Users Table -->
+  <div class="card" style="padding:0; overflow:hidden;">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:36px;"><input type="checkbox" id="select-all-cb" onclick="toggleSelectAllUsers(this)"></th>
+          <th>ID</th>
+          <th>Pilot & Callsign</th>
+          <th>Authority & Custom Roles</th>
+          <th>Elo MMR</th>
+          <th>Status</th>
+          <th>Last Active</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in users.items %}
+        <tr>
+          <td>
+            {% if not u.is_super_admin and u.id != current_user.id %}
+            <input type="checkbox" name="selected_user_ids" value="{{ u.id }}" class="user-cb" onchange="updateSelectedCount()">
+            {% endif %}
+          </td>
+          <td>#{{ u.id }}</td>
+          <td>
+            <div style="font-weight:700; color:var(--admin-text-main);">
+              {{ u.username }}
+              {% if u.callsign %}
+                <span style="font-size:0.75rem; color:var(--admin-accent); font-family:var(--admin-mono);">[{{ u.display_callsign }}]</span>
+              {% endif %}
+            </div>
+            <div style="font-size:0.75rem; color:var(--admin-text-muted);">{{ u.email }}</div>
+          </td>
+          <td>
+            {% if u.is_super_admin %}
+              <span class="badge badge-warning" style="font-weight:900;">SUPER ADMIN</span>
+            {% elif u.custom_roles %}
+              <div style="display:flex; gap:0.25rem; flex-wrap:wrap;">
+                {% for r in u.custom_roles %}
+                <span class="badge {{ 'badge-primary' if r.is_active else 'badge-danger' }}">{{ r.name }}</span>
+                {% endfor %}
+              </div>
+            {% else %}
+              <span style="font-size:0.75rem; color:var(--admin-text-muted);">Normal Pilot</span>
+            {% endif %}
+          </td>
+          <td style="font-family:var(--admin-mono); font-weight:700;">
+            {{ u.elo_rating }} MMR
+          </td>
+          <td>
+            {% if u.is_banned %}
+              <span class="badge badge-danger">Banned</span>
+            {% elif u.is_suspended %}
+              <span class="badge badge-warning">Suspended</span>
+            {% else %}
+              <span class="badge badge-success">Active</span>
+            {% endif %}
+          </td>
+          <td style="color:var(--admin-text-muted); font-size:0.8rem;">
+            {{ u.last_active.strftime('%Y-%m-%d %H:%M') if u.last_active else 'Never' }}
+          </td>
+          <td>
+            <a href="{{ url_for('admin.user_detail', user_id=u.id) }}" class="btn btn-sm">Inspect Dossier &rarr;</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</form>
+
+<script>
+  function toggleSelectAllUsers(master) {
+    document.querySelectorAll('.user-cb').forEach(cb => cb.checked = master.checked);
+    updateSelectedCount();
+  }
+
+  function updateSelectedCount() {
+    const checked = document.querySelectorAll('.user-cb:checked').length;
+    document.getElementById('selected-count').textContent = checked;
+  }
+</script>
 {% endblock %}

@@ -1,12 +1,14 @@
 """
 TypeSphere - Arcade Hangar & Flight Gaming Controller
-Directs all 11 active educational flight disciplines.
+Directs all 11 active educational flight disciplines, dynamically overlaying
+database-backed administrative configurations from the Control Center.
 """
 
 from flask import Blueprint, render_template, request, jsonify
 from flask_login import current_user
 from app import db
 from app.models.game import GameRecord, ArcadeLeaderboard
+from app.models.arcade_content import ArcadeGameConfig
 from app.services.arcade_content_engine import ArcadeContentEngine
 from app.models.typing import TypingDNA
 
@@ -207,28 +209,77 @@ ARCADE_MASTER_REGISTRY = [
 ]
 
 
+def get_effective_arcade_registry():
+    """
+    Overlays database-backed ArcadeGameConfig states over the master registry.
+    Disabling a game in the Control Center immediately hides it from the public hangar.
+    """
+    try:
+        db_configs = {c.game_slug: c for c in ArcadeGameConfig.query.all()}
+    except Exception:
+        db_configs = {}
+
+    effective_games = []
+    for g in ARCADE_MASTER_REGISTRY:
+        slug = g['slug']
+        if slug in db_configs:
+            cfg = db_configs[slug]
+            # Respect administrative enable/disable toggle
+            if not cfg.is_enabled:
+                continue
+            # Apply customized titles or descriptions from Control Center
+            cloned = g.copy()
+            if cfg.display_title:
+                cloned['title'] = cfg.display_title
+            if cfg.description:
+                cloned['summary'] = cfg.description
+            effective_games.append(cloned)
+        else:
+            effective_games.append(g)
+
+    return effective_games
+
+
 @games_bp.route('/')
 def index():
     user_high_scores = {}
     if current_user.is_authenticated:
         records = ArcadeLeaderboard.query.filter_by(user_id=current_user.id).all()
         user_high_scores = {r.game_mode: r.high_score for r in records}
+
+    active_games = get_effective_arcade_registry()
+
     return render_template(
         'games/index.html',
-        games=ARCADE_MASTER_REGISTRY,
+        games=active_games,
         high_scores=user_high_scores
     )
 
 
 @games_bp.route('/play/<game_slug>')
 def play_arena(game_slug):
+    # Verify game is enabled in database
+    db_cfg = ArcadeGameConfig.query.filter_by(game_slug=game_slug).first()
+    if db_cfg and not db_cfg.is_enabled:
+        return render_template('games/index.html', games=get_effective_arcade_registry())
+
     game_info = next((g for g in ARCADE_MASTER_REGISTRY if g['slug'] == game_slug), None)
     if not game_info:
-        return render_template('games/index.html', games=ARCADE_MASTER_REGISTRY)
+        return render_template('games/index.html', games=get_effective_arcade_registry())
+
+    # Apply database display customizations
+    if db_cfg:
+        game_info = game_info.copy()
+        if db_cfg.display_title:
+            game_info['title'] = db_cfg.display_title
+        if db_cfg.description:
+            game_info['summary'] = db_cfg.description
+
     user_weak_keys = []
     if current_user.is_authenticated and current_user.dna_profile:
         stats = current_user.dna_profile.get_key_stats()
         user_weak_keys = [k.upper() for k, v in stats.items() if v.get('total', 0) >= 4 and (v.get('errors', 0)/v['total']) > 0.08][:6]
+
     return render_template(
         'games/arena.html',
         game=game_info,

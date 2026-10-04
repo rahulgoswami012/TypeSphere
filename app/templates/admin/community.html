@@ -1,0 +1,117 @@
+{% extends 'admin/base_admin.html' %}
+{% block title %}Community & Announcements | Control Center{% endblock %}
+
+{% block admin_content %}
+<div style="margin-bottom:1.5rem;">
+  <h1 style="font-size:1.6rem; font-weight:800;">Community Operations & Announcements</h1>
+  <p style="color:var(--admin-text-muted); font-size:0.85rem;">Publish platform announcements, moderate pilot reviews, and address incoming inquiries.</p>
+</div>
+
+<!-- Announcements Publisher -->
+<div class="card" style="max-width:820px; margin-bottom:1.5rem;">
+  <h3 style="font-size:1.1rem; font-weight:800; margin-bottom:0.75rem; border-bottom:1px solid var(--admin-border); padding-bottom:0.4rem;">
+    Publish Global Platform Announcement
+  </h3>
+  <form method="POST" action="{{ url_for('admin.create_announcement') }}">
+    <div style="margin-bottom:1rem;">
+      <label style="display:block; font-size:0.72rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.3rem;">Announcement Headline</label>
+      <input type="text" name="title" required placeholder="e.g. Flight Grid Season 2 Launched..." style="width:100%; padding:0.6rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff;">
+    </div>
+    <div style="margin-bottom:1.25rem;">
+      <label style="display:block; font-size:0.72rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.3rem;">Detailed Announcement</label>
+      <textarea name="content" rows="3" required placeholder="Enter announcement content to display across public headers..." style="width:100%; padding:0.65rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff; line-height:1.5;"></textarea>
+    </div>
+    <button type="submit" class="btn btn-primary" style="padding:0.65rem 1.75rem; font-weight:800;">
+      Publish Active Announcement &rarr;
+    </button>
+  </form>
+</div>
+
+<!-- Active Announcements List -->
+<div class="card" style="padding:0; overflow:hidden; margin-bottom:1.5rem;">
+  <div style="padding:0.85rem 1.25rem; border-bottom:1px solid var(--admin-border);">
+    <h3 style="font-size:1.05rem; font-weight:800; margin:0;">Platform Announcements ({{ announcements|length }})</h3>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Headline</th>
+        <th>Message Details</th>
+        <th>Created</th>
+        <th>Status</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for a in announcements %}
+      <tr>
+        <td><strong>{{ a.title }}</strong></td>
+        <td style="font-size:0.82rem; color:var(--admin-text-muted); max-width:380px;">{{ a.content }}</td>
+        <td style="font-size:0.78rem; color:var(--admin-text-muted);">{{ a.created_at.strftime('%Y-%m-%d') }}</td>
+        <td>
+          <span class="badge {{ 'badge-success' if a.is_active else 'badge-danger' }}">{{ 'ACTIVE' if a.is_active else 'INACTIVE' }}</span>
+        </td>
+        <td>
+          <div style="display:flex; gap:0.4rem;">
+            <form method="POST" action="{{ url_for('admin.toggle_announcement', announcement_id=a.id) }}">
+              <button type="submit" class="btn btn-sm">{{ 'Archive' if a.is_active else 'Activate' }}</button>
+            </form>
+            <form method="POST" action="{{ url_for('admin.delete_announcement', announcement_id=a.id) }}" onsubmit="return confirm('Delete announcement?');">
+              <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5" style="text-align:center; padding:1.5rem; color:var(--admin-text-muted);">No announcements published.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Reviews Moderation Table -->
+<div class="card" style="padding:0; overflow:hidden;">
+  <div style="padding:0.85rem 1.25rem; border-bottom:1px solid var(--admin-border);">
+    <h3 style="font-size:1.05rem; font-weight:800; margin:0;">Pilot Reviews Moderation ({{ reviews|length }})</h3>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Pilot</th>
+        <th>Rating</th>
+        <th>Review Title</th>
+        <th>Review Text</th>
+        <th>Date</th>
+        <th>Status</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in reviews %}
+      <tr>
+        <td><strong>{{ r.user.display_callsign if hasattr(r.user, 'display_callsign') else r.user.username }}</strong></td>
+        <td style="color:var(--admin-warning); font-weight:800;">★ {{ r.rating }} / 5</td>
+        <td><strong>{{ r.review_title }}</strong></td>
+        <td style="font-size:0.82rem; color:var(--admin-text-muted); max-width:340px;">{{ r.review_text }}</td>
+        <td style="font-size:0.78rem; color:var(--admin-text-muted);">{{ r.created_at.strftime('%Y-%m-%d') }}</td>
+        <td>
+          <span class="badge {{ 'badge-success' if r.is_approved else 'badge-warning' }}">{{ 'APPROVED' if r.is_approved else 'HIDDEN' }}</span>
+        </td>
+        <td>
+          <div style="display:flex; gap:0.4rem;">
+            <form method="POST" action="{{ url_for('admin.toggle_review', review_id=r.id) }}">
+              <button type="submit" class="btn btn-sm">{{ 'Hide' if r.is_approved else 'Approve' }}</button>
+            </form>
+            <form method="POST" action="{{ url_for('admin.delete_review', review_id=r.id) }}" onsubmit="return confirm('Delete review?');">
+              <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" style="text-align:center; padding:1.5rem; color:var(--admin-text-muted);">No reviews submitted.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

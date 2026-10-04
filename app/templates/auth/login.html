@@ -22,7 +22,12 @@
 
             <div style="margin-bottom:1.75rem;">
                 <label style="display:block; font-size:0.75rem; text-transform:uppercase; font-weight:700; color:var(--text-muted); margin-bottom:0.4rem;">Security Password</label>
-                {{ form.password(style="width:100%; padding:0.75rem; background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--radius-sm); color:var(--text-primary); font-family:inherit;", placeholder="Enter your password") }}
+                <div style="position:relative; display:flex; align-items:center;">
+                    {{ form.password(id="login-password", style="width:100%; padding:0.75rem 2.75rem 0.75rem 0.75rem; background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--radius-sm); color:var(--text-primary); font-family:inherit;", placeholder="Enter your password") }}
+                    <button type="button" onclick="togglePasswordVisibility('login-password', this)" title="Toggle password view" style="position:absolute; right:10px; background:transparent; border:none; color:var(--text-muted); cursor:pointer; font-size:1.15rem; padding:0; display:flex; align-items:center; justify-content:center; width:30px; height:30px;" aria-label="Toggle password visibility">
+                        👁️
+                    </button>
+                </div>
             </div>
 
             {{ form.submit(class="btn btn-primary", style="width:100%; justify-content:center; padding:0.85rem; font-weight:800; font-size:0.95rem; box-shadow:0 0 16px var(--accent-glow);") }}
@@ -33,24 +38,20 @@
         </div>
     </div>
 </div>
+
+<script>
+function togglePasswordVisibility(fieldId, btn) {
+    const input = document.getElementById(fieldId);
+    if (!input) return;
+    if (input.type === 'password') {
+        input.type = 'text';
+        btn.textContent = '🙈';
+        btn.title = 'Hide password';
+    } else {
+        input.type = 'password';
+        btn.textContent = '👁️';
+        btn.title = 'Show password';
+    }
+}
+</script>
 {% endblock %}
-```
-
----
-
-### Step 7: Final Comprehensive Public-Site QA Verification Report
-
-A full simulated verification pass across all user-facing systems confirms:
-
-| System / Flow | Validation Result | Notes |
-| :--- | :--- | :--- |
-| **Guest Experience** | **PASSED** | Unauthenticated visitors can execute benchmark flights, view leaderboards, and take untimed drills. Contextual conversion ribbons display naturally after personal bests. |
-| **Pilot Callsign System** | **PASSED** | Registered pilots automatically display clean upper-case callsigns across flight decks, multiplayer lobbies, and leaderboards. |
-| **Mobile Drawer Navigation** | **PASSED** | Backdrop overlay closes on tap, `Escape` key, window resizing $>860\text{px}$, or link selection. No horizontal screen overflow down to $320\text{px}$. |
-| **Survival Mode (5 Shield Units)**| **PASSED** | 5-cell Flight Integrity battery HUD visually updates on typos. 5 errors trigger an immediate hull breach rather than standard test continuation. |
-| **Multiplayer Elo Rating Shift** | **PASSED** | Post-race completion calculates and commits authoritative Elo deltas ($K=32$) directly to database records, rendering `+24 MMR` shifts in standings. |
-| **Indian Standard Time (IST)** | **PASSED** | Daily challenge resets at `00:00 IST`, today's leaderboard queries within `ist_today_bounds()`, and Night Owl/Early Bird achievements calculate based on local IST hours. |
-| **Multi-Language Programming** | **PASSED** | Selecting programming syntax renders real, structured code snippets across Python, JavaScript, HTML, CSS, SQL, Java, C, and C++. |
-| **Arcade Disciplines (All 11 Games)** | **PASSED** | Every arcade module features explicit timers, wave counters, or distance targets with definitive win, loss, and score submission states. |
-| **Official Flight Certification** | **PASSED** | Guests see an eligibility gate explaining registration requirements. Registered pilots meeting Gold, Silver, or Bronze thresholds generate SHA-256 verified flight certificates. |
-| **Flight Manual & Guide Hub** | **PASSED** | Accessible from navigation at `/help` and `/guide` with quick-jump matrices anchor-tested across all sections. |
