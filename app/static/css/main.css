@@ -18,7 +18,7 @@
     --danger-bg: rgba(244, 63, 94, 0.14);
     --warning: #f59e0b;
     --warning-bg: rgba(245, 158, 11, 0.16);
-    --warning-text: #fef08a;
+    --warning-text: #fde047;
     --border-color: #212c47;
     --border-focus: #38bdf8;
     --radius-sm: 6px;
@@ -74,17 +74,21 @@
     --bg-secondary: #f4e6cb;
     --bg-card: #ebdcc0;
     --bg-elevated: #dfceaf;
-    --text-primary: #3d2f1f;
-    --text-secondary: #6b563b;
-    --text-muted: #8c7353;
-    --accent: #b45309;
-    --accent-hover: #92400e;
-    --accent-glow: rgba(180, 83, 9, 0.2);
-    --border-color: #d8c4a5;
-    --border-focus: #b45309;
+    --text-primary: #2d2013; /* High contrast dark obsidian brown */
+    --text-secondary: #5c4428;
+    --text-muted: #7d6244;
+    --accent: #9a3412; /* Rich mahogany terracotta */
+    --accent-hover: #7c2d12;
+    --accent-glow: rgba(154, 52, 18, 0.2);
+    --border-color: #d1bda2;
+    --border-focus: #9a3412;
+    --success: #15803d; /* Readable forest green on beige */
+    --success-bg: rgba(21, 128, 61, 0.14);
+    --danger: #b91c1c; /* Deep crimson */
+    --danger-bg: rgba(185, 28, 28, 0.14);
     --warning: #b45309;
-    --warning-bg: rgba(180, 83, 9, 0.15);
-    --warning-text: #78350f; /* High contrast on light/sepia */
+    --warning-bg: rgba(180, 83, 9, 0.16);
+    --warning-text: #78350f; /* Deep amber readable on light background */
 }
 
 [data-theme="light"] {
@@ -93,16 +97,40 @@
     --bg-card: #f1f5f9;
     --bg-elevated: #e2e8f0;
     --text-primary: #0f172a;
-    --text-secondary: #475569;
+    --text-secondary: #334155;
     --text-muted: #64748b;
     --accent: #0284c7;
     --accent-hover: #0369a1;
     --accent-glow: rgba(2, 132, 199, 0.16);
     --border-color: #cbd5e1;
     --border-focus: #0284c7;
-    --warning: #d97706;
-    --warning-bg: rgba(217, 119, 6, 0.14);
-    --warning-text: #92400e; /* High contrast dark amber */
+    --success: #166534;
+    --success-bg: rgba(22, 101, 52, 0.12);
+    --danger: #b91c1c;
+    --danger-bg: rgba(185, 28, 28, 0.12);
+    --warning: #b45309;
+    --warning-bg: rgba(180, 83, 9, 0.14);
+    --warning-text: #78350f;
+}
+
+/* -------------------------------------------------------------
+   REDUCED MOTION MODE
+   ------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+    *, ::before, ::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+[data-reduce-motion="true"] *, 
+[data-reduce-motion="true"] ::before, 
+[data-reduce-motion="true"] ::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
 }
 
 /* -------------------------------------------------------------
@@ -130,11 +158,12 @@ html, body {
     text-rendering: optimizeLegibility;
 }
 
+/* Main Content Container */
 .container {
     width: 100%;
     max-width: 1140px;
     margin: 0 auto;
-    padding: 0.5rem 1.25rem 2rem;
+    padding: 0.75rem 1.25rem 2.5rem;
     min-height: calc(100vh - 48px);
     flex: 1 0 auto;
     display: flex;
@@ -159,7 +188,7 @@ html, body {
     z-index: 1000;
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
 }
 
 .brand {
@@ -205,9 +234,10 @@ html, body {
     gap: 0.3rem;
 }
 .nav-link:hover, .nav-link.active {
-    color: var(--text-primary);
+    color: var(--accent);
     background: var(--bg-card);
     box-shadow: inset 0 0 0 1px var(--border-color);
+    font-weight: 700;
 }
 
 /* -------------------------------------------------------------
@@ -362,6 +392,7 @@ html, body {
 }
 .card:hover { border-color: rgba(56, 189, 248, 0.3); }
 
+/* 2-Column Parallel Grid for Arcade Games */
 .arcade-cards-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr) !important;
@@ -383,12 +414,39 @@ html, body {
 }
 
 /* -------------------------------------------------------------
-   HIGH-CONTRAST NOTIFICATIONS (Point 1 Fix)
+   PUBLIC BADGE COMPONENT SYSTEM
    ------------------------------------------------------------- */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.22rem 0.6rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.72rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    line-height: 1.2;
+    border: 1px solid transparent;
+}
+.badge-primary { background: var(--accent-glow); color: var(--accent); border-color: var(--accent); }
+.badge-success { background: var(--success-bg); color: var(--success); border-color: var(--success); }
+.badge-warning { background: var(--warning-bg); color: var(--warning-text); border-color: var(--warning); }
+.badge-danger { background: var(--danger-bg); color: var(--danger); border-color: var(--danger); }
+
+/* -------------------------------------------------------------
+   FULL-WIDTH PROPORTIONATE FLASH NOTIFICATIONS
+   ------------------------------------------------------------- */
+#flash-alerts-wrapper {
+    width: 100%;
+    margin: 0 auto 1rem auto;
+}
+
 .alert-box {
+    width: 100%;
     padding: 0.85rem 1.25rem;
     border-radius: var(--radius-sm);
-    margin-bottom: 1rem;
+    margin-bottom: 0.75rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -413,7 +471,7 @@ html, body {
 .alert-warning { 
     background: var(--warning-bg) !important; 
     border-color: var(--warning) !important; 
-    color: var(--warning-text) !important; /* Visible across all light and dark themes */
+    color: var(--warning-text) !important;
 }
 .alert-info { background: var(--accent-glow); border-color: var(--accent); color: var(--text-primary); }
 .alert-close-btn {
@@ -517,7 +575,7 @@ html, body {
 
 @media (max-width: 640px) {
     body { padding-top: 48px; }
-    .container { padding: 0.4rem 0.55rem; }
+    .container { padding: 0.5rem 0.65rem 2rem; }
     .card { padding: 0.85rem; margin-bottom: 0.65rem; border-radius: var(--radius-sm); }
     .footer-grid { grid-template-columns: 1fr; gap: 1.25rem; }
     .footer-bottom-bar { flex-direction: column; align-items: flex-start; }

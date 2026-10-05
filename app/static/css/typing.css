@@ -70,9 +70,7 @@
     transition: stroke-dashoffset 0.12s ease-out;
 }
 
-/* =============================================================
-   COCKPIT SHIELD GENERATOR (SURVIVAL MODE 5-BATTERY HUD)
-   ============================================================= */
+/* Cockpit 5-Shield Battery HUD for Survival Mode */
 .survival-shield-container {
     display: none;
     background: var(--bg-secondary);
@@ -121,9 +119,7 @@
     100% { opacity: 1; }
 }
 
-/* =============================================================
-   TYPING VIEWPORT STYLES
-   ============================================================= */
+/* Viewport Styles */
 .typing-container {
     position: relative;
     background: var(--bg-secondary);
@@ -145,14 +141,12 @@
     box-shadow: 0 0 0 3px var(--accent-glow);
 }
 
-/* Style Modern */
 .typing-container.style-modern {
     background: var(--bg-secondary);
     border: 1.5px solid var(--accent);
     box-shadow: 0 0 15px var(--accent-glow);
 }
 
-/* Style Cockpit */
 .typing-container.style-cockpit {
     border: 2px solid var(--accent);
     box-shadow: 0 0 25px var(--accent-glow), inset 0 0 25px rgba(0, 0, 0, 0.5);
@@ -160,7 +154,6 @@
     background-size: 100% 24px;
 }
 
-/* Style Minimalist */
 .typing-container.style-minimal {
     background: transparent;
     border-color: transparent;
@@ -168,7 +161,6 @@
     padding: 1rem 0;
 }
 
-/* Style Retro Terminal */
 .typing-container.style-terminal {
     background: #020604 !important;
     border: 1.5px solid #22c55e !important;
@@ -187,7 +179,7 @@
     white-space: pre-wrap;
 }
 
-/* Point 2: Distinct Typography Fonts with Accurate Lowercase Glyph Rendering */
+/* Distinct Typography Fonts */
 .font-colus, [data-cfg-font="Colus"] {
     font-family: 'Colus', 'Playfair Display', Georgia, serif !important;
     text-transform: none !important;
@@ -207,10 +199,13 @@
     font-variant: normal !important;
 }
 
-/* Character States */
+/* Character Highlighting & Active Stroke State */
 .char {
     position: relative;
     transition: color 0.04s ease;
+}
+.char.untyped {
+    color: var(--text-muted);
 }
 .char.correct {
     color: var(--text-primary);
@@ -219,6 +214,12 @@
     color: var(--danger);
     text-decoration: underline 2px solid var(--danger);
     background: var(--danger-bg);
+    border-radius: 2px;
+}
+.char.current {
+    color: var(--accent) !important;
+    border-bottom: 2.5px solid var(--accent);
+    background: var(--accent-glow);
     border-radius: 2px;
 }
 
@@ -258,7 +259,6 @@
     50% { opacity: 0; }
 }
 
-/* Ghost Pacer Caret */
 .ghost-caret {
     position: absolute;
     width: 2.5px;
