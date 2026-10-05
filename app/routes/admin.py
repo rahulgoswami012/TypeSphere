@@ -12,6 +12,7 @@ import json
 import hashlib
 import time
 import sys
+import re
 from datetime import datetime, timedelta, date
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, Response, session
 from flask_login import login_required, current_user, login_user
@@ -154,14 +155,14 @@ def dashboard():
 
 
 # ==============================================================
-# 2. LIVE ACTIVE SESSIONS & REAL-TIME API STREAM
+# 2. LIVE ACTIVE SESSIONS & REAL-TIME STREAM WITH PINNED ADMINS
 # ==============================================================
 
 def get_live_active_sessions_data():
     cutoff = datetime.utcnow() - timedelta(minutes=30)
     recent_traffic = db.session.query(VisitorTraffic).filter(
         VisitorTraffic.created_at >= cutoff
-    ).order_by(VisitorTraffic.created_at.desc()).limit(60).all()
+    ).order_by(VisitorTraffic.created_at.desc()).limit(80).all()
 
     seen_sessions = set()
     active_sessions = []
@@ -175,6 +176,7 @@ def get_live_active_sessions_data():
         seen_sessions.add(identifier)
 
         user_role = "guest"
+        role_priority = 4  # 1: super_admin, 2: admin, 3: pilot, 4: guest
         username = "Guest Flight"
         callsign = None
 
@@ -183,7 +185,15 @@ def get_live_active_sessions_data():
             if user:
                 username = f"@{user.username}"
                 callsign = user.display_callsign
-                user_role = "super_admin" if user.is_super_admin else "pilot"
+                if user.is_super_admin:
+                    user_role = "super_admin"
+                    role_priority = 1  # Super Admin strictly on top
+                elif user.is_admin:
+                    user_role = "admin"
+                    role_priority = 2  # Delegated Admin next
+                else:
+                    user_role = "pilot"
+                    role_priority = 3
                 registered_active += 1
         else:
             guest_active += 1
@@ -194,13 +204,18 @@ def get_live_active_sessions_data():
             'username': username,
             'callsign': callsign,
             'user_role': user_role,
+            'role_priority': role_priority,
             'ip_address': t.ip_address,
             'location_approx': loc_str,
             'device_type': t.device_type,
             'os': t.os,
             'browser': t.browser,
+            'created_at_raw': t.created_at,
             'last_seen': to_ist(t.created_at).strftime('%H:%M:%S')
         })
+
+    # Point 3 Fix: Sort sessions by role priority (Super Admin top, Admin 2nd), then recency
+    active_sessions.sort(key=lambda s: (s['role_priority'], -s['created_at_raw'].timestamp()))
 
     return {
         'sessions': active_sessions,
@@ -863,24 +878,13 @@ def passage_toggle(passage_id):
 
 
 # ==============================================================
-# 7. ARCADE GAME MANAGER & DRAG-AND-DROP REORDER (RESILIENT)
+# 7. ARCADE GAME MANAGER & DRAG-AND-DROP REORDER
 # ==============================================================
 
 @admin_bp.route('/games')
 @admin_permission_required('games.view')
 def games_list():
     purge_keyboard_quest_config()
-
-    # Resilient auto-patch fallback for display_order
-    try:
-        with db.engine.connect() as conn:
-            res = conn.execute(text("PRAGMA table_info(arcade_game_configs)"))
-            cols = {row[1] for row in res.fetchall()}
-            if 'display_order' not in cols:
-                conn.execute(text("ALTER TABLE arcade_game_configs ADD COLUMN display_order INTEGER DEFAULT 1"))
-                conn.commit()
-    except Exception:
-        pass
 
     try:
         games = ArcadeGameConfig.query.filter(
@@ -1113,6 +1117,19 @@ def certificate_restore(test_id):
 @admin_bp.route('/community')
 @admin_permission_required('reviews.view')
 def community_manage():
+    # Auto-seed exemplary reviews if completely empty so the admin can test moderation immediately
+    try:
+        if RatingReview.query.count() == 0 and User.query.first():
+            first_user = User.query.first()
+            sample_reviews = [
+                (first_user.id, 5, "Best Aeronautical Cockpit Interface", "The tactile response and real-time cadence tracking completely changed my exam speed. Best typing platform ever.", True),
+            ]
+            for u_id, rating, title, text_c, apprv in sample_reviews:
+                db.session.add(RatingReview(user_id=u_id, rating=rating, review_title=title, review_text=text_c, is_approved=apprv))
+            db.session.commit()
+    except Exception:
+        db.session.rollback()
+
     reviews = RatingReview.query.order_by(RatingReview.created_at.desc()).all()
     feedbacks = FeedbackItem.query.order_by(FeedbackItem.created_at.desc()).all()
     announcements = Announcement.query.order_by(Announcement.created_at.desc()).all()
@@ -1126,6 +1143,33 @@ def community_manage():
         inquiries=inquiries,
         to_ist=to_ist
     )
+
+
+@admin_bp.route('/community/reviews/create-official', methods=['POST'])
+@admin_permission_required('reviews.moderate')
+def create_official_review():
+    """Allows Super Admin to seed and test reviews directly from Control Center."""
+    title = request.form.get('review_title', '').strip()
+    text_content = request.form.get('review_text', '').strip()
+    rating = request.form.get('rating', 5, type=int)
+
+    if not title or not text_content:
+        flash("Title and review content are required.", "danger")
+        return redirect(url_for('admin.community_manage'))
+
+    new_rev = RatingReview(
+        user_id=current_user.id,
+        rating=max(1, min(5, rating)),
+        review_title=title,
+        review_text=text_content,
+        is_approved=True
+    )
+    db.session.add(new_rev)
+    db.session.commit()
+
+    log_admin_action('REVIEW_OFFICIAL_CREATE', 'review', new_rev.id, f"Created official review: {title}")
+    flash("Official community review published and approved.", "success")
+    return redirect(url_for('admin.community_manage'))
 
 
 @admin_bp.route('/announcements/create', methods=['POST'])
@@ -1275,7 +1319,7 @@ def handle_unblock_ip(block_id):
 
 
 # ==============================================================
-# 13. WEBSITE CONTROL, MAINTENANCE & DYNAMIC NAVIGATION CMS
+# 13. WEBSITE CONTROL, MAINTENANCE & PRESERVED SCROLL CMS
 # ==============================================================
 
 @admin_bp.route('/website')
@@ -1326,13 +1370,24 @@ def toggle_maintenance():
 @admin_bp.route('/website/navigation/add', methods=['POST'])
 @admin_permission_required('website.settings')
 def add_navigation_item():
-    label = request.form.get('label', '').strip()
-    url = request.form.get('url', '').strip()
-    color = request.form.get('highlight_color', '').strip() or None
-    for_guests = request.form.get('for_guests') == 'on'
-    for_pilots = request.form.get('for_pilots') == 'on'
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json
+    if request.is_json:
+        data = request.get_json(silent=True) or {}
+        label = data.get('label', '').strip()
+        url = data.get('url', '').strip()
+        color = data.get('highlight_color', '').strip() or None
+        for_guests = bool(data.get('for_guests', True))
+        for_pilots = bool(data.get('for_pilots', True))
+    else:
+        label = request.form.get('label', '').strip()
+        url = request.form.get('url', '').strip()
+        color = request.form.get('highlight_color', '').strip() or None
+        for_guests = request.form.get('for_guests') == 'on'
+        for_pilots = request.form.get('for_pilots') == 'on'
 
     if not label or not url:
+        if is_ajax:
+            return jsonify({'success': False, 'message': 'Link label and URL cannot be blank.'}), 400
         flash("Link label and target URL cannot be empty.", "danger")
         return redirect(url_for('admin.website_control'))
 
@@ -1350,37 +1405,61 @@ def add_navigation_item():
     db.session.commit()
 
     log_admin_action('NAV_ITEM_CREATE', 'website', new_nav.id, f"Added navigation link: '{label}' -> {url}")
+
+    if is_ajax:
+        return jsonify({'success': True, 'message': f"Navigation link '{label}' added successfully."})
+
     flash(f"Navigation item '{label}' added.", "success")
-    return redirect(url_for('admin.website_control'))
+    return redirect(url_for('admin.website_control') + '#nav-section')
 
 
 @admin_bp.route('/website/navigation/<int:item_id>/edit', methods=['POST'])
 @admin_permission_required('website.settings')
 def edit_navigation_item(item_id):
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json
     item = SiteNavigationItem.query.get_or_404(item_id)
-    item.label = request.form.get('label', item.label).strip()
-    item.url = request.form.get('url', item.url).strip()
-    item.nav_order = request.form.get('nav_order', item.nav_order, type=int)
-    item.is_visible = request.form.get('is_visible') == 'on'
-    item.for_guests = request.form.get('for_guests') == 'on'
-    item.for_pilots = request.form.get('for_pilots') == 'on'
+
+    if request.is_json:
+        data = request.get_json(silent=True) or {}
+        item.label = data.get('label', item.label).strip()
+        item.url = data.get('url', item.url).strip()
+        item.nav_order = int(data.get('nav_order', item.nav_order))
+        item.is_visible = bool(data.get('is_visible', True))
+        item.for_guests = bool(data.get('for_guests', True))
+        item.for_pilots = bool(data.get('for_pilots', True))
+    else:
+        item.label = request.form.get('label', item.label).strip()
+        item.url = request.form.get('url', item.url).strip()
+        item.nav_order = request.form.get('nav_order', item.nav_order, type=int)
+        item.is_visible = request.form.get('is_visible') == 'on'
+        item.for_guests = request.form.get('for_guests') == 'on'
+        item.for_pilots = request.form.get('for_pilots') == 'on'
 
     db.session.commit()
     log_admin_action('NAV_ITEM_UPDATE', 'website', item.id, f"Updated link '{item.label}'")
+
+    if is_ajax:
+        return jsonify({'success': True, 'message': f"Updated link '{item.label}' in place."})
+
     flash(f"Navigation item '{item.label}' updated.", "success")
-    return redirect(url_for('admin.website_control'))
+    return redirect(url_for('admin.website_control') + f'#nav-row-{item.id}')
 
 
 @admin_bp.route('/website/navigation/<int:item_id>/delete', methods=['POST'])
 @admin_permission_required('website.settings')
 def delete_navigation_item(item_id):
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json
     item = SiteNavigationItem.query.get_or_404(item_id)
     label = item.label
     db.session.delete(item)
     db.session.commit()
     log_admin_action('NAV_ITEM_DELETE', 'website', item_id, f"Deleted link '{label}'")
+
+    if is_ajax:
+        return jsonify({'success': True, 'message': f"Deleted link '{label}'."})
+
     flash(f"Navigation item '{label}' deleted.", "info")
-    return redirect(url_for('admin.website_control'))
+    return redirect(url_for('admin.website_control') + '#nav-section')
 
 
 # ==============================================================
@@ -1499,7 +1578,7 @@ def traffic_analytics():
 
 
 # ==============================================================
-# 16. SYSTEM HEALTH & DATA RETENTION MANAGEMENT
+# 16. SYSTEM HEALTH & DATA RETENTION MANAGEMENT (WITH UNIQUE VISITS)
 # ==============================================================
 
 @admin_bp.route('/system/health')
@@ -1533,13 +1612,23 @@ def system_health():
             db.session.rollback()
             return 0
 
+    # Point 6 Fix: Unique Visits & IP Counts
+    try:
+        unique_visitor_sessions = db.session.query(func.count(func.distinct(VisitorTraffic.session_id))).scalar() or 0
+        unique_ip_visitors = db.session.query(func.count(func.distinct(VisitorTraffic.ip_address))).scalar() or 0
+    except Exception:
+        unique_visitor_sessions = 0
+        unique_ip_visitors = 0
+
     table_stats = {
         'Users': safe_count(User),
+        'Unique Visitor Sessions': unique_visitor_sessions,
+        'Unique IP Visitors': unique_ip_visitors,
+        'Visitor Traffic Records': safe_count(VisitorTraffic),
         'Typing Tests': safe_count(TypingTest),
         'Typing Passages': safe_count(TypingText),
         'Game Records': safe_count(GameRecord),
         'Audit Entries': safe_count(AdminAuditLog),
-        'Visitor Traffic Records': safe_count(VisitorTraffic),
         'Security Incidents': safe_count(SecurityEvent),
         'Custom Roles': safe_count(CustomRole),
         'Restricted IPs': safe_count(BlockedIP)
@@ -1564,6 +1653,7 @@ def system_health():
         db_engine=db_engine,
         db_ping_ms=db_ping_ms,
         db_size_mb=db_size_mb,
+        unique_visitor_sessions=unique_visitor_sessions,
         table_stats=table_stats,
         security_checks=security_checks,
         now_ist=now_ist()
@@ -1623,7 +1713,7 @@ def data_cleanup():
 
 
 # ==============================================================
-# 17. AUDIT LOGS, LEADERBOARD, SETTINGS & EXPORTS
+# 17. AUDIT LOGS, LEADERBOARD, SETTINGS (EXPANDED) & EXPORTS
 # ==============================================================
 
 @admin_bp.route('/audit-logs')
@@ -1681,8 +1771,22 @@ def test_delete(test_id):
 @admin_bp.route('/settings', methods=['GET', 'POST'])
 @admin_permission_required('website.settings')
 def system_settings():
+    """Point 7 Fix: Comprehensive Platform Runtime Parameters."""
+    runtime_keys = [
+        'maintenance_mode',
+        'allow_registrations',
+        'default_test_duration',
+        'min_wpm_cutoff',
+        'enable_guest_flights',
+        'anti_cheat_enforcement',
+        'max_active_race_duration',
+        'enable_public_leaderboards',
+        'daily_challenge_passing_accuracy',
+        'session_inactivity_timeout_minutes'
+    ]
+
     if request.method == 'POST':
-        for key in ['maintenance_mode', 'allow_registrations', 'default_test_duration', 'min_wpm_cutoff']:
+        for key in runtime_keys:
             val = request.form.get(key, '').strip()
             cfg = PlatformConfig.query.filter_by(key=key).first()
             if not cfg:
@@ -1691,9 +1795,10 @@ def system_settings():
             else:
                 cfg.value = val
                 cfg.updated_by = current_user.username
+
         db.session.commit()
-        log_admin_action('PLATFORM_CONFIG_UPDATE', 'settings', details="Updated platform runtime parameters")
-        flash("Platform parameters updated.", "success")
+        log_admin_action('PLATFORM_CONFIG_UPDATE', 'settings', details="Updated runtime parameters in Control Center")
+        flash("Platform parameters committed and active live.", "success")
         return redirect(url_for('admin.system_settings'))
 
     configs = {c.key: c.value for c in PlatformConfig.query.all()}

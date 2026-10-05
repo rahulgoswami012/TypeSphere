@@ -31,12 +31,15 @@
   </div>
 </div>
 
-<!-- Dynamic Navigation Items Table -->
-<div class="card" style="padding:0; overflow:hidden; margin-bottom:1.5rem;">
-  <div style="padding:1rem 1.25rem; border-bottom:1px solid var(--admin-border); display:flex; justify-content:space-between; align-items:center;">
+<!-- Dynamic Navigation Items Table (Point 5 Fix: In-Place AJAX Updating Preserving Scroll) -->
+<div class="card" id="nav-section" style="padding:0; overflow:hidden; margin-bottom:1.5rem;">
+  <div style="padding:1rem 1.25rem; border-bottom:1px solid var(--admin-border); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
     <div>
       <h3 style="font-size:1.1rem; font-weight:800; margin:0;">Public Navigation Link Directory</h3>
       <p style="color:var(--admin-text-muted); font-size:0.8rem; margin-top:0.2rem;">Single source of truth driving the 48px fixed cockpit navbar.</p>
+    </div>
+    <div id="nav-ajax-toast" style="display:none; padding:0.35rem 0.85rem; border-radius:4px; font-size:0.8rem; font-weight:700; background:rgba(16,185,129,0.15); border:1px solid var(--admin-success); color:var(--admin-success);">
+      ✓ Updated in place!
     </div>
   </div>
 
@@ -52,35 +55,31 @@
         <th>Actions</th>
       </tr>
     </thead>
-    <tbody>
+    <tbody id="nav-table-body">
       {% for item in nav_items %}
-      <tr>
-        <form method="POST" action="{{ url_for('admin.edit_navigation_item', item_id=item.id) }}">
-          <td>
-            <input type="number" name="nav_order" value="{{ item.nav_order }}" style="width:50px; padding:0.3rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:4px; color:#fff; font-family:var(--admin-mono); text-align:center;">
-          </td>
-          <td>
-            <input type="text" name="label" value="{{ item.label }}" style="padding:0.35rem 0.55rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:4px; color:#fff; font-weight:700;">
-          </td>
-          <td>
-            <input type="text" name="url" value="{{ item.url }}" style="padding:0.35rem 0.55rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:4px; color:#fff; font-family:var(--admin-mono); font-size:0.8rem;">
-          </td>
-          <td>
-            <label style="cursor:pointer;"><input type="checkbox" name="for_guests" {% if item.for_guests %}checked{% endif %}> Guests</label>
-          </td>
-          <td>
-            <label style="cursor:pointer;"><input type="checkbox" name="for_pilots" {% if item.for_pilots %}checked{% endif %}> Pilots</label>
-          </td>
-          <td>
-            <label style="cursor:pointer;"><input type="checkbox" name="is_visible" {% if item.is_visible %}checked{% endif %}> Active</label>
-          </td>
-          <td>
-            <div style="display:flex; gap:0.3rem;">
-              <button type="submit" class="btn btn-sm btn-primary">Save</button>
-            </form>
-            <form method="POST" action="{{ url_for('admin.delete_navigation_item', item_id=item.id) }}" onsubmit="return confirm('Remove navigation link?');" style="display:inline;">
-              <button type="submit" class="btn btn-sm btn-danger">&times;</button>
-            </form>
+      <tr id="nav-row-{{ item.id }}">
+        <td>
+          <input type="number" id="order-{{ item.id }}" value="{{ item.nav_order }}" style="width:50px; padding:0.3rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:4px; color:#fff; font-family:var(--admin-mono); text-align:center;">
+        </td>
+        <td>
+          <input type="text" id="label-{{ item.id }}" value="{{ item.label }}" style="padding:0.35rem 0.55rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:4px; color:#fff; font-weight:700;">
+        </td>
+        <td>
+          <input type="text" id="url-{{ item.id }}" value="{{ item.url }}" style="padding:0.35rem 0.55rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:4px; color:#fff; font-family:var(--admin-mono); font-size:0.8rem;">
+        </td>
+        <td>
+          <label style="cursor:pointer;"><input type="checkbox" id="guests-{{ item.id }}" {% if item.for_guests %}checked{% endif %}> Guests</label>
+        </td>
+        <td>
+          <label style="cursor:pointer;"><input type="checkbox" id="pilots-{{ item.id }}" {% if item.for_pilots %}checked{% endif %}> Pilots</label>
+        </td>
+        <td>
+          <label style="cursor:pointer;"><input type="checkbox" id="visible-{{ item.id }}" {% if item.is_visible %}checked{% endif %}> Active</label>
+        </td>
+        <td>
+          <div style="display:flex; gap:0.3rem;">
+            <button type="button" onclick="saveNavAjax({{ item.id }})" class="btn btn-sm btn-primary">Save</button>
+            <button type="button" onclick="deleteNavAjax({{ item.id }})" class="btn btn-sm btn-danger">&times;</button>
           </div>
         </td>
       </tr>
@@ -90,27 +89,27 @@
 </div>
 
 <!-- Add Navigation Item Form -->
-<div class="card" style="max-width:760px;">
+<div class="card" id="add-nav-card" style="max-width:760px;">
   <h3 style="font-size:1.05rem; font-weight:800; margin-bottom:0.75rem; border-bottom:1px solid var(--admin-border); padding-bottom:0.4rem;">
     + Add Public Navigation Link
   </h3>
-  <form method="POST" action="{{ url_for('admin.add_navigation_item') }}">
+  <form id="add-nav-form" onsubmit="submitNavAjax(event)">
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1rem;">
       <div>
         <label style="display:block; font-size:0.72rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.3rem;">Link Text Label</label>
-        <input type="text" name="label" placeholder="e.g. 🛸 Space Radar" required style="width:100%; padding:0.55rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:4px; color:#fff;">
+        <input type="text" id="new-nav-label" placeholder="e.g. 🛸 Space Radar" required style="width:100%; padding:0.55rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:4px; color:#fff;">
       </div>
       <div>
         <label style="display:block; font-size:0.72rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.3rem;">Destination URL</label>
-        <input type="text" name="url" placeholder="e.g. /typing/radar" required style="width:100%; padding:0.55rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:4px; color:#fff; font-family:var(--admin-mono); font-size:0.85rem;">
+        <input type="text" id="new-nav-url" placeholder="e.g. /typing/radar" required style="width:100%; padding:0.55rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:4px; color:#fff; font-family:var(--admin-mono); font-size:0.85rem;">
       </div>
     </div>
     <div style="display:flex; gap:1.5rem; margin-bottom:1.25rem;">
       <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer; font-size:0.85rem;">
-        <input type="checkbox" name="for_guests" checked> Show to Guests (Unauthenticated)
+        <input type="checkbox" id="new-nav-guests" checked> Show to Guests
       </label>
       <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer; font-size:0.85rem;">
-        <input type="checkbox" name="for_pilots" checked> Show to Active Pilots (Authenticated)
+        <input type="checkbox" id="new-nav-pilots" checked> Show to Active Pilots
       </label>
     </div>
     <button type="submit" class="btn btn-primary" style="padding:0.6rem 1.5rem; font-weight:800;">
@@ -118,4 +117,76 @@
     </button>
   </form>
 </div>
+
+<script>
+// Point 5 Fix: In-Place AJAX Updates to preserve exact scroll position
+function showToast(msg) {
+  const toast = document.getElementById('nav-ajax-toast');
+  toast.textContent = msg;
+  toast.style.display = 'block';
+  setTimeout(() => toast.style.display = 'none', 3000);
+}
+
+function saveNavAjax(id) {
+  const payload = {
+    label: document.getElementById('label-' + id).value,
+    url: document.getElementById('url-' + id).value,
+    nav_order: parseInt(document.getElementById('order-' + id).value, 10),
+    for_guests: document.getElementById('guests-' + id).checked,
+    for_pilots: document.getElementById('pilots-' + id).checked,
+    is_visible: document.getElementById('visible-' + id).checked
+  };
+
+  fetch('/admin/website/navigation/' + id + '/edit', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+    body: JSON.stringify(payload)
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.success) {
+      showToast('✓ Link "' + payload.label + '" updated without page jump!');
+    }
+  });
+}
+
+function deleteNavAjax(id) {
+  if (!confirm('Remove this navigation link?')) return;
+  fetch('/admin/website/navigation/' + id + '/delete', {
+    method: 'POST',
+    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.success) {
+      const row = document.getElementById('nav-row-' + id);
+      if (row) row.remove();
+      showToast('✓ Link removed.');
+    }
+  });
+}
+
+function submitNavAjax(e) {
+  e.preventDefault();
+  const payload = {
+    label: document.getElementById('new-nav-label').value,
+    url: document.getElementById('new-nav-url').value,
+    for_guests: document.getElementById('new-nav-guests').checked,
+    for_pilots: document.getElementById('new-nav-pilots').checked
+  };
+
+  fetch('/admin/website/navigation/add', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+    body: JSON.stringify(payload)
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.success) {
+      showToast('✓ Link added!');
+      setTimeout(() => window.location.reload(), 600);
+    }
+  });
+}
+</script>
 {% endblock %}

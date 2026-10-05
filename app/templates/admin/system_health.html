@@ -7,22 +7,22 @@
   <p style="color:var(--admin-text-muted); font-size:0.85rem;">Operational status, database ping benchmarks, storage volumes, and runtime security hygiene.</p>
 </div>
 
-<!-- Diagnostics HUD Cards -->
+<!-- Diagnostics HUD Cards (Includes Unique Visits - Point 6) -->
 <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:1rem; margin-bottom:1.5rem;">
+  <div class="card" style="margin:0;">
+    <div style="font-size:0.72rem; color:var(--admin-text-muted); font-weight:700; text-transform:uppercase;">UNIQUE VISITOR SESSIONS</div>
+    <div style="font-size:1.8rem; font-weight:800; color:var(--admin-accent); margin-top:0.2rem;">
+      {{ unique_visitor_sessions }}
+    </div>
+    <div style="font-size:0.72rem; color:var(--admin-text-muted);">Distinct browser telemetry sessions</div>
+  </div>
+
   <div class="card" style="margin:0;">
     <div style="font-size:0.72rem; color:var(--admin-text-muted); font-weight:700; text-transform:uppercase;">DATABASE PING LATENCY</div>
     <div style="font-size:1.8rem; font-weight:800; color:var(--admin-success); margin-top:0.2rem;">
       {{ db_ping_ms if db_ping_ms is not none else '--' }} <span style="font-size:0.85rem; color:var(--admin-text-muted);">ms</span>
     </div>
     <div style="font-size:0.72rem; color:var(--admin-text-muted);">Dialect: {{ db_engine }}</div>
-  </div>
-
-  <div class="card" style="margin:0;">
-    <div style="font-size:0.72rem; color:var(--admin-text-muted); font-weight:700; text-transform:uppercase;">DATABASE STATUS</div>
-    <div style="font-size:1.8rem; font-weight:800; color:{{ 'var(--admin-success)' if db_status == 'Nominal' else 'var(--admin-warning)' }}; margin-top:0.2rem;">
-      {{ db_status }}
-    </div>
-    <div style="font-size:0.72rem; color:var(--admin-text-muted);">Connection pool nominal</div>
   </div>
 
   <div class="card" style="margin:0;">
@@ -43,7 +43,7 @@
 </div>
 
 <div style="display:grid; grid-template-columns: 1.5fr 1fr; gap:1.5rem; margin-bottom:1.5rem;">
-  <!-- Operational Table Footprint -->
+  <!-- Operational Table Footprint with Unique Visits -->
   <div class="card" style="padding:0; overflow:hidden; margin:0;">
     <div style="padding:0.85rem 1.25rem; border-bottom:1px solid var(--admin-border); display:flex; justify-content:space-between; align-items:center;">
       <h3 style="font-size:1.05rem; font-weight:800; margin:0;">Operational Table Footprint</h3>

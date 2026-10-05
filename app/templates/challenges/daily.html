@@ -2,7 +2,7 @@
 {% block title %}Tactical Daily Recon (24H) | TypeSphere{% endblock %}
 {% block content %}
 <div class="card" style="max-width: 1040px; margin: 0 auto; padding: 1.5rem;">
-    <!-- Daily Flight Header -->
+    <!-- Header -->
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem; border-bottom:1px solid var(--border-color); padding-bottom:1rem;">
         <div>
             <div style="display:flex; align-items:center; gap:0.6rem;">
@@ -30,18 +30,22 @@
         </div>
     </div>
 
-    <!-- If user already completed today's challenge, show debrief and prevent retake -->
+    <!-- Permanent High-Contrast Mission Completion Card (Point 1 Fix) -->
     {% if user_daily_result %}
-        <div class="card" style="background:var(--bg-card); border:1.5px solid var(--success); padding:1.5rem; margin-bottom:1.75rem; text-align:center;">
-            <div style="font-size:2.8rem; margin-bottom:0.4rem;">🏁</div>
-            <h2 style="font-size:1.5rem; font-weight:800; color:var(--success); margin:0 0 0.35rem 0;">
+        <div class="card" style="background:var(--bg-card); border:2px solid var(--success); padding:1.75rem 1.5rem; margin-bottom:1.75rem; text-align:center; box-shadow:0 0 25px rgba(16, 185, 129, 0.15);">
+            <div style="font-size:3rem; margin-bottom:0.35rem;">🏁</div>
+            <h2 style="font-size:1.55rem; font-weight:900; color:var(--success); margin:0 0 0.35rem 0;">
                 Today's 24H Mission Completed
             </h2>
-            <p style="color:var(--text-secondary); font-size:0.9rem; max-width:620px; margin:0 auto 1.25rem; line-height:1.55;">
-                You have already logged your authorized flight for today's IST cycle. To ensure global competitive fairness, pilots are permitted <strong>one single official flight per 24 hours</strong>. Return tomorrow at <strong>00:00 IST</strong> for your next tactical briefing!
+            <p style="color:var(--text-primary); font-size:0.95rem; max-width:650px; margin:0 auto 1.25rem; line-height:1.6; font-weight:500;">
+                You have logged your authorized flight for today's IST cycle. To ensure global competitive integrity, pilots are permitted <strong>one single official flight per 24 hours</strong>. Return tomorrow at <strong>00:00 IST</strong> for your next tactical briefing!
             </p>
 
-            <div class="stats-hud" style="grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); max-width:680px; margin:0 auto 1.25rem;">
+            <div style="display:inline-flex; align-items:center; gap:0.5rem; background:rgba(56, 189, 248, 0.12); border:1px solid var(--accent); padding:0.35rem 1rem; border-radius:20px; font-size:0.82rem; font-weight:800; color:var(--accent); margin-bottom:1.5rem;">
+                ⏳ Next Daily Briefing in: <span id="daily-countdown-ist" style="font-family:var(--font-mono);">--:--:--</span>
+            </div>
+
+            <div class="stats-hud" style="grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); max-width:680px; margin:0 auto 1.5rem;">
                 <div class="stat-box">
                     <div class="stat-label">Your Net Velocity</div>
                     <div class="stat-value" style="color:var(--accent);">{{ user_daily_result.wpm }} WPM</div>
@@ -60,7 +64,7 @@
                 </div>
             </div>
 
-            <div style="display:flex; justify-content:center; gap:0.75rem;">
+            <div style="display:flex; justify-content:center; gap:0.75rem; flex-wrap:wrap;">
                 <a href="{{ url_for('typing.result_page', test_id=user_daily_result.id) }}" class="btn btn-sm">
                     🔍 View Detailed Telemetry Log
                 </a>
@@ -177,4 +181,34 @@
         </div>
     </div>
 </div>
+
+<script>
+// Live Countdown to 00:00 IST Midnight Rollover
+function updateDailyCountdown() {
+    const el = document.getElementById('daily-countdown-ist');
+    if (!el) return;
+
+    const now = new Date();
+    // Indian Standard Time is UTC+5.5
+    const utcTime = now.getTime() + (now.getTimezoneOffset() * 60000);
+    const istNow = new Date(utcTime + (3600000 * 5.5));
+
+    const nextMidnight = new Date(istNow);
+    nextMidnight.setHours(24, 0, 0, 0);
+
+    const diffMs = nextMidnight - istNow;
+    if (diffMs <= 0) {
+        el.textContent = "00:00:00 (Rollover pending)";
+        return;
+    }
+
+    const hours = Math.floor(diffMs / (1000 * 60 * 60));
+    const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((diffMs % (1000 * 60)) / 1000);
+
+    el.textContent = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+}
+setInterval(updateDailyCountdown, 1000);
+updateDailyCountdown();
+</script>
 {% endblock %}

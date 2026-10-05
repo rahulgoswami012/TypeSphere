@@ -124,21 +124,19 @@ def daily():
     today = ist_today()
     challenge = DailyChallenge.query.filter_by(target_date=today).first()
 
-    # Query tests completed strictly within the current IST calendar day
     start_utc, end_utc = ist_today_bounds()
     daily_tests = TypingTest.query.filter(
-        TypingTest.mode == 'daily',
+        TypingTest.mode.in_(['daily', 'mission_daily']),
         TypingTest.suspicious == False,
         TypingTest.completed_at >= start_utc,
         TypingTest.completed_at < end_utc
     ).order_by(TypingTest.wpm.desc()).limit(25).all()
 
-    # Point 3: Check if authenticated pilot has already completed today's 24H challenge
     user_daily_result = None
     if current_user.is_authenticated:
         user_daily_result = TypingTest.query.filter(
             TypingTest.user_id == current_user.id,
-            TypingTest.mode == 'daily',
+            TypingTest.mode.in_(['daily', 'mission_daily']),
             TypingTest.completed_at >= start_utc,
             TypingTest.completed_at < end_utc
         ).order_by(TypingTest.wpm.desc()).first()
@@ -163,12 +161,12 @@ def mission_arena(mission_slug):
     if not mission:
         return redirect(url_for('challenges.index'))
 
-    # Point 3: Prohibit re-taking today's 24H challenge if already logged
+    # Strictly prohibit re-taking today's 24H challenge if already logged
     if mission_slug == 'daily' and current_user.is_authenticated:
         start_utc, end_utc = ist_today_bounds()
         already_completed = TypingTest.query.filter(
             TypingTest.user_id == current_user.id,
-            TypingTest.mode == 'daily',
+            TypingTest.mode.in_(['daily', 'mission_daily']),
             TypingTest.completed_at >= start_utc,
             TypingTest.completed_at < end_utc
         ).first()
@@ -177,7 +175,6 @@ def mission_arena(mission_slug):
             flash("Mission Logged: You have already completed today's 24H Daily Recon. Please check back tomorrow at 00:00 IST for the next briefing.", "warning")
             return redirect(url_for('challenges.daily'))
 
-    # Generate initial mission text according to mission type
     today = ist_today()
     if mission['slug'] == 'daily':
         daily_record = DailyChallenge.query.filter_by(target_date=today).first()
@@ -213,13 +210,13 @@ def submit_mission():
         outcome = data.get('outcome', 'VICTORY')
         total_mistakes = int(data.get('total_mistakes', 0))
 
-        # Enforce single attempt server-side on daily mode
-        if mode == 'daily' or mode == 'mission_daily':
+        # Server-side single attempt enforcement
+        if mode in ['daily', 'mission_daily']:
             if current_user.is_authenticated:
                 start_utc, end_utc = ist_today_bounds()
                 already = TypingTest.query.filter(
                     TypingTest.user_id == current_user.id,
-                    TypingTest.mode == 'daily',
+                    TypingTest.mode.in_(['daily', 'mission_daily']),
                     TypingTest.completed_at >= start_utc,
                     TypingTest.completed_at < end_utc
                 ).first()
@@ -233,7 +230,7 @@ def submit_mission():
         unlocked_badges = []
 
         if current_user.is_authenticated:
-            record_mode = 'daily' if (mode == 'daily' or mode == 'mission_daily') else mode
+            record_mode = 'daily' if mode in ['daily', 'mission_daily'] else mode
             test_record = TypingTest(
                 user_id=current_user.id,
                 mode=record_mode,

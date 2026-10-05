@@ -1,7 +1,7 @@
 """
 TypeSphere - Administrative Security, Audit & Request Telemetry Engine
 Enforces server-side authorization checks, active IP interception,
-device category identification, OS parsing, and city-level geolocation.
+accurate Windows 11 / Android OS version extraction, and cached city-level geolocation.
 """
 
 import uuid
@@ -34,26 +34,42 @@ def detect_device_category(user_agent_str: str) -> str:
 
 
 def parse_device_os(user_agent_str: str) -> str:
-    """Extracts exact operating system and Android/iOS versions."""
+    """Extracts exact operating system and Android/iOS/Windows 11 versions."""
     ua = user_agent_str or ""
-    
-    # Android detection
+
+    # Check Client-Hints for Windows 11 vs 10
+    # In Chromium, Windows 11 platformVersion major >= 13
+    ch_platform = request.headers.get('Sec-CH-UA-Platform', '').replace('"', '').strip()
+    ch_version = request.headers.get('Sec-CH-UA-Platform-Version', '').replace('"', '').strip()
+
+    if ch_platform == 'Windows' and ch_version:
+        try:
+            major = int(ch_version.split('.')[0])
+            if major >= 13:
+                return "Windows 11"
+            return "Windows 10"
+        except Exception:
+            pass
+
+    # Android version extraction
     if "Android" in ua:
         match = re.search(r'Android\s+([0-9\.]+)', ua)
         return f"Android {match.group(1)}" if match else "Android"
-    
+
     # iOS detection
     if "iPhone" in ua or "iPad" in ua:
         match = re.search(r'OS\s+([0-9_]+)', ua)
         ver = match.group(1).replace('_', '.') if match else ""
         return f"iOS {ver}" if ver else "iOS"
-        
-    # Windows detection
+
+    # Standard Windows UA fallback
     if "Windows NT 10.0" in ua:
-        return "Windows 10 / 11"
-    if "Windows NT" in ua:
-        return "Windows PC"
-        
+        return "Windows 11 / 10"
+    if "Windows NT 6.3" in ua:
+        return "Windows 8.1"
+    if "Windows NT 6.1" in ua:
+        return "Windows 7"
+
     # macOS & Linux
     if "Mac OS X" in ua:
         match = re.search(r'Mac OS X\s+([0-9_]+)', ua)
@@ -66,15 +82,31 @@ def parse_device_os(user_agent_str: str) -> str:
 
 
 def get_ip_location(ip: str) -> str:
-    """Resolves actual City, State, and Country from client IP with in-memory caching."""
+    """Resolves City, State/Region, and Country from client IP with in-memory caching."""
     if not ip or ip in ['127.0.0.1', '::1', 'localhost']:
-        return "Local Network (Dev Node)"
-    
+        # For local development, resolve the external developer connection location once
+        if 'local_dev_city' in IP_GEO_CACHE:
+            return IP_GEO_CACHE['local_dev_city']
+        try:
+            req = urllib.request.Request("http://ip-api.com/json/?fields=status,city,regionName,country", headers={'User-Agent': 'TypeSphere-Dev/2.0'})
+            with urllib.request.urlopen(req, timeout=1.0) as res:
+                d = json.loads(res.read().decode('utf-8'))
+                if d.get('status') == 'success':
+                    city = d.get('city') or ""
+                    reg = d.get('regionName') or ""
+                    cnt = d.get('country') or ""
+                    parts = [p for p in [city, reg, cnt] if p]
+                    loc_str = ", ".join(parts) if parts else "India"
+                    IP_GEO_CACHE['local_dev_city'] = loc_str
+                    return loc_str
+        except Exception:
+            pass
+        return "Local Network (India)"
+
     clean_ip = ip.split(',')[0].strip()
     if clean_ip in IP_GEO_CACHE:
         return IP_GEO_CACHE[clean_ip]
-        
-    # Query free geolocation service with 1.2s timeout
+
     try:
         req_url = f"http://ip-api.com/json/{clean_ip}?fields=status,city,regionName,country"
         req = urllib.request.Request(req_url, headers={'User-Agent': 'TypeSphere-Telemetry/2.0'})
@@ -90,7 +122,7 @@ def get_ip_location(ip: str) -> str:
                 return loc_str
     except Exception:
         pass
-        
+
     fallback = "India"
     IP_GEO_CACHE[clean_ip] = fallback
     return fallback

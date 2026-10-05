@@ -4,38 +4,126 @@
 {% block admin_content %}
 <div style="margin-bottom:1.5rem;">
   <h1 style="font-size:1.6rem; font-weight:800;">Platform Runtime Configuration</h1>
-  <p style="color:var(--admin-text-muted); font-size:0.85rem;">Modify operational variables without redeploying code.</p>
+  <p style="color:var(--admin-text-muted); font-size:0.85rem;">Modify operational variables, anti-cheat limits, and access controls live without restarting Python or redeploying code.</p>
 </div>
 
-<div class="card" style="max-width:700px;">
+<!-- Clear Operational Explanation Card (Point 7) -->
+<div class="card" style="background:var(--admin-elevated); border-left:4px solid var(--admin-accent); padding:1rem 1.25rem; margin-bottom:1.5rem;">
+  <h4 style="color:var(--admin-accent); font-size:0.85rem; text-transform:uppercase; font-weight:800; margin-bottom:0.4rem;">
+    Understanding Platform Runtime Configuration
+  </h4>
+  <p style="color:var(--admin-text-muted); font-size:0.85rem; line-height:1.6; margin:0;">
+    Platform Runtime Configuration provides immediate operational switches stored in the database. When you modify values here, your running servers immediately apply these rules to all active typing sessions, registration requests, anti-cheat bounds, and multiplayer lobbies without needing software restarts or codebase modifications.
+  </p>
+</div>
+
+<div class="card" style="max-width:880px;">
   <form method="POST">
-    <div style="margin-bottom:1.25rem;">
-      <label style="display:block; font-size:0.78rem; font-weight:700; color:var(--admin-text-muted); margin-bottom:0.3rem;">MAINTENANCE MODE</label>
-      <select name="maintenance_mode" style="width:100%; padding:0.6rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff;">
-        <option value="false" {% if configs.get('maintenance_mode') != 'true' %}selected{% endif %}>Disabled (Normal Operations)</option>
-        <option value="true" {% if configs.get('maintenance_mode') == 'true' %}selected{% endif %}>Enabled (Block public typing tests)</option>
-      </select>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.25rem; margin-bottom:1.5rem;">
+      <!-- 1. Maintenance Mode -->
+      <div style="background:var(--admin-bg); padding:1rem; border-radius:6px; border:1px solid var(--admin-border);">
+        <label style="display:block; font-size:0.78rem; font-weight:800; color:var(--admin-accent); margin-bottom:0.25rem;">
+          MAINTENANCE MODE
+        </label>
+        <p style="font-size:0.75rem; color:var(--admin-text-muted); margin-bottom:0.5rem; line-height:1.4;">
+          When enabled, non-admin visitors see the maintenance standby screen. Admins bypass automatically.
+        </p>
+        <select name="maintenance_mode" style="width:100%; padding:0.55rem; background:var(--admin-elevated); border:1px solid var(--admin-border); border-radius:4px; color:#fff;">
+          <option value="false" {% if configs.get('maintenance_mode') != 'true' %}selected{% endif %}>Disabled (Normal Operations)</option>
+          <option value="true" {% if configs.get('maintenance_mode') == 'true' %}selected{% endif %}>Enabled (Lock Public Website)</option>
+        </select>
+      </div>
+
+      <!-- 2. Allow Registrations -->
+      <div style="background:var(--admin-bg); padding:1rem; border-radius:6px; border:1px solid var(--admin-border);">
+        <label style="display:block; font-size:0.78rem; font-weight:800; color:var(--admin-accent); margin-bottom:0.25rem;">
+          ONBOARDING PERMISSION
+        </label>
+        <p style="font-size:0.75rem; color:var(--admin-text-muted); margin-bottom:0.5rem; line-height:1.4;">
+          Allows or locks new user enlistments across the platform. Useful during private examination sessions.
+        </p>
+        <select name="allow_registrations" style="width:100%; padding:0.55rem; background:var(--admin-elevated); border:1px solid var(--admin-border); border-radius:4px; color:#fff;">
+          <option value="true" {% if configs.get('allow_registrations') != 'false' %}selected{% endif %}>Allow New Pilot Registrations</option>
+          <option value="false" {% if configs.get('allow_registrations') == 'false' %}selected{% endif %}>Lock Registrations</option>
+        </select>
+      </div>
+
+      <!-- 3. Default Test Duration -->
+      <div style="background:var(--admin-bg); padding:1rem; border-radius:6px; border:1px solid var(--admin-border);">
+        <label style="display:block; font-size:0.78rem; font-weight:800; color:var(--admin-accent); margin-bottom:0.25rem;">
+          DEFAULT BENCHMARK TIMER (SECONDS)
+        </label>
+        <p style="font-size:0.75rem; color:var(--admin-text-muted); margin-bottom:0.5rem; line-height:1.4;">
+          The initial benchmark duration selected for newly arrived pilots on the homepage.
+        </p>
+        <input type="number" name="default_test_duration" value="{{ configs.get('default_test_duration', '60') }}" style="width:100%; padding:0.55rem; background:var(--admin-elevated); border:1px solid var(--admin-border); border-radius:4px; color:#fff; font-family:var(--admin-mono);">
+      </div>
+
+      <!-- 4. Anti-Cheat Cutoff -->
+      <div style="background:var(--admin-bg); padding:1rem; border-radius:6px; border:1px solid var(--admin-border);">
+        <label style="display:block; font-size:0.78rem; font-weight:800; color:var(--admin-accent); margin-bottom:0.25rem;">
+          ANTI-CHEAT WPM CEILING
+        </label>
+        <p style="font-size:0.75rem; color:var(--admin-text-muted); margin-bottom:0.5rem; line-height:1.4;">
+          Scores exceeding this physiological velocity limit are automatically flagged as suspicious.
+        </p>
+        <input type="number" name="min_wpm_cutoff" value="{{ configs.get('min_wpm_cutoff', '250') }}" style="width:100%; padding:0.55rem; background:var(--admin-elevated); border:1px solid var(--admin-border); border-radius:4px; color:#fff; font-family:var(--admin-mono);">
+      </div>
+
+      <!-- 5. Guest Flights Toggle (New) -->
+      <div style="background:var(--admin-bg); padding:1rem; border-radius:6px; border:1px solid var(--admin-border);">
+        <label style="display:block; font-size:0.78rem; font-weight:800; color:var(--admin-accent); margin-bottom:0.25rem;">
+          GUEST FLIGHT ACCESS
+        </label>
+        <p style="font-size:0.75rem; color:var(--admin-text-muted); margin-bottom:0.5rem; line-height:1.4;">
+          Allow unauthenticated cadets to take benchmarks, or enforce account sign-in for all flights.
+        </p>
+        <select name="enable_guest_flights" style="width:100%; padding:0.55rem; background:var(--admin-elevated); border:1px solid var(--admin-border); border-radius:4px; color:#fff;">
+          <option value="true" {% if configs.get('enable_guest_flights') != 'false' %}selected{% endif %}>Enable Guest Flights (Open)</option>
+          <option value="false" {% if configs.get('enable_guest_flights') == 'false' %}selected{% endif %}>Require Account Login</option>
+        </select>
+      </div>
+
+      <!-- 6. Public Leaderboards Visibility (New) -->
+      <div style="background:var(--admin-bg); padding:1rem; border-radius:6px; border:1px solid var(--admin-border);">
+        <label style="display:block; font-size:0.78rem; font-weight:800; color:var(--admin-accent); margin-bottom:0.25rem;">
+          LEADERBOARD ACCESSIBILITY
+        </label>
+        <p style="font-size:0.75rem; color:var(--admin-text-muted); margin-bottom:0.5rem; line-height:1.4;">
+          Controls whether championship standings are public to all or restricted to registered accounts.
+        </p>
+        <select name="enable_public_leaderboards" style="width:100%; padding:0.55rem; background:var(--admin-elevated); border:1px solid var(--admin-border); border-radius:4px; color:#fff;">
+          <option value="true" {% if configs.get('enable_public_leaderboards') != 'false' %}selected{% endif %}>Publicly Visible</option>
+          <option value="false" {% if configs.get('enable_public_leaderboards') == 'false' %}selected{% endif %}>Registered Pilots Only</option>
+        </select>
+      </div>
+
+      <!-- 7. Daily Challenge Accuracy Passing Threshold (New) -->
+      <div style="background:var(--admin-bg); padding:1rem; border-radius:6px; border:1px solid var(--admin-border);">
+        <label style="display:block; font-size:0.78rem; font-weight:800; color:var(--admin-accent); margin-bottom:0.25rem;">
+          DAILY RECON MINIMUM ACCURACY (%)
+        </label>
+        <p style="font-size:0.75rem; color:var(--admin-text-muted); margin-bottom:0.5rem; line-height:1.4;">
+          The minimum accuracy percentage required to pass and log the 24H daily recon flight.
+        </p>
+        <input type="number" name="daily_challenge_passing_accuracy" value="{{ configs.get('daily_challenge_passing_accuracy', '85') }}" style="width:100%; padding:0.55rem; background:var(--admin-elevated); border:1px solid var(--admin-border); border-radius:4px; color:#fff; font-family:var(--admin-mono);">
+      </div>
+
+      <!-- 8. Active Session Inactivity Timeout (New) -->
+      <div style="background:var(--admin-bg); padding:1rem; border-radius:6px; border:1px solid var(--admin-border);">
+        <label style="display:block; font-size:0.78rem; font-weight:800; color:var(--admin-accent); margin-bottom:0.25rem;">
+          SESSION INACTIVITY TIMEOUT (MINUTES)
+        </label>
+        <p style="font-size:0.75rem; color:var(--admin-text-muted); margin-bottom:0.5rem; line-height:1.4;">
+          Minutes of inactivity before an online session transitions from active to idle in telemetry.
+        </p>
+        <input type="number" name="session_inactivity_timeout_minutes" value="{{ configs.get('session_inactivity_timeout_minutes', '30') }}" style="width:100%; padding:0.55rem; background:var(--admin-elevated); border:1px solid var(--admin-border); border-radius:4px; color:#fff; font-family:var(--admin-mono);">
+      </div>
     </div>
 
-    <div style="margin-bottom:1.25rem;">
-      <label style="display:block; font-size:0.78rem; font-weight:700; color:var(--admin-text-muted); margin-bottom:0.3rem;">ALLOW NEW REGISTRATIONS</label>
-      <select name="allow_registrations" style="width:100%; padding:0.6rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff;">
-        <option value="true" {% if configs.get('allow_registrations') != 'false' %}selected{% endif %}>Allow User Onboarding</option>
-        <option value="false" {% if configs.get('allow_registrations') == 'false' %}selected{% endif %}>Lock Registrations</option>
-      </select>
-    </div>
-
-    <div style="margin-bottom:1.25rem;">
-      <label style="display:block; font-size:0.78rem; font-weight:700; color:var(--admin-text-muted); margin-bottom:0.3rem;">DEFAULT TEST DURATION (SECONDS)</label>
-      <input type="number" name="default_test_duration" value="{{ configs.get('default_test_duration', '60') }}" style="width:100%; padding:0.6rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff;">
-    </div>
-
-    <div style="margin-bottom:1.5rem;">
-      <label style="display:block; font-size:0.78rem; font-weight:700; color:var(--admin-text-muted); margin-bottom:0.3rem;">ANTI-CHEAT HUMAN WPM CEILING</label>
-      <input type="number" name="min_wpm_cutoff" value="{{ configs.get('min_wpm_cutoff', '250') }}" style="width:100%; padding:0.6rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff;">
-    </div>
-
-    <button type="submit" class="btn btn-primary" style="padding:0.7rem 1.75rem;">Save System Parameters</button>
+    <button type="submit" class="btn btn-primary" style="padding:0.75rem 2.5rem; font-weight:800;">
+      Commit Runtime Parameters Live &rarr;
+    </button>
   </form>
 </div>
 {% endblock %}
