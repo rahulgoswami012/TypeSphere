@@ -4,7 +4,7 @@ Directs all 11 active educational flight disciplines, dynamically overlaying
 database-backed administrative configurations from the Control Center in custom display order.
 """
 
-from flask import Blueprint, render_template, request, jsonify
+from flask import Blueprint, render_template, request, jsonify, redirect, url_for, flash
 from flask_login import current_user
 from app import db
 from app.models.game import GameRecord, ArcadeLeaderboard
@@ -211,28 +211,29 @@ ARCADE_MASTER_REGISTRY = [
 
 def get_effective_arcade_registry():
     """
-    Overlays database-backed ArcadeGameConfig states over the master registry,
-    ordering games strictly by the database `display_order` set in the Control Center.
+    Overlays database-backed ArcadeGameConfig states over the master registry.
+    Strictly excludes disabled games from the list and respects display_order.
     """
-    master_map = {g['slug']: g for g in ARCADE_MASTER_REGISTRY}
+    master_map = {g['slug']: g for g in ARCADE_MASTER_REGISTRY if g['slug'] != 'keyboard_quest'}
 
     try:
-        # Fetch enabled games ordered strictly by display_order
-        db_configs = ArcadeGameConfig.query.filter(
-            ArcadeGameConfig.game_slug != 'keyboard_quest',
-            ArcadeGameConfig.is_enabled == True
+        all_configs = ArcadeGameConfig.query.filter(
+            ArcadeGameConfig.game_slug != 'keyboard_quest'
         ).order_by(ArcadeGameConfig.display_order.asc(), ArcadeGameConfig.id.asc()).all()
     except Exception:
-        db_configs = []
+        all_configs = []
 
-    if not db_configs:
-        return [g for g in ARCADE_MASTER_REGISTRY if g['slug'] != 'keyboard_quest']
+    if not all_configs:
+        return list(master_map.values())
 
+    disabled_slugs = {c.game_slug for c in all_configs if not c.is_enabled}
     effective_games = []
     seen_slugs = set()
 
-    for cfg in db_configs:
+    for cfg in all_configs:
         slug = cfg.game_slug
+        if slug in disabled_slugs:
+            continue
         if slug in master_map and slug not in seen_slugs:
             seen_slugs.add(slug)
             cloned = master_map[slug].copy()
@@ -242,9 +243,8 @@ def get_effective_arcade_registry():
                 cloned['summary'] = cfg.description
             effective_games.append(cloned)
 
-    # Append any remaining master registry entries that were not explicitly ordered in database
-    for g in ARCADE_MASTER_REGISTRY:
-        if g['slug'] not in seen_slugs and g['slug'] != 'keyboard_quest':
+    for slug, g in master_map.items():
+        if slug not in seen_slugs and slug not in disabled_slugs:
             effective_games.append(g)
 
     return effective_games
@@ -268,13 +268,19 @@ def index():
 
 @games_bp.route('/play/<game_slug>')
 def play_arena(game_slug):
+    if game_slug == 'keyboard_quest':
+        flash("This discipline is retired.", "warning")
+        return redirect(url_for('games.index'))
+
     db_cfg = ArcadeGameConfig.query.filter_by(game_slug=game_slug).first()
     if db_cfg and not db_cfg.is_enabled:
-        return render_template('games/index.html', games=get_effective_arcade_registry())
+        flash("This flight discipline is currently deactivated by Flight Control.", "warning")
+        return redirect(url_for('games.index'))
 
     game_info = next((g for g in ARCADE_MASTER_REGISTRY if g['slug'] == game_slug), None)
     if not game_info:
-        return render_template('games/index.html', games=get_effective_arcade_registry())
+        flash("Discipline not found.", "warning")
+        return redirect(url_for('games.index'))
 
     if db_cfg:
         game_info = game_info.copy()

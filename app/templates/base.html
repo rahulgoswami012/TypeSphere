@@ -41,15 +41,13 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/keyboard.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}">
 </head>
-<body {% if request.endpoint in ['auth.login', 'auth.register'] %}style="padding-top:0 !important; background:radial-gradient(circle at 50% 30%, #0d1527 0%, #050811 100%); min-height:100vh; display:flex; align-items:center; justify-content:center;"{% endif %}>
+<body {% if request.endpoint in ['auth.login', 'auth.register'] %}style="padding-top:0 !important; background:radial-gradient(circle at 50% 30%, #0d1527 0%, #050811 100%); min-height:100vh; display:flex; align-items:center; justify-content:center; overflow-y:auto;"{% endif %}>
     <div id="user-auth-meta" 
          data-authenticated="{{ 'true' if is_registered_pilot else 'false' }}" 
          data-callsign="{{ current_pilot.display_callsign if current_pilot else 'CADET' }}"
          style="display:none;"></div>
 
-    <!-- Point 5: Hide Navbar, Announcements, Mobile Drawer, and Footer on Auth Pages -->
     {% if request.endpoint not in ['auth.login', 'auth.register'] %}
-        <!-- Active Global Platform Announcement Banner -->
         {% if platform_announcement %}
         <aside style="position:fixed; top:48px; left:0; right:0; background:linear-gradient(90deg, #0284c7, #38bdf8); color:#04101e; font-weight:700; font-size:0.82rem; padding:0.35rem 1.25rem; z-index:999; display:flex; justify-content:space-between; align-items:center; box-shadow:0 2px 10px rgba(0,0,0,0.5);" aria-label="Announcement">
             <div>
@@ -59,10 +57,8 @@
         </aside>
         {% endif %}
 
-        <!-- Mobile Drawer Overlay Backdrop -->
         <div id="mobile-nav-backdrop" class="mobile-nav-backdrop" onclick="closeMobileNav()"></div>
 
-        <!-- Sliding Mobile Navigation Drawer -->
         <aside id="mobile-nav-drawer" class="mobile-nav-drawer">
             <div class="mobile-drawer-header">
                 <div style="display:flex; align-items:center; gap:0.5rem; font-weight:800; color:var(--accent);">
@@ -135,7 +131,6 @@
                 TypeSphere
             </a>
 
-            <!-- Desktop Dynamic Navigation Items -->
             <ul class="nav-links">
                 {% if dynamic_nav_items %}
                     {% for item in dynamic_nav_items %}
@@ -189,10 +184,10 @@
     {% endif %}
 
     <!-- Main Viewport Deck -->
-    <main class="container" {% if request.endpoint in ['auth.login', 'auth.register'] %}style="min-height:auto; padding:1.5rem 1rem; width:100%; display:flex; flex-direction:column; align-items:center; justify-content:center;"{% elif platform_announcement %}style="padding-top: calc(48px + 1.25rem);"{% endif %}>
+    <main class="container" {% if request.endpoint in ['auth.login', 'auth.register'] %}style="min-height:auto; padding:1rem; width:100%; display:flex; flex-direction:column; align-items:center; justify-content:center;"{% elif platform_announcement %}style="padding-top: calc(48px + 1.25rem);"{% endif %}>
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
-                <div id="flash-alerts-wrapper" style="width:100%; max-width:460px;">
+                <div id="flash-alerts-wrapper" style="width:100%; max-width:440px;">
                     {% for category, msg in messages %}
                         <div class="alert-box alert-{{ category }}">
                             <span>{{ msg }}</span>
@@ -204,18 +199,8 @@
         {% endwith %}
 
         {% block content %}{% endblock %}
-
-        <!-- Point 5: On Auth pages, display simple subtle return link -->
-        {% if request.endpoint in ['auth.login', 'auth.register'] %}
-        <div style="text-align:center; margin-top:1.25rem;">
-            <a href="{{ url_for('typing.test_page') }}" style="color:var(--text-muted); font-size:0.85rem; text-decoration:none; font-weight:600;">
-                &larr; Return to TypeSphere Flight Deck
-            </a>
-        </div>
-        {% endif %}
     </main>
 
-    <!-- Telemetry Footer (Hidden on Auth Pages) -->
     {% if request.endpoint not in ['auth.login', 'auth.register'] %}
     <footer class="app-footer">
         <div class="footer-container">

@@ -37,7 +37,8 @@ def create_app(config_class=Config):
     from app.models.admin import (
         RolePermission, AdminAuditLog, UserActivity, VisitorTraffic,
         SecurityEvent, PlatformConfig, Permission, CustomRole,
-        role_permissions, user_roles, BlockedIP, FeatureFlag
+        role_permissions, user_roles, BlockedIP, FeatureFlag,
+        SiteNavigationItem
     )
 
     @login_manager.user_loader
@@ -95,13 +96,21 @@ def create_app(config_class=Config):
                     if 'time_of_day_ist' not in t_cols:
                         conn.execute(text("ALTER TABLE typing_tests ADD COLUMN time_of_day_ist INTEGER"))
 
+                # Patch arcade_game_configs with display_order (Issue 10 Fix)
+                res = conn.execute(text("PRAGMA table_info(arcade_game_configs)"))
+                ag_cols = {row[1] for row in res.fetchall()}
+                if ag_cols:
+                    if 'display_order' not in ag_cols:
+                        conn.execute(text("ALTER TABLE arcade_game_configs ADD COLUMN display_order INTEGER DEFAULT 1"))
+
                 conn.commit()
         except Exception:
             pass
 
-        # Seed canonical system permissions
-        from app.services.admin_security import ensure_permissions_seeded
+        # Seed canonical system permissions and default navigation
+        from app.services.admin_security import ensure_permissions_seeded, ensure_navigation_seeded
         ensure_permissions_seeded()
+        ensure_navigation_seeded()
 
     # Register Blueprints
     from app.routes.auth import auth_bp

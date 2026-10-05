@@ -1,10 +1,13 @@
 """
 TypeSphere - Administrative Security, Audit & Request Telemetry Engine
-Enforces server-side authorization checks, uneditable audit logging,
-active IP interception, maintenance mode guards, and dynamic context injection.
+Enforces server-side authorization checks, active IP interception,
+device category identification, OS parsing, and city-level geolocation.
 """
 
 import uuid
+import re
+import urllib.request
+import json
 from functools import wraps
 from datetime import datetime, timedelta
 from flask import request, abort, redirect, url_for, flash, session, render_template
@@ -17,9 +20,83 @@ from app.models.admin import (
 )
 from app.models.feedback import Announcement
 
+IP_GEO_CACHE = {}
+
+
+def detect_device_category(user_agent_str: str) -> str:
+    """Robust device classification (mobile, tablet, desktop) from raw User-Agent."""
+    ua = (user_agent_str or "").lower()
+    if 'ipad' in ua or 'tablet' in ua:
+        return 'tablet'
+    if 'mobile' in ua or 'android' in ua or 'iphone' in ua or 'ipod' in ua:
+        return 'mobile'
+    return 'desktop'
+
+
+def parse_device_os(user_agent_str: str) -> str:
+    """Extracts exact operating system and Android/iOS versions."""
+    ua = user_agent_str or ""
+    
+    # Android detection
+    if "Android" in ua:
+        match = re.search(r'Android\s+([0-9\.]+)', ua)
+        return f"Android {match.group(1)}" if match else "Android"
+    
+    # iOS detection
+    if "iPhone" in ua or "iPad" in ua:
+        match = re.search(r'OS\s+([0-9_]+)', ua)
+        ver = match.group(1).replace('_', '.') if match else ""
+        return f"iOS {ver}" if ver else "iOS"
+        
+    # Windows detection
+    if "Windows NT 10.0" in ua:
+        return "Windows 10 / 11"
+    if "Windows NT" in ua:
+        return "Windows PC"
+        
+    # macOS & Linux
+    if "Mac OS X" in ua:
+        match = re.search(r'Mac OS X\s+([0-9_]+)', ua)
+        ver = match.group(1).replace('_', '.') if match else ""
+        return f"macOS {ver}" if ver else "macOS"
+    if "Linux" in ua:
+        return "Linux"
+
+    return "Standard OS"
+
+
+def get_ip_location(ip: str) -> str:
+    """Resolves actual City, State, and Country from client IP with in-memory caching."""
+    if not ip or ip in ['127.0.0.1', '::1', 'localhost']:
+        return "Local Network (Dev Node)"
+    
+    clean_ip = ip.split(',')[0].strip()
+    if clean_ip in IP_GEO_CACHE:
+        return IP_GEO_CACHE[clean_ip]
+        
+    # Query free geolocation service with 1.2s timeout
+    try:
+        req_url = f"http://ip-api.com/json/{clean_ip}?fields=status,city,regionName,country"
+        req = urllib.request.Request(req_url, headers={'User-Agent': 'TypeSphere-Telemetry/2.0'})
+        with urllib.request.urlopen(req, timeout=1.2) as response:
+            data = json.loads(response.read().decode('utf-8'))
+            if data.get('status') == 'success':
+                city = data.get('city') or ""
+                region = data.get('regionName') or ""
+                country = data.get('country') or ""
+                parts = [p for p in [city, region, country] if p]
+                loc_str = ", ".join(parts) if parts else "India"
+                IP_GEO_CACHE[clean_ip] = loc_str
+                return loc_str
+    except Exception:
+        pass
+        
+    fallback = "India"
+    IP_GEO_CACHE[clean_ip] = fallback
+    return fallback
+
 
 def log_admin_action(action: str, target_type: str, target_id=None, details=None):
-    """Securely writes an uneditable administrative audit entry."""
     try:
         ip = request.headers.get('X-Forwarded-For', request.remote_addr)
         if ip and ',' in ip:
@@ -41,7 +118,6 @@ def log_admin_action(action: str, target_type: str, target_id=None, details=None
 
 
 def log_security_incident(event_type: str, severity: str, description: str, identifier: str = None):
-    """Stores critical authentication faults and anomalous requests."""
     try:
         ip = request.headers.get('X-Forwarded-For', request.remote_addr)
         if ip and ',' in ip:
@@ -62,7 +138,6 @@ def log_security_incident(event_type: str, severity: str, description: str, iden
 
 
 def record_user_activity(user_id: int, action: str, feature: str = "Platform", details: str = None):
-    """Logs individual user interactions in chronological activity stream."""
     try:
         ip = request.headers.get('X-Forwarded-For', request.remote_addr)
         if ip and ',' in ip:
@@ -82,23 +157,15 @@ def record_user_activity(user_id: int, action: str, feature: str = "Platform", d
         db.session.rollback()
 
 
-# ==============================================================
-# ACTIVE IP CONTROLS
-# ==============================================================
-
 def is_ip_blocked(ip: str) -> bool:
-    """Checks whether the client IP address is currently restricted."""
     if not ip:
         return False
     clean_ip = ip.split(',')[0].strip()
     blocked = BlockedIP.query.filter_by(ip_address=clean_ip).first()
-    if not blocked:
-        return False
-    return blocked.is_currently_blocked
+    return bool(blocked and blocked.is_currently_blocked)
 
 
 def block_ip(ip: str, reason: str, is_permanent: bool = False, duration_hours: int = 24, blocked_by: str = 'SuperAdmin') -> bool:
-    """Restricts an IP from platform access."""
     clean_ip = ip.split(',')[0].strip()
     expires_at = None if is_permanent else datetime.utcnow() + timedelta(hours=duration_hours)
     
@@ -124,7 +191,6 @@ def block_ip(ip: str, reason: str, is_permanent: bool = False, duration_hours: i
 
 
 def unblock_ip(ip: str, unblocked_by: str = 'SuperAdmin') -> bool:
-    """Lifts restriction on an IP."""
     clean_ip = ip.split(',')[0].strip()
     existing = BlockedIP.query.filter_by(ip_address=clean_ip).first()
     if existing:
@@ -135,12 +201,7 @@ def unblock_ip(ip: str, unblocked_by: str = 'SuperAdmin') -> bool:
     return False
 
 
-# ==============================================================
-# FEATURE FLAGS & MAINTENANCE INTERCEPTION
-# ==============================================================
-
 def is_feature_enabled(flag_key: str, default: bool = False) -> bool:
-    """Evaluates whether a runtime feature flag is active."""
     try:
         flag = FeatureFlag.query.filter_by(key=flag_key).first()
         if flag:
@@ -151,7 +212,6 @@ def is_feature_enabled(flag_key: str, default: bool = False) -> bool:
 
 
 def is_maintenance_active() -> bool:
-    """Checks whether the platform is in maintenance lockdown."""
     try:
         cfg = PlatformConfig.query.filter_by(key='maintenance_mode').first()
         return bool(cfg and cfg.value.lower() == 'true')
@@ -160,21 +220,17 @@ def is_maintenance_active() -> bool:
 
 
 def capture_traffic(app):
-    """Before/after request hooks for analytics, last_active, IP interception, and maintenance."""
     @app.before_request
     def intercept_and_track():
         client_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
         if client_ip and ',' in client_ip:
             client_ip = client_ip.split(',')[0].strip()
 
-        # 1. Enforce active IP blocks
         if is_ip_blocked(client_ip):
             log_security_incident('BLOCKED_IP_CONNECTION_ATTEMPT', 'MEDIUM', f"Blocked IP {client_ip} tried accessing {request.path}", identifier=client_ip)
             abort(403)
 
-        # 2. Enforce platform maintenance mode
         if is_maintenance_active():
-            # Allow admins, static files, auth login, and maintenance toggle through
             is_admin_user = current_user.is_authenticated and current_user.is_admin
             exempt_prefixes = ['/static', '/auth', '/admin', '/socket.io']
             is_exempt_path = any(request.path.startswith(prefix) for prefix in exempt_prefixes)
@@ -184,11 +240,9 @@ def capture_traffic(app):
                 msg = cfg_msg.value if cfg_msg else "Flight control systems are undergoing scheduled calibration. Normal flights will resume shortly."
                 return render_template('errors/maintenance.html', message=msg), 503
 
-        # 3. Maintain anonymous visitor session token
         if 'visitor_uuid' not in session:
             session['visitor_uuid'] = str(uuid.uuid4())
 
-        # 4. Update last_active timestamp on authenticated accounts
         if current_user.is_authenticated:
             try:
                 current_user.last_active = datetime.utcnow()
@@ -205,8 +259,12 @@ def capture_traffic(app):
             if client_ip and ',' in client_ip:
                 client_ip = client_ip.split(',')[0].strip()
 
+            ua_str = request.headers.get('User-Agent', '')
+            dev = detect_device_category(ua_str)
+            os_detected = parse_device_os(ua_str)
+
             ua = request.user_agent
-            dev = 'mobile' if ua.platform in ['android', 'iphone'] else 'desktop'
+            browser_name = ua.browser[:60] if ua and ua.browser else "Browser"
 
             traffic = VisitorTraffic(
                 session_id=session.get('visitor_uuid', 'anon'),
@@ -215,8 +273,8 @@ def capture_traffic(app):
                 path=request.path[:254],
                 method=request.method,
                 referrer=request.referrer[:254] if request.referrer else None,
-                browser=ua.browser[:60] if ua.browser else "Other",
-                os=ua.platform[:60] if ua.platform else "Other",
+                browser=browser_name,
+                os=os_detected,
                 device_type=dev,
                 status_code=response.status_code
             )
@@ -229,7 +287,6 @@ def capture_traffic(app):
 
     @app.context_processor
     def inject_platform_globals():
-        """Injects dynamic navigation, announcements, and feature flags into templates."""
         try:
             active_announcement = Announcement.query.filter_by(is_active=True).order_by(Announcement.id.desc()).first()
         except Exception:
@@ -248,30 +305,15 @@ def capture_traffic(app):
         }
 
 
-# ==============================================================
-# AUTHORITATIVE SERVER-SIDE PERMISSION DECORATOR
-# ==============================================================
-
 def admin_permission_required(permission: str):
-    """
-    Authoritative server-side decorator checking granular permissions.
-    The Super Admin inherently bypasses all restrictions.
-    """
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
             if not current_user.is_authenticated:
-                log_security_incident('UNAUTHENTICATED_ADMIN_ACCESS', 'HIGH', f"Anonymous access attempted at {request.path}")
                 flash("Authentication required to access the TypeSphere Control Center.", "warning")
                 return redirect(url_for('auth.login', next=request.url))
 
             if not current_user.is_admin:
-                log_security_incident(
-                    'UNAUTHORIZED_ADMIN_ATTEMPT',
-                    'CRITICAL',
-                    f"User @{current_user.username} tried accessing {request.path}",
-                    identifier=current_user.username
-                )
                 flash("Access denied: You lack administrative clearance.", "danger")
                 return redirect(url_for('typing.test_page'))
 
@@ -286,7 +328,6 @@ def admin_permission_required(permission: str):
 
 
 def ensure_permissions_seeded():
-    """Seeds the canonical system permissions registry in the database."""
     try:
         existing_codes = {p.code for p in Permission.query.all()}
         added = False
@@ -306,7 +347,6 @@ def ensure_permissions_seeded():
 
 
 def ensure_navigation_seeded():
-    """Seeds the canonical default navigation items in the database if empty."""
     try:
         if SiteNavigationItem.query.count() == 0:
             default_links = [

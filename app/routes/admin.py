@@ -12,7 +12,6 @@ import json
 import hashlib
 import time
 import sys
-import re
 from datetime import datetime, timedelta, date
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, Response, session
 from flask_login import login_required, current_user, login_user
@@ -33,7 +32,8 @@ from app.models.admin import (
 )
 from app.services.admin_security import (
     admin_permission_required, log_admin_action, 
-    log_security_incident, block_ip, unblock_ip
+    log_security_incident, block_ip, unblock_ip,
+    get_ip_location, parse_device_os
 )
 from app.utils.timezone import to_ist, now_ist, ist_today
 
@@ -43,14 +43,12 @@ admin_bp = Blueprint('admin', __name__)
 @admin_bp.before_request
 @login_required
 def enforce_admin_global():
-    """Restricts access exclusively to authenticated pilots with administrative clearance."""
     if not current_user.is_admin:
         flash("Unauthorized flight sector. Access denied.", "danger")
         return redirect(url_for('typing.test_page'))
 
 
 def seed_default_roles_if_empty():
-    """Seeds default operational roles so the Super Admin has ready-made roles to assign."""
     try:
         if CustomRole.query.count() == 0:
             defaults = [
@@ -77,7 +75,6 @@ def seed_default_roles_if_empty():
 
 
 def purge_keyboard_quest_config():
-    """Ensures keyboard_quest is removed from ArcadeGameConfig so only the 11 active disciplines exist."""
     try:
         kq = ArcadeGameConfig.query.filter_by(game_slug='keyboard_quest').first()
         if kq:
@@ -157,49 +154,11 @@ def dashboard():
 
 
 # ==============================================================
-# 2. LIVE ACTIVE SESSIONS WITH MAKE & MODEL PARSER
+# 2. LIVE ACTIVE SESSIONS & REAL-TIME API STREAM
 # ==============================================================
 
-def parse_device_make_model(user_agent: str, os_name: str, dev_type: str) -> str:
-    """Extracts hardware make and model from client User-Agent strings."""
-    if not user_agent:
-        return f"{os_name} Workstation" if os_name else "Standard Computer"
-
-    ua = user_agent
-
-    # Mobile & Tablet device identification
-    if "iPhone" in ua:
-        if "iPhone16" in ua or "iPhone15" in ua: return "Apple iPhone 15 / 16"
-        if "iPhone14" in ua: return "Apple iPhone 14"
-        if "iPhone13" in ua: return "Apple iPhone 13"
-        return "Apple iPhone"
-    if "iPad" in ua: return "Apple iPad"
-    if "Samsung" in ua or "SM-" in ua or "GT-" in ua:
-        match = re.search(r'(SM-[A-Z0-9]+)', ua)
-        return f"Samsung Galaxy ({match.group(1)})" if match else "Samsung Galaxy"
-    if "Pixel" in ua:
-        match = re.search(r'(Pixel\s[0-9a-zA-Z]+)', ua)
-        return f"Google {match.group(1)}" if match else "Google Pixel"
-    if "Xiaomi" in ua or "Redmi" in ua or "POCO" in ua:
-        return "Xiaomi / Redmi Mobile"
-    if "OnePlus" in ua: return "OnePlus Mobile"
-
-    # Desktop / Laptop identification
-    if "Macintosh" in ua or "Mac OS X" in ua: return "Apple Mac (MacBook / iMac)"
-    if "Windows NT 10.0" in ua: return "Windows 10 / 11 PC"
-    if "Windows NT" in ua: return "Windows PC"
-    if "X11; Linux" in ua or "Ubuntu" in ua: return "Linux Workstation"
-    if "CrOS" in ua: return "Google Chromebook"
-
-    return f"{os_name} Station" if os_name else "Standard Device"
-
-
-@admin_bp.route('/sessions')
-@admin_permission_required('users.view')
-def live_sessions():
-    """Displays active sessions (guests, registered pilots, and admins) within the last 30 minutes."""
+def get_live_active_sessions_data():
     cutoff = datetime.utcnow() - timedelta(minutes=30)
-    
     recent_traffic = db.session.query(VisitorTraffic).filter(
         VisitorTraffic.created_at >= cutoff
     ).order_by(VisitorTraffic.created_at.desc()).limit(60).all()
@@ -224,18 +183,12 @@ def live_sessions():
             if user:
                 username = f"@{user.username}"
                 callsign = user.display_callsign
-                if user.is_super_admin:
-                    user_role = "super_admin"
-                else:
-                    user_role = "pilot"
+                user_role = "super_admin" if user.is_super_admin else "pilot"
                 registered_active += 1
         else:
             guest_active += 1
 
-        dev_model = parse_device_make_model(None, t.os, t.device_type)
-        
-        # Approximate location formatting
-        loc_str = "India (Approximate)" if "127.0.0.1" not in t.ip_address else "Local Network"
+        loc_str = get_ip_location(t.ip_address)
 
         active_sessions.append({
             'username': username,
@@ -244,19 +197,43 @@ def live_sessions():
             'ip_address': t.ip_address,
             'location_approx': loc_str,
             'device_type': t.device_type,
-            'device_model': dev_model,
             'os': t.os,
             'browser': t.browser,
-            'last_seen': to_ist(t.created_at)
+            'last_seen': to_ist(t.created_at).strftime('%H:%M:%S')
         })
 
+    return {
+        'sessions': active_sessions,
+        'active_count': len(active_sessions),
+        'registered_active': registered_active,
+        'guest_active': guest_active
+    }
+
+
+@admin_bp.route('/sessions')
+@admin_permission_required('users.view')
+def live_sessions():
+    data = get_live_active_sessions_data()
     return render_template(
         'admin/sessions.html',
-        sessions=active_sessions,
-        active_count=len(active_sessions),
-        registered_active=registered_active,
-        guest_active=guest_active
+        sessions=data['sessions'],
+        active_count=data['active_count'],
+        registered_active=data['registered_active'],
+        guest_active=data['guest_active']
     )
+
+
+@admin_bp.route('/api/sessions')
+@admin_permission_required('users.view')
+def api_live_sessions():
+    data = get_live_active_sessions_data()
+    return jsonify({
+        'success': True,
+        'sessions': data['sessions'],
+        'active_count': data['active_count'],
+        'registered_active': data['registered_active'],
+        'guest_active': data['guest_active']
+    })
 
 
 # ==============================================================
@@ -511,7 +488,9 @@ def assign_user_role(user_id):
         return redirect(url_for('admin.user_detail', user_id=user.id))
 
     role = CustomRole.query.get_or_404(role_id)
-    if role not in user.custom_roles:
+    user_role_ids = [r.id for r in user.custom_roles]
+
+    if role.id not in user_role_ids:
         user.custom_roles.append(role)
         db.session.commit()
         log_admin_action('ROLE_ASSIGNED', 'user', user.id, f"Assigned role '{role.name}' to @{user.username}")
@@ -627,7 +606,6 @@ def users_bulk_action():
 @admin_bp.route('/users/<int:user_id>/impersonate', methods=['POST'])
 @admin_permission_required('users.impersonate')
 def impersonate_user(user_id):
-    """Super Admin user simulation."""
     target_user = User.query.get_or_404(user_id)
     if target_user.is_super_admin:
         flash("Cannot impersonate the Super Admin.", "danger")
@@ -662,14 +640,12 @@ def stop_impersonation():
 @admin_bp.route('/api/search')
 @login_required
 def admin_global_search():
-    """Universal Command Palette backend search."""
     q = request.args.get('q', '').strip()
     if not q or len(q) < 2:
         return jsonify({'results': []})
 
     results = []
 
-    # 1. Users
     if current_user.has_permission('users.view'):
         users = User.query.filter(or_(
             User.username.ilike(f"%{q}%"),
@@ -684,7 +660,6 @@ def admin_global_search():
                 'url': url_for('admin.user_detail', user_id=u.id)
             })
 
-    # 2. Roles
     if current_user.has_permission('roles.view'):
         roles = CustomRole.query.filter(CustomRole.name.ilike(f"%{q}%")).limit(4).all()
         for r in roles:
@@ -695,7 +670,6 @@ def admin_global_search():
                 'url': url_for('admin.role_edit', role_id=r.id)
             })
 
-    # 3. Content Passages
     if current_user.has_permission('typing.view'):
         passages = TypingText.query.filter(or_(
             TypingText.title.ilike(f"%{q}%"),
@@ -709,7 +683,6 @@ def admin_global_search():
                 'url': url_for('admin.passage_edit', passage_id=p.id)
             })
 
-    # 4. Games
     if current_user.has_permission('games.view'):
         games = ArcadeGameConfig.query.filter(or_(
             ArcadeGameConfig.display_title.ilike(f"%{q}%"),
@@ -723,10 +696,9 @@ def admin_global_search():
                 'url': url_for('admin.game_edit', config_id=g.id)
             })
 
-    # 5. System Navigation
     shortcuts = [
         ('Dashboard', 'Command Center Overview', url_for('admin.dashboard')),
-        ('Live Active Sessions', 'Monitor real-time guest & pilot hardware models', url_for('admin.live_sessions')),
+        ('Live Active Sessions', 'Monitor real-time guest & pilot telemetry', url_for('admin.live_sessions')),
         ('Arcade Hangar Manager', 'Configure arcade game rules & reorder disciplines', url_for('admin.games_list')),
         ('Tactical Challenges', 'Daily challenge & mission control', url_for('admin.challenges_manage')),
         ('Academy Curriculum', 'Manage curriculum tracks & stages', url_for('admin.academy_manage')),
@@ -891,17 +863,34 @@ def passage_toggle(passage_id):
 
 
 # ==============================================================
-# 7. ARCADE GAME MANAGER & DRAG-AND-DROP REORDER
+# 7. ARCADE GAME MANAGER & DRAG-AND-DROP REORDER (RESILIENT)
 # ==============================================================
 
 @admin_bp.route('/games')
 @admin_permission_required('games.view')
 def games_list():
     purge_keyboard_quest_config()
-    games = ArcadeGameConfig.query.filter(
-        ArcadeGameConfig.game_slug != 'keyboard_quest'
-    ).order_by(ArcadeGameConfig.display_order.asc(), ArcadeGameConfig.id.asc()).all()
-    
+
+    # Resilient auto-patch fallback for display_order
+    try:
+        with db.engine.connect() as conn:
+            res = conn.execute(text("PRAGMA table_info(arcade_game_configs)"))
+            cols = {row[1] for row in res.fetchall()}
+            if 'display_order' not in cols:
+                conn.execute(text("ALTER TABLE arcade_game_configs ADD COLUMN display_order INTEGER DEFAULT 1"))
+                conn.commit()
+    except Exception:
+        pass
+
+    try:
+        games = ArcadeGameConfig.query.filter(
+            ArcadeGameConfig.game_slug != 'keyboard_quest'
+        ).order_by(ArcadeGameConfig.display_order.asc(), ArcadeGameConfig.id.asc()).all()
+    except Exception:
+        games = ArcadeGameConfig.query.filter(
+            ArcadeGameConfig.game_slug != 'keyboard_quest'
+        ).order_by(ArcadeGameConfig.id.asc()).all()
+
     total_games = len(games)
     active_games = sum(1 for g in games if g.is_enabled)
     return render_template('admin/games.html', games=games, total_games=total_games, active_games=active_games)
@@ -942,7 +931,6 @@ def game_toggle(config_id):
 @admin_bp.route('/games/reorder', methods=['POST'])
 @admin_permission_required('games.edit')
 def reorder_games():
-    """Receives drag-and-drop ordered game IDs and persists display sequence."""
     payload = request.get_json(silent=True) or {}
     ordered_ids = payload.get('ordered_ids', [])
 
@@ -986,7 +974,7 @@ def challenges_manage():
 @admin_bp.route('/challenges/publish-daily', methods=['POST'])
 @admin_permission_required('challenges.manage')
 def publish_daily_challenge():
-    target_date_str = request.form.get('target_date')
+    target_date_str = request.form.get('target_date', '').strip()
     title = request.form.get('title', 'Daily Flight Mastery').strip()
     content = request.form.get('content', '').strip()
 
@@ -1517,7 +1505,6 @@ def traffic_analytics():
 @admin_bp.route('/system/health')
 @admin_permission_required('website.health')
 def system_health():
-    """Real-time operational system health diagnostics."""
     t0 = time.perf_counter()
     try:
         with db.engine.connect() as conn:
@@ -1586,7 +1573,6 @@ def system_health():
 @admin_bp.route('/system/data')
 @admin_permission_required('website.settings')
 def data_management():
-    """Operational database statistics and retention management."""
     def safe_count(model):
         try:
             return model.query.count()
@@ -1608,7 +1594,6 @@ def data_management():
 @admin_bp.route('/system/data/cleanup', methods=['POST'])
 @admin_permission_required('website.settings')
 def data_cleanup():
-    """Controlled retention pruning with audit enforcement."""
     target = request.form.get('target')
     retention_days = request.form.get('retention_days', 30, type=int)
     cutoff = datetime.utcnow() - timedelta(days=retention_days)
@@ -1718,7 +1703,6 @@ def system_settings():
 @admin_bp.route('/export/<data_type>')
 @admin_permission_required('website.exports')
 def export_csv(data_type):
-    """Clean CSV data export respecting authorization."""
     log_admin_action('EXPORT_DATA', 'system', details=f"Exported {data_type}.csv")
     output = io.StringIO()
     writer = csv.writer(output)
