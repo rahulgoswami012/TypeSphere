@@ -7,6 +7,18 @@
   <p style="color:var(--admin-text-muted); font-size:0.85rem;">Administer public flight deck navigation, maintenance locks, and branding statements.</p>
 </div>
 
+<!-- Point 5 Fix: Floating In-View Toast Notification -->
+<div id="floating-action-toast" style="display:none; position:fixed; top:64px; right:24px; z-index:9999; padding:0.6rem 1.25rem; border-radius:6px; font-size:0.86rem; font-weight:800; background:rgba(16,185,129,0.95); border:1.5px solid var(--admin-success); color:#04101e; box-shadow:0 10px 30px rgba(0,0,0,0.7); backdrop-filter:blur(8px); animation:toastSlide 0.25s cubic-bezier(0.16, 1, 0.3, 1);">
+  ✓ Changes Saved!
+</div>
+
+<style>
+@keyframes toastSlide {
+  from { opacity: 0; transform: translateY(-12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+</style>
+
 <!-- Maintenance Mode Protocol Card -->
 <div class="card" style="border:1.5px solid {{ 'var(--admin-danger)' if is_maintenance else 'var(--admin-border)' }}; margin-bottom:1.5rem;">
   <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
@@ -31,16 +43,11 @@
   </div>
 </div>
 
-<!-- Dynamic Navigation Items Table (Point 5 Fix: In-Place AJAX Updating Preserving Scroll) -->
+<!-- Dynamic Navigation Items Table -->
 <div class="card" id="nav-section" style="padding:0; overflow:hidden; margin-bottom:1.5rem;">
-  <div style="padding:1rem 1.25rem; border-bottom:1px solid var(--admin-border); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
-    <div>
-      <h3 style="font-size:1.1rem; font-weight:800; margin:0;">Public Navigation Link Directory</h3>
-      <p style="color:var(--admin-text-muted); font-size:0.8rem; margin-top:0.2rem;">Single source of truth driving the 48px fixed cockpit navbar.</p>
-    </div>
-    <div id="nav-ajax-toast" style="display:none; padding:0.35rem 0.85rem; border-radius:4px; font-size:0.8rem; font-weight:700; background:rgba(16,185,129,0.15); border:1px solid var(--admin-success); color:var(--admin-success);">
-      ✓ Updated in place!
-    </div>
+  <div style="padding:1rem 1.25rem; border-bottom:1px solid var(--admin-border);">
+    <h3 style="font-size:1.1rem; font-weight:800; margin:0;">Public Navigation Link Directory</h3>
+    <p style="color:var(--admin-text-muted); font-size:0.8rem; margin-top:0.2rem;">Single source of truth driving the 48px fixed cockpit navbar.</p>
   </div>
 
   <table>
@@ -119,12 +126,11 @@
 </div>
 
 <script>
-// Point 5 Fix: In-Place AJAX Updates to preserve exact scroll position
-function showToast(msg) {
-  const toast = document.getElementById('nav-ajax-toast');
+function triggerFloatingToast(msg) {
+  const toast = document.getElementById('floating-action-toast');
   toast.textContent = msg;
   toast.style.display = 'block';
-  setTimeout(() => toast.style.display = 'none', 3000);
+  setTimeout(() => { toast.style.display = 'none'; }, 3200);
 }
 
 function saveNavAjax(id) {
@@ -145,7 +151,7 @@ function saveNavAjax(id) {
   .then(res => res.json())
   .then(data => {
     if (data.success) {
-      showToast('✓ Link "' + payload.label + '" updated without page jump!');
+      triggerFloatingToast('✓ Link "' + payload.label + '" updated successfully!');
     }
   });
 }
@@ -161,7 +167,7 @@ function deleteNavAjax(id) {
     if (data.success) {
       const row = document.getElementById('nav-row-' + id);
       if (row) row.remove();
-      showToast('✓ Link removed.');
+      triggerFloatingToast('✓ Link deleted.');
     }
   });
 }
@@ -183,8 +189,8 @@ function submitNavAjax(e) {
   .then(res => res.json())
   .then(data => {
     if (data.success) {
-      showToast('✓ Link added!');
-      setTimeout(() => window.location.reload(), 600);
+      triggerFloatingToast('✓ Link added!');
+      setTimeout(() => window.location.reload(), 500);
     }
   });
 }

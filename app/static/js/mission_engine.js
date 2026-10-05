@@ -126,8 +126,10 @@ class MissionExecutionEngine {
 
     handleInputKey(e) {
         if (!this.isRunning || this.isPaused) return;
+
+        // Point 3 Fix: Strictly and permanently disable Backspace in 24H Daily Recon
         if (e.key === 'Backspace') {
-            if (this.config.modeType === 'survival' || this.config.modeType === 'accuracy') {
+            if (this.config.modeType === 'survival' || this.config.modeType === 'accuracy' || this.config.modeType === 'daily' || this.config.slug === 'daily') {
                 e.preventDefault();
             }
         }
@@ -242,18 +244,18 @@ class MissionExecutionEngine {
     evaluateMissionEnd(finalWpm, finalAcc) {
         const mType = this.config.modeType;
 
-        // Point 9 Fix: Zero score or zero correct strokes is strictly a MISSION FAILURE
+        // Point 9 Fix: Zero strokes or 0 WPM is strictly a MISSION FAILURE
         if (this.correctChars === 0 || finalWpm <= 0) {
-            this.concludeMission(false, "Flight Aborted: Zero verified keystrokes were completed before the mission timer expired.");
+            this.concludeMission(false, "Mission Failed: Zero verified keystrokes were completed before the flight timer expired.");
             return;
         }
 
-        // Daily 24H Recon flight evaluation
-        if (mType === 'daily') {
-            if (this.currentIndex >= this.targetText.length - 10 && finalAcc >= 85.0 && finalWpm >= 25.0) {
-                this.concludeMission(true, `Tactical Recon Accomplished! Today's synchronized briefing was completed with ${finalWpm} WPM and ${finalAcc}% accuracy.`);
+        // Daily 24H Recon evaluation
+        if (mType === 'daily' || this.config.slug === 'daily') {
+            if (this.currentIndex >= this.targetText.length - 10 && finalAcc >= 80.0 && finalWpm >= 20.0) {
+                this.concludeMission(true, `Daily Flight Accomplished! Today's synchronized briefing was completed with ${finalWpm} WPM and ${finalAcc}% accuracy.`);
             } else {
-                this.concludeMission(false, `Recon Incomplete: Failed to satisfy minimum flight velocity (25+ WPM) or passage completion before mission timer expired.`);
+                this.concludeMission(false, `Mission Incomplete: Failed to satisfy minimum flight velocity (20+ WPM) or 80%+ accuracy threshold before the timer expired.`);
             }
             return;
         }
@@ -269,7 +271,7 @@ class MissionExecutionEngine {
         // Atmospheric Endurance (300 seconds, 92%+ Acc)
         else if (mType === 'endurance') {
             if (finalAcc >= 92 && finalWpm >= 30) {
-                this.concludeMission(true, `Endurance Marathon Mastered! Maintained steady cadence and ${finalWpm} WPM across the full 300 seconds.`);
+                this.concludeMission(true, `Endurance Marathon Mastered! Maintained steady cadence across the full 300 seconds.`);
             } else {
                 this.concludeMission(false, `Precision Exhaustion: Final accuracy fell to ${finalAcc}% (92% required across 300s flight duration).`);
             }
@@ -277,7 +279,7 @@ class MissionExecutionEngine {
         // Administrative Clerical Steno (SSC Standard: 95%+ Acc)
         else if (mType === 'exam') {
             if (finalAcc >= 95 && finalWpm >= 25) {
-                this.concludeMission(true, `Statutory Administrative Benchmark Satisfied! Transcribed with ${finalAcc}% precision under official exam conditions.`);
+                this.concludeMission(true, `Statutory Administrative Benchmark Satisfied! Transcribed with ${finalAcc}% precision.`);
             } else {
                 this.concludeMission(false, `Standard Not Met: ${finalAcc}% accuracy achieved (95%+ required for civil service clerical clearance).`);
             }
@@ -285,7 +287,7 @@ class MissionExecutionEngine {
         // Syntax Protocol Infiltration (Code injection)
         else if (mType === 'syntax') {
             if (finalAcc >= 92 && this.currentIndex >= this.targetText.length - 5) {
-                this.concludeMission(true, `Syntax Infiltration Successful! Script decrypted and injected without compiler rejections.`);
+                this.concludeMission(true, `Syntax Infiltration Successful! Script decrypted and injected cleanly.`);
             } else {
                 this.concludeMission(false, `Script Infiltration Aborted: Timeout or syntax bracket misalignment detected.`);
             }
@@ -294,7 +296,7 @@ class MissionExecutionEngine {
             if (finalAcc >= 80.0 && finalWpm >= 20.0) {
                 this.concludeMission(true, `Mission Objectives Satisfied! Completed flight with ${finalWpm} WPM and ${finalAcc}% accuracy.`);
             } else {
-                this.concludeMission(false, `Flight Aborted: Velocity or accuracy fell below mission baseline.`);
+                this.concludeMission(false, `Flight Aborted: Velocity or accuracy fell below baseline.`);
             }
         }
     }
@@ -344,11 +346,22 @@ class MissionExecutionEngine {
         document.getElementById('res-m-err').textContent = this.totalMistakes;
         document.getElementById('res-m-time').textContent = `${Math.round(elapsedSec)}s`;
 
+        // Point 3 Fix: If this was the Daily Recon, hide the restart button permanently
+        const restartBtn = document.getElementById('btn-restart-mission');
+        const dailyExitBtn = document.getElementById('btn-daily-finish-redirect');
+        if (this.config.slug === 'daily' || this.config.modeType === 'daily') {
+            if (restartBtn) restartBtn.style.display = 'none';
+            if (dailyExitBtn) dailyExitBtn.style.display = 'inline-flex';
+        } else {
+            if (restartBtn) restartBtn.style.display = 'inline-flex';
+            if (dailyExitBtn) dailyExitBtn.style.display = 'none';
+        }
+
         fetch('/challenges/api/submit-mission', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                mode: `mission_${this.config.slug}`,
+                mode: (this.config.slug === 'daily') ? 'daily' : `mission_${this.config.slug}`,
                 duration: elapsedSec,
                 target_text: this.targetText,
                 total_mistakes: this.totalMistakes,

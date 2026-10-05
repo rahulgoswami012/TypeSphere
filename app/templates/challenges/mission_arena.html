@@ -15,7 +15,7 @@
                 Abort Mission Confirmation
             </h3>
             <p style="color:var(--text-secondary); font-size:0.9rem; line-height:1.55; margin-bottom:1.5rem;">
-                If you abort this flight mission now, your active progress, cadence streaks, and telemetry will be discarded and cannot be recovered.
+                If you abort this flight mission now, your active progress and telemetry will be discarded.
             </p>
             <div style="display:flex; justify-content:center; gap:0.75rem; flex-wrap:wrap;">
                 <button type="button" id="btn-modal-resume" class="btn btn-primary" style="padding:0.65rem 1.5rem; font-weight:800;">
@@ -65,7 +65,7 @@
             <div class="card" style="background:var(--bg-card); margin:0; padding:1rem; text-align:center;">
                 <div style="font-size:0.72rem; color:var(--text-muted); text-transform:uppercase; font-weight:800;">Stealth Backspace</div>
                 <div style="font-size:1.1rem; font-weight:800; color:var(--warning); margin-top:0.4rem;">
-                    {{ 'DISABLED' if mission.mode_type in ['survival', 'accuracy'] else 'RESTRICTED' }}
+                    {{ 'DISABLED' if mission.mode_type in ['survival', 'accuracy', 'daily'] else 'RESTRICTED' }}
                 </div>
             </div>
         </div>
@@ -166,16 +166,20 @@
         </div>
 
         <div style="display:flex; justify-content:center; gap:0.75rem; flex-wrap:wrap;">
+            <!-- Hidden on Daily Recon to avoid restart bug -->
             <button type="button" id="btn-restart-mission" class="btn btn-primary" style="padding:0.75rem 1.75rem; font-weight:800;">
                 🔄 Re-engage Mission
             </button>
+            <a href="{{ url_for('challenges.daily') }}" id="btn-daily-finish-redirect" class="btn btn-primary" style="display:none; padding:0.75rem 1.75rem; font-weight:800;">
+                📊 View Official 24H Standings & Debrief &rarr;
+            </a>
             <a href="{{ url_for('challenges.index') }}" class="btn" style="padding:0.75rem 1.5rem;">
                 Mission Control Hub
             </a>
         </div>
     </div>
 
-    <!-- Hidden Raw Passage Container for Script Consumption -->
+    <!-- Hidden Raw Passage Container -->
     <div id="mission-raw-passage" style="display:none;">{{ passage }}</div>
 </div>
 {% endblock %}

@@ -25,24 +25,33 @@
   </div>
 </div>
 
-<!-- Publish / Calibrate Daily Challenge Form -->
+<!-- Publish / Calibrate Daily Challenge Form (Point 6: Enhanced Date Picker UX) -->
 <div class="card" style="max-width:840px; margin-bottom:1.5rem;">
   <h3 style="font-size:1.1rem; font-weight:800; margin-bottom:0.75rem; border-bottom:1px solid var(--admin-border); padding-bottom:0.4rem;">
     {{ 'Update Today\'s Daily Briefing' if current_daily else 'Publish Today\'s Synchronized Briefing' }}
   </h3>
   <form method="POST" action="{{ url_for('admin.publish_daily_challenge') }}">
-    <div style="display:grid; grid-template-columns:260px 1fr; gap:1.25rem; margin-bottom:1.25rem;">
+    <div style="display:grid; grid-template-columns:300px 1fr; gap:1.25rem; margin-bottom:1.25rem;">
       <div>
         <label style="display:block; font-size:0.72rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.35rem;">
           Target Date (IST)
         </label>
         
-        <!-- Clean Unified Date Input -->
-        <input type="date" id="target-date-input" name="target_date" value="{{ today_date.isoformat() }}" required style="width:100%; padding:0.6rem 0.75rem; background:var(--admin-bg); border:1.5px solid var(--admin-border); border-radius:6px; color:#fff; font-family:var(--admin-mono); font-size:0.9rem; margin-bottom:0.45rem;">
+        <!-- Enhanced Date Picker Box with Calendar Icon Button -->
+        <div style="position:relative; display:flex; align-items:center; margin-bottom:0.45rem;">
+          <input type="date" id="target-date-input" name="target_date" value="{{ today_date.isoformat() }}" required style="width:100%; padding:0.6rem 2.5rem 0.6rem 0.75rem; background:var(--admin-bg); border:1.5px solid var(--admin-border); border-radius:6px; color:#fff; font-family:var(--admin-mono); font-size:0.9rem;" onchange="updateDateDisplay(this.value)">
+          <button type="button" onclick="triggerCalendarPicker()" title="Open Calendar Picker" style="position:absolute; right:8px; background:none; border:none; color:var(--admin-accent); cursor:pointer; font-size:1.2rem; display:flex; align-items:center; justify-content:center; padding:0; width:28px; height:28px;" aria-label="Open Calendar">
+            📅
+          </button>
+        </div>
+
+        <div id="human-date-display" style="font-size:0.75rem; color:var(--admin-accent); font-weight:700; margin-bottom:0.45rem;">
+          Selected: {{ today_date.strftime('%A, %d %B %Y') }} (IST)
+        </div>
         
-        <!-- Quick Selection Date Pills (Point 8 Fix) -->
+        <!-- Quick Preset Pills -->
         <div style="display:flex; gap:0.25rem; flex-wrap:wrap;">
-          <button type="button" class="btn btn-sm" onclick="setPresetDate(0, this)" style="padding:0.15rem 0.45rem; font-size:0.72rem;">Today</button>
+          <button type="button" class="btn btn-sm active-choice" onclick="setPresetDate(0, this)" style="padding:0.15rem 0.45rem; font-size:0.72rem;">Today</button>
           <button type="button" class="btn btn-sm" onclick="setPresetDate(1, this)" style="padding:0.15rem 0.45rem; font-size:0.72rem;">Tomorrow</button>
           <button type="button" class="btn btn-sm" onclick="setPresetDate(2, this)" style="padding:0.15rem 0.45rem; font-size:0.72rem;">+2 Days</button>
           <button type="button" class="btn btn-sm" onclick="setPresetDate(3, this)" style="padding:0.15rem 0.45rem; font-size:0.72rem;">+3 Days</button>
@@ -51,13 +60,13 @@
 
       <div>
         <label style="display:block; font-size:0.72rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.35rem;">Briefing Title</label>
-        <input type="text" name="title" value="{{ current_daily.title if current_daily else 'The Kinetic Equilibrium' }}" required style="width:100%; padding:0.6rem 0.75rem; background:var(--admin-bg); border:1.5px solid var(--admin-border); border-radius:6px; color:#fff; font-size:0.9rem;">
+        <input type="text" id="challenge-title-input" name="title" value="{{ current_daily.title if current_daily else 'The Kinetic Equilibrium' }}" required style="width:100%; padding:0.6rem 0.75rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff; font-size:0.9rem;">
       </div>
     </div>
 
     <div style="margin-bottom:1.25rem;">
       <label style="display:block; font-size:0.72rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.35rem;">Briefing Passage Text</label>
-      <textarea name="content" rows="4" required placeholder="Enter the official synchronized passage text..." style="width:100%; padding:0.75rem; background:var(--admin-bg); border:1.5px solid var(--admin-border); border-radius:6px; color:#fff; font-family:var(--admin-mono); line-height:1.6; font-size:0.92rem;">{{ current_daily.content if current_daily else '' }}</textarea>
+      <textarea id="challenge-content-input" name="content" rows="4" required placeholder="Enter the official synchronized passage text..." style="width:100%; padding:0.75rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff; font-family:var(--admin-mono); line-height:1.6; font-size:0.92rem;">{{ current_daily.content if current_daily else '' }}</textarea>
     </div>
 
     <button type="submit" class="btn btn-primary" style="padding:0.65rem 1.75rem; font-weight:800;">
@@ -100,11 +109,31 @@
 </div>
 
 <script>
+function triggerCalendarPicker() {
+  const input = document.getElementById('target-date-input');
+  if (input.showPicker) {
+    input.showPicker();
+  } else {
+    input.focus();
+  }
+}
+
+function updateDateDisplay(dateStr) {
+  if (!dateStr) return;
+  const parts = dateStr.split('-');
+  if (parts.length === 3) {
+    const d = new Date(parts[0], parts[1] - 1, parts[2]);
+    const options = { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' };
+    document.getElementById('human-date-display').textContent = `Selected: ${d.toLocaleDateString('en-GB', options)} (IST)`;
+  }
+}
+
 function setPresetDate(daysOffset, btn) {
   const d = new Date();
   d.setDate(d.getDate() + daysOffset);
   const formatted = d.toISOString().split('T')[0];
   document.getElementById('target-date-input').value = formatted;
+  updateDateDisplay(formatted);
   document.querySelectorAll('form button.btn-sm').forEach(b => b.classList.remove('active-choice'));
   btn.classList.add('active-choice');
 }
