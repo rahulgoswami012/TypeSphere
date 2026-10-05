@@ -16,19 +16,61 @@
                 Official 24-Hour Benchmark &bull; Evaluated on Indian Standard Time (IST, UTC+05:30). Resets automatically at 00:00 IST.
             </p>
         </div>
-        <div style="display:flex; gap:0.5rem;">
+        <div style="display:flex; gap:0.5rem; align-items:center;">
             <a href="{{ url_for('challenges.index') }}" class="btn btn-sm">&larr; Mission Control</a>
-            {% if challenge %}
-            <a href="{{ url_for('challenges.mission_arena', mission_slug='daily') }}" class="btn btn-primary btn-sm" style="font-weight:800; padding:0.55rem 1.25rem;">
-                Engage Briefing &rarr;
-            </a>
+            {% if user_daily_result %}
+                <span class="badge badge-success" style="font-size:0.82rem; padding:0.45rem 1rem;">
+                    ✓ Flight Logged for Today
+                </span>
+            {% elif challenge %}
+                <a href="{{ url_for('challenges.mission_arena', mission_slug='daily') }}" class="btn btn-primary btn-sm" style="font-weight:800; padding:0.55rem 1.25rem;">
+                    Engage Briefing &rarr;
+                </a>
             {% endif %}
         </div>
     </div>
 
-    <!-- Point 1: Daily Challenge Body or Professional Flight Control Notice -->
-    {% if challenge %}
-        <!-- Active Briefing Passage -->
+    <!-- Point 3: If user already completed today's challenge, show debrief and prevent retake -->
+    {% if user_daily_result %}
+        <div class="card" style="background:var(--bg-card); border:1.5px solid var(--success); padding:1.5rem; margin-bottom:1.75rem; text-align:center;">
+            <div style="font-size:2.8rem; margin-bottom:0.4rem;">🏁</div>
+            <h2 style="font-size:1.5rem; font-weight:800; color:var(--success); margin:0 0 0.35rem 0;">
+                Today's 24H Mission Completed
+            </h2>
+            <p style="color:var(--text-secondary); font-size:0.9rem; max-width:620px; margin:0 auto 1.25rem; line-height:1.55;">
+                You have already logged your authorized flight for today's IST cycle. To ensure global competitive fairness, pilots are permitted <strong>one single official flight per 24 hours</strong>. Return tomorrow at <strong>00:00 IST</strong> for your next tactical briefing!
+            </p>
+
+            <div class="stats-hud" style="grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); max-width:680px; margin:0 auto 1.25rem;">
+                <div class="stat-box">
+                    <div class="stat-label">Your Net Velocity</div>
+                    <div class="stat-value" style="color:var(--accent);">{{ user_daily_result.wpm }} WPM</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Accuracy</div>
+                    <div class="stat-value" style="color:var(--success);">{{ user_daily_result.accuracy }}%</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Cadence Stability</div>
+                    <div class="stat-value">{{ user_daily_result.consistency }}%</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Completed Time</div>
+                    <div class="stat-value" style="font-size:1.15rem; color:var(--warning);">{{ to_ist(user_daily_result.completed_at).strftime('%H:%M:%S') }} IST</div>
+                </div>
+            </div>
+
+            <div style="display:flex; justify-content:center; gap:0.75rem;">
+                <a href="{{ url_for('typing.result_page', test_id=user_daily_result.id) }}" class="btn btn-sm">
+                    🔍 View Detailed Telemetry Log
+                </a>
+                <a href="{{ url_for('challenges.index') }}" class="btn btn-primary btn-sm">
+                    Explore Other Tactical Missions &rarr;
+                </a>
+            </div>
+        </div>
+    {% elif challenge %}
+        <!-- Active Briefing Passage for pilots who haven't taken it yet -->
         <div class="card" style="background:var(--bg-card); border-left:4px solid var(--accent); padding:1.25rem 1.5rem; margin-bottom:1.5rem;">
             <div style="font-size:0.75rem; text-transform:uppercase; font-weight:800; color:var(--accent); letter-spacing:0.06em; margin-bottom:0.4rem;">
                 Today's Authorized Briefing: {{ challenge.title }} &bull; {{ challenge.target_date.strftime('%B %d, %Y') }}
@@ -38,7 +80,7 @@
             </div>
         </div>
     {% else %}
-        <!-- Professional Calibration Notice When Admin Has Not Yet Pushed Today's Run -->
+        <!-- Professional Calibration Notice When Flight Control Hasn't Published -->
         <div class="card" style="background:var(--bg-card); border:1.5px solid var(--warning); padding:1.5rem; margin-bottom:1.5rem; text-align:center;">
             <div style="font-size:2.5rem; margin-bottom:0.5rem;">📡</div>
             <h3 style="font-size:1.25rem; font-weight:800; color:var(--warning); margin-bottom:0.4rem;">

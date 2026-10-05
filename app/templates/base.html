@@ -7,7 +7,7 @@
     <meta name="description" content="TypeSphere is India's premier typing intelligence ecosystem, touch typing flight school, competitive 1v1 arena, and biometric telemetry engine.">
     <meta name="keywords" content="typing test, WPM speed test, typing DNA, touch typing academy, multiplayer typing, SSC CGL typing test">
 
-    <!-- Pre-Paint Head Script: Eliminates Theme/Style Blinking on Page Load -->
+    <!-- Pre-Paint Head Script -->
     <script>
         (function() {
             try {
@@ -41,155 +41,158 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/keyboard.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}">
 </head>
-<body>
+<body {% if request.endpoint in ['auth.login', 'auth.register'] %}style="padding-top:0 !important; background:radial-gradient(circle at 50% 30%, #0d1527 0%, #050811 100%); min-height:100vh; display:flex; align-items:center; justify-content:center;"{% endif %}>
     <div id="user-auth-meta" 
          data-authenticated="{{ 'true' if is_registered_pilot else 'false' }}" 
          data-callsign="{{ current_pilot.display_callsign if current_pilot else 'CADET' }}"
          style="display:none;"></div>
 
-    <!-- Active Global Platform Announcement Banner -->
-    {% if platform_announcement %}
-    <aside style="position:fixed; top:48px; left:0; right:0; background:linear-gradient(90deg, #0284c7, #38bdf8); color:#04101e; font-weight:700; font-size:0.82rem; padding:0.35rem 1.25rem; z-index:999; display:flex; justify-content:space-between; align-items:center; box-shadow:0 2px 10px rgba(0,0,0,0.5);" aria-label="Announcement">
-        <div>
-            <strong>📢 {{ platform_announcement.title }}:</strong> {{ platform_announcement.content }}
-        </div>
-        <button onclick="this.parentElement.remove()" style="background:transparent; border:none; color:inherit; font-size:1.1rem; cursor:pointer; line-height:1;" aria-label="Close announcement">&times;</button>
-    </aside>
-    {% endif %}
-
-    <!-- Mobile Drawer Overlay Backdrop -->
-    <div id="mobile-nav-backdrop" class="mobile-nav-backdrop" onclick="closeMobileNav()"></div>
-
-    <!-- Sliding Mobile Navigation Drawer -->
-    <aside id="mobile-nav-drawer" class="mobile-nav-drawer">
-        <div class="mobile-drawer-header">
-            <div style="display:flex; align-items:center; gap:0.5rem; font-weight:800; color:var(--accent);">
-                <span class="brand-sphere-icon" style="width:22px; height:22px;">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-                </span>
-                TypeSphere
+    <!-- Point 5: Hide Navbar, Announcements, Mobile Drawer, and Footer on Auth Pages -->
+    {% if request.endpoint not in ['auth.login', 'auth.register'] %}
+        <!-- Active Global Platform Announcement Banner -->
+        {% if platform_announcement %}
+        <aside style="position:fixed; top:48px; left:0; right:0; background:linear-gradient(90deg, #0284c7, #38bdf8); color:#04101e; font-weight:700; font-size:0.82rem; padding:0.35rem 1.25rem; z-index:999; display:flex; justify-content:space-between; align-items:center; box-shadow:0 2px 10px rgba(0,0,0,0.5);" aria-label="Announcement">
+            <div>
+                <strong>📢 {{ platform_announcement.title }}:</strong> {{ platform_announcement.content }}
             </div>
-            <button onclick="closeMobileNav()" class="mobile-drawer-close" aria-label="Close navigation">&times;</button>
-        </div>
-
-        {% if is_registered_pilot %}
-            <div style="background:var(--bg-card); padding:0.75rem 1rem; border-radius:var(--radius-sm); border:1px solid var(--border-color); margin-bottom:1rem;">
-                <div style="font-size:0.72rem; color:var(--text-muted); text-transform:uppercase; font-weight:700;">Active Pilot</div>
-                <div style="font-weight:800; font-size:1.05rem; color:var(--accent);">{{ current_pilot.display_callsign }}</div>
-                <div style="font-size:0.78rem; color:var(--text-secondary);">{{ current_pilot.rank_division }} &bull; {{ current_pilot.elo_rating }} MMR</div>
-            </div>
-        {% else %}
-            <div style="background:var(--bg-card); padding:0.75rem 1rem; border-radius:var(--radius-sm); border:1px solid var(--border-color); margin-bottom:1rem; font-size:0.85rem;">
-                <div style="font-size:0.72rem; color:var(--text-muted); text-transform:uppercase; font-weight:700;">Pilot Status</div>
-                <div style="font-weight:800; color:var(--warning);">Cadet (Guest Flight)</div>
-            </div>
+            <button onclick="this.parentElement.remove()" style="background:transparent; border:none; color:inherit; font-size:1.1rem; cursor:pointer; line-height:1;" aria-label="Close announcement">&times;</button>
+        </aside>
         {% endif %}
 
-        <ul class="mobile-drawer-links">
-            {% if dynamic_nav_items %}
-                {% for item in dynamic_nav_items %}
-                    {% if (not is_registered_pilot and item.for_guests) or (is_registered_pilot and item.for_pilots) %}
+        <!-- Mobile Drawer Overlay Backdrop -->
+        <div id="mobile-nav-backdrop" class="mobile-nav-backdrop" onclick="closeMobileNav()"></div>
+
+        <!-- Sliding Mobile Navigation Drawer -->
+        <aside id="mobile-nav-drawer" class="mobile-nav-drawer">
+            <div class="mobile-drawer-header">
+                <div style="display:flex; align-items:center; gap:0.5rem; font-weight:800; color:var(--accent);">
+                    <span class="brand-sphere-icon" style="width:22px; height:22px;">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                    </span>
+                    TypeSphere
+                </div>
+                <button onclick="closeMobileNav()" class="mobile-drawer-close" aria-label="Close navigation">&times;</button>
+            </div>
+
+            {% if is_registered_pilot %}
+                <div style="background:var(--bg-card); padding:0.75rem 1rem; border-radius:var(--radius-sm); border:1px solid var(--border-color); margin-bottom:1rem;">
+                    <div style="font-size:0.72rem; color:var(--text-muted); text-transform:uppercase; font-weight:700;">Active Pilot</div>
+                    <div style="font-weight:800; font-size:1.05rem; color:var(--accent);">{{ current_pilot.display_callsign }}</div>
+                    <div style="font-size:0.78rem; color:var(--text-secondary);">{{ current_pilot.rank_division }} &bull; {{ current_pilot.elo_rating }} MMR</div>
+                </div>
+            {% else %}
+                <div style="background:var(--bg-card); padding:0.75rem 1rem; border-radius:var(--radius-sm); border:1px solid var(--border-color); margin-bottom:1rem; font-size:0.85rem;">
+                    <div style="font-size:0.72rem; color:var(--text-muted); text-transform:uppercase; font-weight:700;">Pilot Status</div>
+                    <div style="font-weight:800; color:var(--warning);">Cadet (Guest Flight)</div>
+                </div>
+            {% endif %}
+
+            <ul class="mobile-drawer-links">
+                {% if dynamic_nav_items %}
+                    {% for item in dynamic_nav_items %}
+                        {% if (not is_registered_pilot and item.for_guests) or (is_registered_pilot and item.for_pilots) %}
+                        <li>
+                            <a href="{{ item.url }}" class="nav-link" {% if item.highlight_color %}style="color:{{ item.highlight_color }}; font-weight:700;"{% endif %} onclick="closeMobileNav()">
+                                {{ item.label }}
+                            </a>
+                        </li>
+                        {% endif %}
+                    {% endfor %}
+                {% else %}
+                    <li><a href="{{ url_for('typing.test_page') }}" class="nav-link" onclick="closeMobileNav()">⚡ Flight Benchmark</a></li>
+                    <li><a href="{{ url_for('learn.index') }}" class="nav-link" style="color:var(--accent);" onclick="closeMobileNav()">🎓 Flight School</a></li>
+                    <li><a href="{{ url_for('games.index') }}" class="nav-link" style="color:var(--warning);" onclick="closeMobileNav()">🕹️ Arcade Hangar</a></li>
+                    <li><a href="{{ url_for('typing.practice_page') }}" class="nav-link" onclick="closeMobileNav()">🎯 AI Diagnostic</a></li>
+                    <li><a href="{{ url_for('challenges.index') }}" class="nav-link" onclick="closeMobileNav()">🔥 Mission Briefs</a></li>
+                    <li><a href="{{ url_for('leaderboard.index') }}" class="nav-link" onclick="closeMobileNav()">🏆 Flight Standings</a></li>
+                    <li><a href="{{ url_for('multiplayer.index') }}" class="nav-link" onclick="closeMobileNav()">🏎️ 1v1 Air Grid</a></li>
+                    <li><a href="{{ url_for('typing.help_page') }}" class="nav-link" onclick="closeMobileNav()">📖 Flight Manual</a></li>
+                    <li><a href="{{ url_for('settings.index') }}" class="nav-link" onclick="closeMobileNav()">⚙️ Cockpit Settings</a></li>
+                {% endif %}
+
+                {% if is_registered_pilot %}
+                    <li><a href="{{ url_for('dashboard.index') }}" class="nav-link" style="font-weight:700;" onclick="closeMobileNav()">👤 Pilot Dossier</a></li>
+                    {% if current_pilot.is_admin %}
+                    <li><a href="{{ url_for('admin.dashboard') }}" class="nav-link" style="color:var(--warning); font-weight:800;" onclick="closeMobileNav()">🛡️ Control Center</a></li>
+                    {% endif %}
+                    <li><a href="{{ url_for('auth.logout') }}" class="btn btn-sm" style="width:100%; margin-top:0.75rem;">Disengage Account</a></li>
+                {% else %}
+                    <li style="margin-top:0.5rem;"><a href="{{ url_for('auth.login') }}" class="btn" style="width:100%;">Sign In</a></li>
+                    <li><a href="{{ url_for('auth.register') }}" class="btn btn-primary" style="width:100%;">Enlist Pilot Profile</a></li>
+                {% endif %}
+            </ul>
+        </aside>
+
+        <!-- Top Fixed 48px Cockpit Navigation -->
+        <nav class="navbar">
+            <a href="{{ url_for('typing.test_page') }}" class="brand">
+                <span class="brand-sphere-icon">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <path d="M12 6v6l4 2"></path>
+                    </svg>
+                </span>
+                TypeSphere
+            </a>
+
+            <!-- Desktop Dynamic Navigation Items -->
+            <ul class="nav-links">
+                {% if dynamic_nav_items %}
+                    {% for item in dynamic_nav_items %}
+                        {% if (not is_registered_pilot and item.for_guests) or (is_registered_pilot and item.for_pilots) %}
+                        <li>
+                            <a href="{{ item.url }}" class="nav-link" {% if item.highlight_color %}style="color:{{ item.highlight_color }}; font-weight:700;"{% endif %}>
+                                {{ item.label }}
+                            </a>
+                        </li>
+                        {% endif %}
+                    {% endfor %}
+                {% else %}
+                    <li><a href="{{ url_for('typing.test_page') }}" class="nav-link">⚡ Benchmark</a></li>
+                    <li><a href="{{ url_for('learn.index') }}" class="nav-link" style="color:var(--accent); font-weight:700;">🎓 Flight School</a></li>
+                    <li><a href="{{ url_for('games.index') }}" class="nav-link" style="color:var(--warning); font-weight:700;">🕹️ Arcade</a></li>
+                    <li><a href="{{ url_for('typing.practice_page') }}" class="nav-link">🎯 AI Coach</a></li>
+                    <li><a href="{{ url_for('challenges.index') }}" class="nav-link">🔥 Missions</a></li>
+                    <li><a href="{{ url_for('leaderboard.index') }}" class="nav-link">🏆 Standings</a></li>
+                    <li><a href="{{ url_for('multiplayer.index') }}" class="nav-link">🏎️ 1v1 Grid</a></li>
+                    <li><a href="{{ url_for('typing.help_page') }}" class="nav-link">📖 Manual</a></li>
+                    <li><a href="{{ url_for('settings.index') }}" class="nav-link">⚙️ Cockpit</a></li>
+                {% endif %}
+
+                {% if is_registered_pilot %}
                     <li>
-                        <a href="{{ item.url }}" class="nav-link" {% if item.highlight_color %}style="color:{{ item.highlight_color }}; font-weight:700;"{% endif %} onclick="closeMobileNav()">
-                            {{ item.label }}
+                        <a href="{{ url_for('dashboard.index') }}" class="nav-link" style="font-weight:700; color:var(--text-primary);">
+                            <span style="font-size:0.75rem; padding:0.15rem 0.4rem; border-radius:4px; background:{{ current_pilot.rank_badge.bg }}; color:{{ current_pilot.rank_badge.color }}; margin-right:0.25rem;">
+                                {{ current_pilot.rank_badge.icon }}
+                            </span>
+                            {{ current_pilot.display_callsign }}
+                        </a>
+                    </li>
+                    {% if current_pilot.is_admin %}
+                    <li>
+                        <a href="{{ url_for('admin.dashboard') }}" class="btn btn-sm" style="border-color:var(--warning); color:var(--warning); font-weight:800;">
+                            Control Tower
                         </a>
                     </li>
                     {% endif %}
-                {% endfor %}
-            {% else %}
-                <li><a href="{{ url_for('typing.test_page') }}" class="nav-link" onclick="closeMobileNav()">⚡ Flight Benchmark</a></li>
-                <li><a href="{{ url_for('learn.index') }}" class="nav-link" style="color:var(--accent);" onclick="closeMobileNav()">🎓 Flight School</a></li>
-                <li><a href="{{ url_for('games.index') }}" class="nav-link" style="color:var(--warning);" onclick="closeMobileNav()">🕹️ Arcade Hangar</a></li>
-                <li><a href="{{ url_for('typing.practice_page') }}" class="nav-link" onclick="closeMobileNav()">🎯 AI Diagnostic</a></li>
-                <li><a href="{{ url_for('challenges.index') }}" class="nav-link" onclick="closeMobileNav()">🔥 Mission Briefs</a></li>
-                <li><a href="{{ url_for('leaderboard.index') }}" class="nav-link" onclick="closeMobileNav()">🏆 Flight Standings</a></li>
-                <li><a href="{{ url_for('multiplayer.index') }}" class="nav-link" onclick="closeMobileNav()">🏎️ 1v1 Air Grid</a></li>
-                <li><a href="{{ url_for('typing.help_page') }}" class="nav-link" onclick="closeMobileNav()">📖 Flight Manual</a></li>
-                <li><a href="{{ url_for('settings.index') }}" class="nav-link" onclick="closeMobileNav()">⚙️ Cockpit Settings</a></li>
-            {% endif %}
-
-            {% if is_registered_pilot %}
-                <li><a href="{{ url_for('dashboard.index') }}" class="nav-link" style="font-weight:700;" onclick="closeMobileNav()">👤 Pilot Dossier</a></li>
-                {% if current_pilot.is_admin %}
-                <li><a href="{{ url_for('admin.dashboard') }}" class="nav-link" style="color:var(--warning); font-weight:800;" onclick="closeMobileNav()">🛡️ Control Center</a></li>
+                    <li><a href="{{ url_for('auth.logout') }}" class="btn btn-sm">Exit</a></li>
+                {% else %}
+                    <li><a href="{{ url_for('auth.login') }}" class="nav-link">Sign In</a></li>
+                    <li><a href="{{ url_for('auth.register') }}" class="btn btn-primary btn-sm">Enlist Pilot</a></li>
                 {% endif %}
-                <li><a href="{{ url_for('auth.logout') }}" class="btn btn-sm" style="width:100%; margin-top:0.75rem;">Disengage Account</a></li>
-            {% else %}
-                <li style="margin-top:0.5rem;"><a href="{{ url_for('auth.login') }}" class="btn" style="width:100%;">Sign In</a></li>
-                <li><a href="{{ url_for('auth.register') }}" class="btn btn-primary" style="width:100%;">Enlist Pilot Profile</a></li>
-            {% endif %}
-        </ul>
-    </aside>
+            </ul>
 
-    <!-- Top Fixed 48px Cockpit Navigation -->
-    <nav class="navbar">
-        <a href="{{ url_for('typing.test_page') }}" class="brand">
-            <span class="brand-sphere-icon">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6">
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <path d="M12 6v6l4 2"></path>
-                </svg>
-            </span>
-            TypeSphere
-        </a>
+            <button class="mobile-nav-toggle" onclick="openMobileNav()" aria-label="Open flight navigation drawer">
+                ☰
+            </button>
+        </nav>
+    {% endif %}
 
-        <!-- Desktop Dynamic Navigation Items -->
-        <ul class="nav-links">
-            {% if dynamic_nav_items %}
-                {% for item in dynamic_nav_items %}
-                    {% if (not is_registered_pilot and item.for_guests) or (is_registered_pilot and item.for_pilots) %}
-                    <li>
-                        <a href="{{ item.url }}" class="nav-link" {% if item.highlight_color %}style="color:{{ item.highlight_color }}; font-weight:700;"{% endif %}>
-                            {{ item.label }}
-                        </a>
-                    </li>
-                    {% endif %}
-                {% endfor %}
-            {% else %}
-                <li><a href="{{ url_for('typing.test_page') }}" class="nav-link">⚡ Benchmark</a></li>
-                <li><a href="{{ url_for('learn.index') }}" class="nav-link" style="color:var(--accent); font-weight:700;">🎓 Flight School</a></li>
-                <li><a href="{{ url_for('games.index') }}" class="nav-link" style="color:var(--warning); font-weight:700;">🕹️ Arcade</a></li>
-                <li><a href="{{ url_for('typing.practice_page') }}" class="nav-link">🎯 AI Coach</a></li>
-                <li><a href="{{ url_for('challenges.index') }}" class="nav-link">🔥 Missions</a></li>
-                <li><a href="{{ url_for('leaderboard.index') }}" class="nav-link">🏆 Standings</a></li>
-                <li><a href="{{ url_for('multiplayer.index') }}" class="nav-link">🏎️ 1v1 Grid</a></li>
-                <li><a href="{{ url_for('typing.help_page') }}" class="nav-link">📖 Manual</a></li>
-                <li><a href="{{ url_for('settings.index') }}" class="nav-link">⚙️ Cockpit</a></li>
-            {% endif %}
-
-            {% if is_registered_pilot %}
-                <li>
-                    <a href="{{ url_for('dashboard.index') }}" class="nav-link" style="font-weight:700; color:var(--text-primary);">
-                        <span style="font-size:0.75rem; padding:0.15rem 0.4rem; border-radius:4px; background:{{ current_pilot.rank_badge.bg }}; color:{{ current_pilot.rank_badge.color }}; margin-right:0.25rem;">
-                            {{ current_pilot.rank_badge.icon }}
-                        </span>
-                        {{ current_pilot.display_callsign }}
-                    </a>
-                </li>
-                {% if current_pilot.is_admin %}
-                <li>
-                    <a href="{{ url_for('admin.dashboard') }}" class="btn btn-sm" style="border-color:var(--warning); color:var(--warning); font-weight:800;">
-                        Control Tower
-                    </a>
-                </li>
-                {% endif %}
-                <li><a href="{{ url_for('auth.logout') }}" class="btn btn-sm">Exit</a></li>
-            {% else %}
-                <li><a href="{{ url_for('auth.login') }}" class="nav-link">Sign In</a></li>
-                <li><a href="{{ url_for('auth.register') }}" class="btn btn-primary btn-sm">Enlist Pilot</a></li>
-            {% endif %}
-        </ul>
-
-        <button class="mobile-nav-toggle" onclick="openMobileNav()" aria-label="Open flight navigation drawer">
-            ☰
-        </button>
-    </nav>
-
-    <!-- Main Viewport Deck (Displaces Footer Below Fold) -->
-    <main class="container" {% if platform_announcement %}style="padding-top: calc(48px + 1.25rem);"{% endif %}>
+    <!-- Main Viewport Deck -->
+    <main class="container" {% if request.endpoint in ['auth.login', 'auth.register'] %}style="min-height:auto; padding:1.5rem 1rem; width:100%; display:flex; flex-direction:column; align-items:center; justify-content:center;"{% elif platform_announcement %}style="padding-top: calc(48px + 1.25rem);"{% endif %}>
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
-                <div id="flash-alerts-wrapper">
+                <div id="flash-alerts-wrapper" style="width:100%; max-width:460px;">
                     {% for category, msg in messages %}
                         <div class="alert-box alert-{{ category }}">
                             <span>{{ msg }}</span>
@@ -201,9 +204,19 @@
         {% endwith %}
 
         {% block content %}{% endblock %}
+
+        <!-- Point 5: On Auth pages, display simple subtle return link -->
+        {% if request.endpoint in ['auth.login', 'auth.register'] %}
+        <div style="text-align:center; margin-top:1.25rem;">
+            <a href="{{ url_for('typing.test_page') }}" style="color:var(--text-muted); font-size:0.85rem; text-decoration:none; font-weight:600;">
+                &larr; Return to TypeSphere Flight Deck
+            </a>
+        </div>
+        {% endif %}
     </main>
 
-    <!-- Telemetry Footer (Displaced Below Fold) -->
+    <!-- Telemetry Footer (Hidden on Auth Pages) -->
+    {% if request.endpoint not in ['auth.login', 'auth.register'] %}
     <footer class="app-footer">
         <div class="footer-container">
             <div class="footer-grid">
@@ -256,16 +269,21 @@
             </div>
         </div>
     </footer>
+    {% endif %}
 
     <script>
         function openMobileNav() {
-            document.getElementById('mobile-nav-drawer').classList.add('open');
-            document.getElementById('mobile-nav-backdrop').classList.add('active');
+            const drawer = document.getElementById('mobile-nav-drawer');
+            const backdrop = document.getElementById('mobile-nav-backdrop');
+            if (drawer) drawer.classList.add('open');
+            if (backdrop) backdrop.classList.add('active');
             document.body.style.overflow = 'hidden';
         }
         function closeMobileNav() {
-            document.getElementById('mobile-nav-drawer').classList.remove('open');
-            document.getElementById('mobile-nav-backdrop').classList.remove('active');
+            const drawer = document.getElementById('mobile-nav-drawer');
+            const backdrop = document.getElementById('mobile-nav-backdrop');
+            if (drawer) drawer.classList.remove('open');
+            if (backdrop) backdrop.classList.remove('active');
             document.body.style.overflow = '';
         }
         window.addEventListener('keydown', (e) => {

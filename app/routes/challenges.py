@@ -1,4 +1,10 @@
-from flask import Blueprint, render_template, request, jsonify, redirect, url_for
+"""
+TypeSphere - Tactical Missions & Daily Challenge Controller
+Coordinates synchronized 24H daily challenges, single-attempt daily enforcement,
+and the 7 tactical mission disciplines.
+"""
+
+from flask import Blueprint, render_template, request, jsonify, redirect, url_for, flash
 from flask_login import current_user
 import json
 from app import db
@@ -107,15 +113,15 @@ MISSIONS_REGISTRY = [
     }
 ]
 
+
 @challenges_bp.route('/')
 def index():
     return render_template('challenges/index.html', missions=MISSIONS_REGISTRY)
 
+
 @challenges_bp.route('/daily')
 def daily():
     today = ist_today()
-    # Point 1: If admin has not published today's challenge yet, do NOT auto-create dummy text.
-    # Leave challenge as None so the UI renders the professional Flight Control calibration notice.
     challenge = DailyChallenge.query.filter_by(target_date=today).first()
 
     # Query tests completed strictly within the current IST calendar day
@@ -127,7 +133,16 @@ def daily():
         TypingTest.completed_at < end_utc
     ).order_by(TypingTest.wpm.desc()).limit(25).all()
 
-    # Historical archives from previous days
+    # Point 3: Check if authenticated pilot has already completed today's 24H challenge
+    user_daily_result = None
+    if current_user.is_authenticated:
+        user_daily_result = TypingTest.query.filter(
+            TypingTest.user_id == current_user.id,
+            TypingTest.mode == 'daily',
+            TypingTest.completed_at >= start_utc,
+            TypingTest.completed_at < end_utc
+        ).order_by(TypingTest.wpm.desc()).first()
+
     previous_challenges = DailyChallenge.query.filter(
         DailyChallenge.target_date < today
     ).order_by(DailyChallenge.target_date.desc()).limit(7).all()
@@ -137,14 +152,30 @@ def daily():
         challenge=challenge,
         leaderboard=daily_tests,
         history=previous_challenges,
+        user_daily_result=user_daily_result,
         to_ist=to_ist
     )
+
 
 @challenges_bp.route('/mission/<mission_slug>')
 def mission_arena(mission_slug):
     mission = next((m for m in MISSIONS_REGISTRY if m['slug'] == mission_slug), None)
     if not mission:
         return redirect(url_for('challenges.index'))
+
+    # Point 3: Prohibit re-taking today's 24H challenge if already logged
+    if mission_slug == 'daily' and current_user.is_authenticated:
+        start_utc, end_utc = ist_today_bounds()
+        already_completed = TypingTest.query.filter(
+            TypingTest.user_id == current_user.id,
+            TypingTest.mode == 'daily',
+            TypingTest.completed_at >= start_utc,
+            TypingTest.completed_at < end_utc
+        ).first()
+
+        if already_completed:
+            flash("Mission Logged: You have already completed today's 24H Daily Recon. Please check back tomorrow at 00:00 IST for the next briefing.", "warning")
+            return redirect(url_for('challenges.daily'))
 
     # Generate initial mission text according to mission type
     today = ist_today()
@@ -170,6 +201,7 @@ def mission_arena(mission_slug):
 
     return render_template('challenges/mission_arena.html', mission=mission, passage=passage)
 
+
 @challenges_bp.route('/api/submit-mission', methods=['POST'])
 def submit_mission():
     try:
@@ -178,8 +210,21 @@ def submit_mission():
         duration = max(0.1, float(data.get('duration', 1.0)))
         target_text = data.get('target_text', '')
         mode = data.get('mode', 'mission')
-        outcome = data.get('outcome', 'VICTORY') # 'VICTORY' or 'DEFEAT'
+        outcome = data.get('outcome', 'VICTORY')
         total_mistakes = int(data.get('total_mistakes', 0))
+
+        # Enforce single attempt server-side on daily mode
+        if mode == 'daily' or mode == 'mission_daily':
+            if current_user.is_authenticated:
+                start_utc, end_utc = ist_today_bounds()
+                already = TypingTest.query.filter(
+                    TypingTest.user_id == current_user.id,
+                    TypingTest.mode == 'daily',
+                    TypingTest.completed_at >= start_utc,
+                    TypingTest.completed_at < end_utc
+                ).first()
+                if already:
+                    return jsonify({'success': False, 'error': 'You have already submitted today\'s 24H challenge.'}), 400
 
         metrics = TypingAnalyzer.calculate_metrics(events, target_text, duration)
         is_suspicious, reason = AntiCheatSystem.evaluate(events, duration, metrics['wpm'], metrics['accuracy'])
@@ -187,13 +232,13 @@ def submit_mission():
         test_record = None
         unlocked_badges = []
 
-        # Only register official records in database if user is authenticated
         if current_user.is_authenticated:
+            record_mode = 'daily' if (mode == 'daily' or mode == 'mission_daily') else mode
             test_record = TypingTest(
                 user_id=current_user.id,
-                mode=mode,
+                mode=record_mode,
                 is_ranked=(outcome == 'VICTORY') and (not is_suspicious),
-                content_category=f"Mission: {mode.replace('mission_', '').title()}",
+                content_category=f"Mission: {record_mode.replace('mission_', '').title()}",
                 difficulty='hard',
                 duration=duration,
                 wpm=metrics['wpm'],

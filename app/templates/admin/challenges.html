@@ -31,10 +31,16 @@
     {{ 'Update Today\'s Daily Briefing' if current_daily else 'Publish Today\'s Synchronized Briefing' }}
   </h3>
   <form method="POST" action="{{ url_for('admin.publish_daily_challenge') }}">
-    <div style="display:grid; grid-template-columns:180px 1fr; gap:1rem; margin-bottom:1rem;">
+    <div style="display:grid; grid-template-columns:220px 1fr; gap:1rem; margin-bottom:1rem;">
       <div>
-        <label style="display:block; font-size:0.72rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.3rem;">Target Date (IST)</label>
-        <input type="date" name="target_date" value="{{ today_date.isoformat() }}" required style="width:100%; padding:0.6rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff; font-family:var(--admin-mono); font-size:0.85rem;">
+        <label style="display:block; font-size:0.72rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.3rem;">
+          Target Date (Pick or Type YYYY-MM-DD)
+        </label>
+        <div style="display:flex; align-items:center; gap:0.35rem;">
+          <!-- Dual Pick & Type Option (Point 3) -->
+          <input type="text" id="target-date-text" name="target_date" value="{{ today_date.isoformat() }}" pattern="\d{4}-\d{2}-\d{2}" placeholder="YYYY-MM-DD" required style="flex:1; padding:0.55rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:4px; color:#fff; font-family:var(--admin-mono); font-size:0.85rem;" oninput="syncDatePickerFromText(this.value)">
+          <input type="date" id="target-date-picker" value="{{ today_date.isoformat() }}" style="background:var(--admin-elevated); border:1px solid var(--admin-border); border-radius:4px; color:#fff; padding:0.45rem; cursor:pointer;" onchange="syncDateTextFromPicker(this.value)">
+        </div>
       </div>
       <div>
         <label style="display:block; font-size:0.72rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.3rem;">Briefing Title</label>
@@ -85,4 +91,15 @@
     </tbody>
   </table>
 </div>
+
+<script>
+function syncDatePickerFromText(val) {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(val)) {
+    document.getElementById('target-date-picker').value = val;
+  }
+}
+function syncDateTextFromPicker(val) {
+  document.getElementById('target-date-text').value = val;
+}
+</script>
 {% endblock %}

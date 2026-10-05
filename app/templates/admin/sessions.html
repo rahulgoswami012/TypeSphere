@@ -4,31 +4,41 @@
 {% block admin_content %}
 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
   <div>
-    <h1 style="font-size:1.6rem; font-weight:800;">Live Active Sessions Monitor</h1>
-    <p style="color:var(--admin-text-muted); font-size:0.85rem;">
+    <h1 style="font-size:1.6rem; font-weight:800; margin:0 0 0.25rem 0;">Live Active Sessions Monitor</h1>
+    <p style="color:var(--admin-text-muted); font-size:0.85rem; margin:0;">
       Real-time active sessions (within the last 30 minutes) tracking IPs, approximate location, device platforms, and hardware make & model.
     </p>
   </div>
-  <a href="{{ url_for('admin.live_sessions') }}" class="btn btn-sm">
-    🔄 Refresh Stream
-  </a>
+  <div style="display:flex; align-items:center; gap:0.75rem;">
+    <div style="display:inline-flex; align-items:center; gap:0.4rem; background:rgba(16,185,129,0.12); border:1px solid var(--admin-success); color:var(--admin-success); padding:0.3rem 0.75rem; border-radius:20px; font-size:0.75rem; font-weight:800;">
+      <span style="width:7px; height:7px; border-radius:50%; background:var(--admin-success); box-shadow:0 0 8px var(--admin-success); animation:livePulse 1.2s infinite alternate;"></span>
+      LIVE STREAM ACTIVE (POLLING 3s)
+    </div>
+  </div>
 </div>
+
+<style>
+@keyframes livePulse {
+  0% { opacity: 0.4; }
+  100% { opacity: 1; transform: scale(1.15); }
+}
+</style>
 
 <!-- Sessions Count HUD -->
 <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:1rem; margin-bottom:1.5rem;">
   <div class="card" style="margin:0;">
     <div style="font-size:0.72rem; color:var(--admin-text-muted); font-weight:700; text-transform:uppercase;">TOTAL ACTIVE SESSIONS</div>
-    <div style="font-size:1.8rem; font-weight:800; color:var(--admin-accent); margin-top:0.2rem;">{{ active_count }}</div>
+    <div id="live-total-count" style="font-size:1.8rem; font-weight:800; color:var(--admin-accent); margin-top:0.2rem;">{{ active_count }}</div>
     <div style="font-size:0.72rem; color:var(--admin-text-muted);">Active in last 30 mins</div>
   </div>
   <div class="card" style="margin:0;">
     <div style="font-size:0.72rem; color:var(--admin-text-muted); font-weight:700; text-transform:uppercase;">REGISTERED PILOTS</div>
-    <div style="font-size:1.8rem; font-weight:800; color:var(--admin-success); margin-top:0.2rem;">{{ registered_active }}</div>
+    <div id="live-registered-count" style="font-size:1.8rem; font-weight:800; color:var(--admin-success); margin-top:0.2rem;">{{ registered_active }}</div>
     <div style="font-size:0.72rem; color:var(--admin-text-muted);">Authenticated accounts</div>
   </div>
   <div class="card" style="margin:0;">
     <div style="font-size:0.72rem; color:var(--admin-text-muted); font-weight:700; text-transform:uppercase;">GUEST FLIGHTS</div>
-    <div style="font-size:1.8rem; font-weight:800; color:var(--admin-warning); margin-top:0.2rem;">{{ guest_active }}</div>
+    <div id="live-guest-count" style="font-size:1.8rem; font-weight:800; color:var(--admin-warning); margin-top:0.2rem;">{{ guest_active }}</div>
     <div style="font-size:0.72rem; color:var(--admin-text-muted);">Transient visitors</div>
   </div>
 </div>
@@ -49,7 +59,7 @@
         <th>Action</th>
       </tr>
     </thead>
-    <tbody>
+    <tbody id="sessions-tbody">
       {% for s in sessions %}
       <tr>
         <td>
@@ -109,4 +119,85 @@
     </tbody>
   </table>
 </div>
+
+<script>
+// Point 2: Automatic Real-Time Live Polling every 3 seconds
+let isPolling = false;
+
+function fetchLiveSessions() {
+  if (isPolling) return;
+  isPolling = true;
+
+  fetch('/admin/api/sessions')
+    .then(res => res.json())
+    .then(data => {
+      isPolling = false;
+      if (!data.success) return;
+
+      document.getElementById('live-total-count').textContent = data.active_count;
+      document.getElementById('live-registered-count').textContent = data.registered_active;
+      document.getElementById('live-guest-count').textContent = data.guest_active;
+
+      const tbody = document.getElementById('sessions-tbody');
+      if (!data.sessions || data.sessions.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="9" style="text-align:center; padding:2.5rem; color:var(--admin-text-muted);">
+              No active flight sessions detected in the last 30 minutes.
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      let rowsHtml = '';
+      data.sessions.forEach(s => {
+        const roleBadge = (s.user_role === 'super_admin') 
+          ? '<span class="badge badge-warning" style="font-weight:900;">SUPER ADMIN</span>'
+          : ((s.user_role === 'pilot') 
+              ? '<span class="badge badge-primary">ACTIVE PILOT</span>' 
+              : '<span class="badge badge-warning">GUEST FLIGHT</span>');
+
+        const callsignTag = s.callsign 
+          ? `<div style="font-size:0.72rem; color:var(--admin-accent); font-family:var(--admin-mono);">[${s.callsign}]</div>` 
+          : '';
+
+        const devBadge = s.device_type === 'desktop' ? 'badge-primary' : 'badge-success';
+
+        rowsHtml += `
+          <tr>
+            <td>${roleBadge}</td>
+            <td>
+              <div style="font-weight:700; color:var(--admin-text-main);">${s.username}</div>
+              ${callsignTag}
+            </td>
+            <td style="font-family:var(--admin-mono); font-weight:700; color:var(--admin-accent);">${s.ip_address}</td>
+            <td>
+              <div style="font-weight:600;">${s.location_approx}</div>
+              <div style="font-size:0.7rem; color:var(--admin-text-muted);">Estimated Network Geo</div>
+            </td>
+            <td><span class="badge ${devBadge}">${s.device_type.toUpperCase()}</span></td>
+            <td style="font-weight:700; color:var(--admin-text-main);">${s.device_model}</td>
+            <td style="font-size:0.82rem; color:var(--admin-text-muted);">${s.os} &bull; ${s.browser}</td>
+            <td style="color:var(--admin-text-muted); font-size:0.78rem;">${s.last_seen} IST</td>
+            <td>
+              <form method="POST" action="/admin/security/block-ip" style="display:inline;">
+                <input type="hidden" name="ip_address" value="${s.ip_address}">
+                <input type="hidden" name="reason" value="Suspicious active session block">
+                <input type="hidden" name="duration_hours" value="24">
+                <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Restrict IP ${s.ip_address}?');">
+                  Restrict IP
+                </button>
+              </form>
+            </td>
+          </tr>
+        `;
+      });
+      tbody.innerHTML = rowsHtml;
+    })
+    .catch(() => { isPolling = false; });
+}
+
+setInterval(fetchLiveSessions, 3000);
+</script>
 {% endblock %}

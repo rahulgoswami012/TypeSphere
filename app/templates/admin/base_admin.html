@@ -34,7 +34,6 @@
       overflow-x: hidden;
     }
 
-    /* Fixed Control Tower Sidebar */
     .admin-sidebar {
       width: 260px;
       background: var(--admin-surface);
@@ -80,7 +79,6 @@
     }
     .sidebar-nav { list-style: none; }
     
-    /* Navigation Active Highlighting */
     .sidebar-link {
       display: flex;
       align-items: center;
@@ -179,25 +177,52 @@
     td { padding: 0.75rem 0.85rem; border-bottom: 1px solid var(--admin-border); }
     tr:hover td { background: rgba(56, 189, 248, 0.03); }
 
-    /* Auto-dismissing Alert Banners */
-    .admin-alert {
-      padding: 0.75rem 1.15rem;
-      border-radius: 6px;
-      margin-bottom: 1.25rem;
-      font-size: 0.88rem;
-      background: var(--admin-surface);
+    /* Point 4: Unified Notification Toast Style Across Admin */
+    .admin-toast-alert {
       display: flex;
       justify-content: space-between;
       align-items: center;
+      padding: 0.65rem 1.15rem;
+      border-radius: 6px;
+      margin-bottom: 1rem;
+      font-size: 0.86rem;
+      font-weight: 700;
+      animation: alertSlide 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
       transition: opacity 0.35s ease, transform 0.35s ease;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.4);
     }
-    .admin-alert.fade-out {
+    @keyframes alertSlide {
+      from { opacity: 0; transform: translateY(-6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .admin-toast-alert.fade-out {
       opacity: 0;
       transform: translateY(-8px);
     }
+    .admin-toast-success {
+      background: rgba(16, 185, 129, 0.14);
+      color: var(--admin-success);
+      border: 1px solid var(--admin-success);
+      box-shadow: 0 0 16px rgba(16, 185, 129, 0.18);
+    }
+    .admin-toast-warning {
+      background: rgba(245, 158, 11, 0.14);
+      color: var(--admin-warning);
+      border: 1px solid var(--admin-warning);
+      box-shadow: 0 0 16px rgba(245, 158, 11, 0.18);
+    }
+    .admin-toast-danger, .admin-toast-error {
+      background: rgba(244, 63, 94, 0.14);
+      color: var(--admin-danger);
+      border: 1px solid var(--admin-danger);
+      box-shadow: 0 0 16px rgba(244, 63, 94, 0.18);
+    }
+    .admin-toast-info {
+      background: var(--admin-accent-glow);
+      color: var(--admin-accent);
+      border: 1px solid var(--admin-accent);
+      box-shadow: 0 0 16px var(--admin-accent-glow);
+    }
 
-    /* Command Palette */
     .cmd-overlay {
       position: fixed;
       inset: 0;
@@ -439,14 +464,14 @@
     </header>
 
     <div class="admin-content">
-      <!-- Auto-dismissing Notification Wrapper -->
+      <!-- Point 4: Unified Toast-Style Notifications with Auto-Dismiss -->
       {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
           <div id="admin-flash-wrapper">
             {% for category, msg in messages %}
-              <div class="admin-alert" style="border-left:4px solid {{ 'var(--admin-danger)' if category in ['danger', 'error'] else ('var(--admin-warning)' if category == 'warning' else 'var(--admin-accent)') }};">
-                <span>{{ msg }}</span>
-                <button type="button" onclick="dismissAdminAlert(this)" style="background:none; border:none; color:var(--admin-text-muted); font-size:1.2rem; cursor:pointer; line-height:1; margin-left:1rem;">&times;</button>
+              <div class="admin-toast-alert admin-toast-{{ 'danger' if category in ['danger', 'error'] else ('warning' if category == 'warning' else 'success') }}">
+                <span>✓ {{ msg }}</span>
+                <button type="button" onclick="dismissAdminAlert(this)" style="background:none; border:none; color:inherit; font-size:1.25rem; cursor:pointer; line-height:1; margin-left:1rem;" aria-label="Dismiss">&times;</button>
               </div>
             {% endfor %}
           </div>
@@ -474,7 +499,6 @@
   </div>
 
   <script>
-    // Real-Time IST Clock
     function updateIstClock() {
       const now = new Date();
       const istTime = new Intl.DateTimeFormat('en-IN', {
@@ -490,16 +514,15 @@
     setInterval(updateIstClock, 1000);
     updateIstClock();
 
-    // Notification Auto-Dismiss (3.5 Seconds)
     function dismissAdminAlert(btn) {
-      const alert = btn.closest('.admin-alert');
+      const alert = btn.closest('.admin-toast-alert');
       if (alert) {
         alert.classList.add('fade-out');
         setTimeout(() => alert.remove(), 350);
       }
     }
     document.addEventListener('DOMContentLoaded', () => {
-      document.querySelectorAll('.admin-alert').forEach(a => {
+      document.querySelectorAll('.admin-toast-alert').forEach(a => {
         setTimeout(() => {
           a.classList.add('fade-out');
           setTimeout(() => a.remove(), 350);
@@ -507,7 +530,6 @@
       });
     });
 
-    // Command Palette
     function openCmdPalette() {
       const p = document.getElementById('admin-cmd-palette');
       p.style.display = 'flex';

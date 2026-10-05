@@ -1,7 +1,7 @@
 """
 TypeSphere - Arcade Hangar & Flight Gaming Controller
 Directs all 11 active educational flight disciplines, dynamically overlaying
-database-backed administrative configurations from the Control Center.
+database-backed administrative configurations from the Control Center in custom display order.
 """
 
 from flask import Blueprint, render_template, request, jsonify
@@ -211,30 +211,40 @@ ARCADE_MASTER_REGISTRY = [
 
 def get_effective_arcade_registry():
     """
-    Overlays database-backed ArcadeGameConfig states over the master registry.
-    Disabling a game in the Control Center immediately hides it from the public hangar.
+    Overlays database-backed ArcadeGameConfig states over the master registry,
+    ordering games strictly by the database `display_order` set in the Control Center.
     """
+    master_map = {g['slug']: g for g in ARCADE_MASTER_REGISTRY}
+
     try:
-        db_configs = {c.game_slug: c for c in ArcadeGameConfig.query.all()}
+        # Fetch enabled games ordered strictly by display_order
+        db_configs = ArcadeGameConfig.query.filter(
+            ArcadeGameConfig.game_slug != 'keyboard_quest',
+            ArcadeGameConfig.is_enabled == True
+        ).order_by(ArcadeGameConfig.display_order.asc(), ArcadeGameConfig.id.asc()).all()
     except Exception:
-        db_configs = {}
+        db_configs = []
+
+    if not db_configs:
+        return [g for g in ARCADE_MASTER_REGISTRY if g['slug'] != 'keyboard_quest']
 
     effective_games = []
-    for g in ARCADE_MASTER_REGISTRY:
-        slug = g['slug']
-        if slug in db_configs:
-            cfg = db_configs[slug]
-            # Respect administrative enable/disable toggle
-            if not cfg.is_enabled:
-                continue
-            # Apply customized titles or descriptions from Control Center
-            cloned = g.copy()
+    seen_slugs = set()
+
+    for cfg in db_configs:
+        slug = cfg.game_slug
+        if slug in master_map and slug not in seen_slugs:
+            seen_slugs.add(slug)
+            cloned = master_map[slug].copy()
             if cfg.display_title:
                 cloned['title'] = cfg.display_title
             if cfg.description:
                 cloned['summary'] = cfg.description
             effective_games.append(cloned)
-        else:
+
+    # Append any remaining master registry entries that were not explicitly ordered in database
+    for g in ARCADE_MASTER_REGISTRY:
+        if g['slug'] not in seen_slugs and g['slug'] != 'keyboard_quest':
             effective_games.append(g)
 
     return effective_games
@@ -258,7 +268,6 @@ def index():
 
 @games_bp.route('/play/<game_slug>')
 def play_arena(game_slug):
-    # Verify game is enabled in database
     db_cfg = ArcadeGameConfig.query.filter_by(game_slug=game_slug).first()
     if db_cfg and not db_cfg.is_enabled:
         return render_template('games/index.html', games=get_effective_arcade_registry())
@@ -267,7 +276,6 @@ def play_arena(game_slug):
     if not game_info:
         return render_template('games/index.html', games=get_effective_arcade_registry())
 
-    # Apply database display customizations
     if db_cfg:
         game_info = game_info.copy()
         if db_cfg.display_title:
