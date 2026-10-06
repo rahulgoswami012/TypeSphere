@@ -3,13 +3,131 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from flask_migrate import Migrate
 from flask_socketio import SocketIO
-from sqlalchemy import text
+from sqlalchemy import text, inspect
 from config import Config
 
 db = SQLAlchemy()
 login_manager = LoginManager()
 migrate = Migrate()
 socketio = SocketIO(cors_allowed_origins="*", async_mode='threading')
+
+
+def apply_universal_schema_patches(engine):
+    """
+    Non-destructive universal schema patcher for both SQLite and PostgreSQL.
+    Inspects existing tables and dynamically adds any missing columns.
+    """
+    try:
+        with engine.connect() as conn:
+            inspector = inspect(conn)
+            existing_tables = set(inspector.get_table_names())
+
+            is_pg = 'postgres' in str(engine.url).lower()
+            b_true = "TRUE" if is_pg else "1"
+            b_false = "FALSE" if is_pg else "0"
+            dt_type = "TIMESTAMP" if is_pg else "DATETIME"
+
+            # Table patch definitions: (table_name, [(col_name, col_sql_def)])
+            patch_manifest = [
+                ('users', [
+                    ('callsign', "VARCHAR(32)"),
+                    ('flight_squadron', "VARCHAR(64) DEFAULT 'Vanguard Flight Division'"),
+                    ('avatar_flight_badge', "VARCHAR(32) DEFAULT 'apex_wings'"),
+                    ('ranked_draws', "INTEGER DEFAULT 0"),
+                    ('is_verified', f"BOOLEAN DEFAULT {b_true}"),
+                    ('elo_rating', "INTEGER DEFAULT 1000"),
+                    ('ranked_wins', "INTEGER DEFAULT 0"),
+                    ('ranked_losses', "INTEGER DEFAULT 0"),
+                    ('is_suspended', f"BOOLEAN DEFAULT {b_false}"),
+                    ('is_banned', f"BOOLEAN DEFAULT {b_false}"),
+                    ('status_reason', "VARCHAR(255)"),
+                    ('last_active', dt_type)
+                ]),
+                ('user_settings', [
+                    ('typing_area_style', "VARCHAR(32) DEFAULT 'modern'"),
+                    ('keyboard_display', "VARCHAR(32) DEFAULT 'heatmap'"),
+                    ('reduce_motion', f"BOOLEAN DEFAULT {b_false}"),
+                    ('confidence_mode', f"BOOLEAN DEFAULT {b_false}"),
+                    ('game_sound_volume', "FLOAT DEFAULT 0.7"),
+                    ('game_sound_theme', "VARCHAR(32) DEFAULT 'retro'"),
+                    ('blind_mode', f"BOOLEAN DEFAULT {b_true}"),
+                    ('ghost_mode', f"BOOLEAN DEFAULT {b_false}"),
+                    ('default_duration', "INTEGER DEFAULT 60"),
+                    ('default_content', "VARCHAR(32) DEFAULT 'words'"),
+                    ('default_level', "VARCHAR(32) DEFAULT 'moderate'"),
+                    ('sound_volume', "FLOAT DEFAULT 0.7")
+                ]),
+                ('typing_tests', [
+                    ('total_mistakes', "INTEGER DEFAULT 0"),
+                    ('uncorrected_errors', "INTEGER DEFAULT 0"),
+                    ('time_of_day_ist', "INTEGER"),
+                    ('is_ranked', f"BOOLEAN DEFAULT {b_false}"),
+                    ('content_category', "VARCHAR(64) DEFAULT 'General'"),
+                    ('difficulty', "VARCHAR(32) DEFAULT 'moderate'")
+                ]),
+                ('arcade_game_configs', [
+                    ('display_order', "INTEGER DEFAULT 1")
+                ]),
+                ('lesson_stages', [
+                    ('track', "VARCHAR(32) DEFAULT 'beginner'"),
+                    ('hand_position_hint', "VARCHAR(128)"),
+                    ('keyboard_row', "VARCHAR(32) DEFAULT 'home'"),
+                    ('required_attempts', "INTEGER DEFAULT 2")
+                ]),
+                ('typing_texts', [
+                    ('title', "VARCHAR(160) DEFAULT 'Passage'"),
+                    ('slug', "VARCHAR(180)"),
+                    ('language', "VARCHAR(32) DEFAULT 'english'"),
+                    ('passage_type', "VARCHAR(32) DEFAULT 'paragraph'"),
+                    ('status', "VARCHAR(20) DEFAULT 'published'"),
+                    ('purpose', "VARCHAR(255) DEFAULT 'general_practice'"),
+                    ('exam_profile', "VARCHAR(64)"),
+                    ('exam_style', "VARCHAR(64)"),
+                    ('region', "VARCHAR(64) DEFAULT 'India'"),
+                    ('word_count', "INTEGER DEFAULT 0"),
+                    ('character_count', "INTEGER DEFAULT 0"),
+                    ('character_count_no_spaces', "INTEGER DEFAULT 0"),
+                    ('sentence_count', "INTEGER DEFAULT 0"),
+                    ('paragraph_count', "INTEGER DEFAULT 1"),
+                    ('avg_word_length', "FLOAT DEFAULT 0.0"),
+                    ('complexity_score', "FLOAT DEFAULT 1.0"),
+                    ('recommended_duration', "INTEGER DEFAULT 60"),
+                    ('min_duration', "INTEGER DEFAULT 15"),
+                    ('max_duration', "INTEGER DEFAULT 1200"),
+                    ('visibility', "VARCHAR(32) DEFAULT 'everyone'"),
+                    ('is_active', f"BOOLEAN DEFAULT {b_true}"),
+                    ('is_featured', f"BOOLEAN DEFAULT {b_false}"),
+                    ('allow_random', f"BOOLEAN DEFAULT {b_true}"),
+                    ('allow_multiplayer', f"BOOLEAN DEFAULT {b_true}"),
+                    ('source_type', "VARCHAR(64) DEFAULT 'original_practice'"),
+                    ('source_url', "VARCHAR(255)"),
+                    ('is_code', f"BOOLEAN DEFAULT {b_false}"),
+                    ('code_lang', "VARCHAR(32)"),
+                    ('times_used', "INTEGER DEFAULT 0"),
+                    ('unique_users', "INTEGER DEFAULT 0"),
+                    ('avg_wpm', "FLOAT DEFAULT 0.0"),
+                    ('avg_accuracy', "FLOAT DEFAULT 0.0"),
+                    ('report_count', "INTEGER DEFAULT 0"),
+                    ('health_score', "INTEGER DEFAULT 100"),
+                    ('created_by', "VARCHAR(64) DEFAULT 'System'"),
+                    ('updated_by', "VARCHAR(64)"),
+                    ('published_at', dt_type)
+                ])
+            ]
+
+            for table_name, columns_to_check in patch_manifest:
+                if table_name in existing_tables:
+                    current_columns = {col['name'] for col in inspector.get_columns(table_name)}
+                    for col_name, col_def in columns_to_check:
+                        if col_name not in current_columns:
+                            try:
+                                conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN {col_name} {col_def}"))
+                                conn.commit()
+                            except Exception:
+                                conn.rollback()
+    except Exception:
+        pass
+
 
 def create_app(config_class=Config):
     app = Flask(__name__)
@@ -53,100 +171,10 @@ def create_app(config_class=Config):
     from app.services.access_control import inject_capabilities
     app.context_processor(inject_capabilities)
 
-    # Resilient auto-patchers for local SQLite & production PostgreSQL
+    # Universal schema creation & dialect-agnostic column patching
     with app.app_context():
         db.create_all()
-        try:
-            with db.engine.connect() as conn:
-                # 1. Patch users table with Pilot Identity attributes
-                res = conn.execute(text("PRAGMA table_info(users)"))
-                u_cols = {row[1] for row in res.fetchall()}
-                if u_cols:
-                    if 'callsign' not in u_cols:
-                        conn.execute(text("ALTER TABLE users ADD COLUMN callsign VARCHAR(32)"))
-                    if 'flight_squadron' not in u_cols:
-                        conn.execute(text("ALTER TABLE users ADD COLUMN flight_squadron VARCHAR(64) DEFAULT 'Vanguard Flight Division'"))
-                    if 'avatar_flight_badge' not in u_cols:
-                        conn.execute(text("ALTER TABLE users ADD COLUMN avatar_flight_badge VARCHAR(32) DEFAULT 'apex_wings'"))
-                    if 'ranked_draws' not in u_cols:
-                        conn.execute(text("ALTER TABLE users ADD COLUMN ranked_draws INTEGER DEFAULT 0"))
-
-                # 2. Patch user_settings table with Cockpit preferences
-                res = conn.execute(text("PRAGMA table_info(user_settings)"))
-                s_cols = {row[1] for row in res.fetchall()}
-                if s_cols:
-                    patches = [
-                        ('typing_area_style', "VARCHAR(32) DEFAULT 'modern'"),
-                        ('keyboard_display', "VARCHAR(32) DEFAULT 'heatmap'"),
-                        ('reduce_motion', "BOOLEAN DEFAULT 0"),
-                        ('confidence_mode', "BOOLEAN DEFAULT 0"),
-                        ('game_sound_volume', "FLOAT DEFAULT 0.7"),
-                        ('game_sound_theme', "VARCHAR(32) DEFAULT 'retro'"),
-                        ('blind_mode', "BOOLEAN DEFAULT 1"),
-                        ('ghost_mode', "BOOLEAN DEFAULT 0")
-                    ]
-                    for col_name, col_def in patches:
-                        if col_name not in s_cols:
-                            conn.execute(text(f"ALTER TABLE user_settings ADD COLUMN {col_name} {col_def}"))
-
-                # 3. Patch typing_tests table
-                res = conn.execute(text("PRAGMA table_info(typing_tests)"))
-                t_cols = {row[1] for row in res.fetchall()}
-                if t_cols:
-                    if 'total_mistakes' not in t_cols:
-                        conn.execute(text("ALTER TABLE typing_tests ADD COLUMN total_mistakes INTEGER DEFAULT 0"))
-                    if 'uncorrected_errors' not in t_cols:
-                        conn.execute(text("ALTER TABLE typing_tests ADD COLUMN uncorrected_errors INTEGER DEFAULT 0"))
-                    if 'time_of_day_ist' not in t_cols:
-                        conn.execute(text("ALTER TABLE typing_tests ADD COLUMN time_of_day_ist INTEGER"))
-
-                # 4. Patch arcade_game_configs with display_order
-                res = conn.execute(text("PRAGMA table_info(arcade_game_configs)"))
-                ag_cols = {row[1] for row in res.fetchall()}
-                if ag_cols:
-                    if 'display_order' not in ag_cols:
-                        conn.execute(text("ALTER TABLE arcade_game_configs ADD COLUMN display_order INTEGER DEFAULT 1"))
-
-                # 5. Patch typing_texts table with multi-tier classification & rules
-                res = conn.execute(text("PRAGMA table_info(typing_texts)"))
-                txt_cols = {row[1] for row in res.fetchall()}
-                if txt_cols:
-                    text_patches = [
-                        ('slug', "VARCHAR(180)"),
-                        ('passage_type', "VARCHAR(32) DEFAULT 'paragraph'"),
-                        ('status', "VARCHAR(20) DEFAULT 'published'"),
-                        ('purpose', "VARCHAR(255) DEFAULT 'general_practice'"),
-                        ('exam_profile', "VARCHAR(64)"),
-                        ('exam_style', "VARCHAR(64)"),
-                        ('region', "VARCHAR(64) DEFAULT 'India'"),
-                        ('character_count_no_spaces', "INTEGER DEFAULT 0"),
-                        ('sentence_count', "INTEGER DEFAULT 0"),
-                        ('paragraph_count', "INTEGER DEFAULT 1"),
-                        ('avg_word_length', "FLOAT DEFAULT 0.0"),
-                        ('recommended_duration', "INTEGER DEFAULT 60"),
-                        ('min_duration', "INTEGER DEFAULT 15"),
-                        ('max_duration', "INTEGER DEFAULT 1200"),
-                        ('visibility', "VARCHAR(32) DEFAULT 'everyone'"),
-                        ('is_featured', "BOOLEAN DEFAULT 0"),
-                        ('allow_random', "BOOLEAN DEFAULT 1"),
-                        ('allow_multiplayer', "BOOLEAN DEFAULT 1"),
-                        ('source_type', "VARCHAR(64) DEFAULT 'original_practice'"),
-                        ('source_url', "VARCHAR(255)"),
-                        ('times_used', "INTEGER DEFAULT 0"),
-                        ('unique_users', "INTEGER DEFAULT 0"),
-                        ('avg_wpm', "FLOAT DEFAULT 0.0"),
-                        ('avg_accuracy', "FLOAT DEFAULT 0.0"),
-                        ('report_count', "INTEGER DEFAULT 0"),
-                        ('health_score', "INTEGER DEFAULT 100"),
-                        ('published_at', "DATETIME")
-                    ]
-                    for col_name, col_def in text_patches:
-                        if col_name not in txt_cols:
-                            conn.execute(text(f"ALTER TABLE typing_texts ADD COLUMN {col_name} {col_def}"))
-
-                conn.commit()
-        except Exception:
-            pass
+        apply_universal_schema_patches(db.engine)
 
         # Seed canonical system permissions and default navigation
         from app.services.admin_security import ensure_permissions_seeded, ensure_navigation_seeded
