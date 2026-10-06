@@ -100,28 +100,28 @@
     </div>
 </div>
 
-<!-- Primary Cockpit Control Console Bar -->
-<div class="card" style="padding:0.75rem 1.15rem; margin-bottom:0.85rem;">
+<!-- Primary Cockpit Control Console Bar (Refined Instrument Capsules) -->
+<div class="card" style="padding:0.65rem 1rem; margin-bottom:0.85rem;">
     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.65rem;">
-        <div style="display:flex; align-items:center; gap:0.55rem; flex-wrap:wrap;">
-            <!-- Duration Selector -->
+        <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
+            <!-- Duration Selector Capsule -->
             <div class="dropdown-control">
-                <label for="cfg-time-select" class="dropdown-label">Duration</label>
+                <span class="dropdown-label">Duration</span>
                 <select id="cfg-time-select" onchange="onTimeChange(this.value)" class="form-select">
                     <option value="15">15s Dash</option>
                     <option value="30">30s Sprint</option>
-                    <option value="60" selected>1 Min</option>
-                    <option value="120">2 Min</option>
-                    <option value="300">5 Min</option>
-                    <option value="600">10 Min</option>
+                    <option value="60" selected>1 Min (60s)</option>
+                    <option value="120">2 Min (120s)</option>
+                    <option value="300">5 Min (300s)</option>
+                    <option value="600">10 Min (600s)</option>
                     <option value="1200">20 Min</option>
                     <option value="0">No Time Limit</option>
                 </select>
             </div>
 
-            <!-- Content Mode Selector -->
+            <!-- Content Mode Selector Capsule -->
             <div class="dropdown-control">
-                <label for="cfg-type-select" class="dropdown-label">Discipline</label>
+                <span class="dropdown-label">Discipline</span>
                 <select id="cfg-type-select" onchange="onTypeChange(this.value)" class="form-select">
                     <option value="words" selected>Words & Sentences</option>
                     <option value="paragraphs">Full Passages</option>
@@ -137,9 +137,9 @@
             </div>
 
             <!-- Language Sub-Selector for Programming (8 Languages) -->
-            <div class="dropdown-control" id="cfg-code-lang-wrap" style="display:none;">
-                <label for="cfg-code-lang-select" class="dropdown-label" style="color:var(--warning);">Language</label>
-                <select id="cfg-code-lang-select" onchange="onCodeLangChange(this.value)" class="form-select" style="border-color:var(--warning);">
+            <div class="dropdown-control" id="cfg-code-lang-wrap" style="display:none; border-color:var(--warning);">
+                <span class="dropdown-label" style="color:var(--warning);">Language</span>
+                <select id="cfg-code-lang-select" onchange="onCodeLangChange(this.value)" class="form-select">
                     <option value="python" selected>Python</option>
                     <option value="javascript">JavaScript</option>
                     <option value="html">HTML</option>
@@ -151,9 +151,9 @@
                 </select>
             </div>
 
-            <!-- Difficulty Tier -->
+            <!-- Difficulty Tier Capsule -->
             <div class="dropdown-control">
-                <label for="cfg-diff-select" class="dropdown-label">Tier</label>
+                <span class="dropdown-label">Tier</span>
                 <select id="cfg-diff-select" onchange="onDifficultyChange(this.value)" class="form-select">
                     <option value="easy">Easy (Simple Lexicon)</option>
                     <option value="moderate" selected>Moderate (Standard English)</option>
@@ -163,7 +163,7 @@
             </div>
 
             <!-- Ranked Eligibility Indicator -->
-            <div id="rank-eligibility-badge" style="font-size:0.78rem; font-weight:700; margin-left:0.25rem;"></div>
+            <div id="rank-eligibility-badge" style="font-size:0.78rem; font-weight:800; margin-left:0.25rem;"></div>
         </div>
 
         <!-- Quick Cockpit Toggles -->
@@ -172,7 +172,7 @@
                 Blind: ON
             </button>
             <button onclick="toggleGhostQuick()" id="btn-ghost" class="btn btn-sm" title="Ghost Pacer Competitor">
-                Ghost: OFF
+                Ghost Pacer: OFF
             </button>
             <button onclick="window.typingEngine.togglePause()" class="btn btn-sm" style="color:var(--accent);">
                 ⏸ Pause
@@ -183,7 +183,7 @@
         </div>
     </div>
 
-    <div id="config-explainer-hint" style="font-size:0.78rem; color:var(--text-muted); margin-top:0.45rem; border-top:1px solid var(--border-color); padding-top:0.4rem;">
+    <div id="config-explainer-hint" style="font-size:0.78rem; color:var(--text-muted); margin-top:0.45rem; border-top:1px solid var(--border-color); padding-top:0.35rem;">
         Standard English vocabulary, natural syntax, and balanced keystroke frequencies.
     </div>
 </div>
@@ -279,7 +279,7 @@ function onTypeChange(typeVal) {
     }
     const codeLangWrap = document.getElementById('cfg-code-lang-wrap');
     if (codeLangWrap) {
-        codeLangWrap.style.display = (typeVal === 'code') ? 'flex' : 'none';
+        codeLangWrap.style.display = (typeVal === 'code') ? 'inline-flex' : 'none';
     }
     window.typingEngine.contentType = typeVal;
     window.typingEngine.loadPrompt(false);
@@ -315,7 +315,7 @@ function toggleGhostQuick() {
     const next = !window.typingEngine.ghostEnabled;
     window.typingEngine.ghostEnabled = next;
     const btn = document.getElementById('btn-ghost');
-    btn.textContent = `Ghost: ${next ? 'ON' : 'OFF'}`;
+    btn.textContent = `Ghost Pacer: ${next ? 'ACTIVE' : 'OFF'}`;
     btn.classList.toggle('active-choice', next);
 }
 

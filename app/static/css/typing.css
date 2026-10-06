@@ -14,6 +14,43 @@
     max-width: 100%;
 }
 
+/* Telemetry Instrument Capsule Controls */
+.dropdown-control {
+    display: inline-flex;
+    align-items: center;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 0.15rem 0.25rem 0.15rem 0.65rem;
+    gap: 0.4rem;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    transition: border-color var(--transition-fast);
+}
+
+.dropdown-control:hover {
+    border-color: var(--accent);
+}
+
+.dropdown-label {
+    font-size: 0.7rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    letter-spacing: 0.08em;
+    user-select: none;
+    white-space: nowrap;
+}
+
+.dropdown-control select,
+.dropdown-control .form-select {
+    border: none !important;
+    background-color: transparent !important;
+    padding: 0.35rem 1.85rem 0.35rem 0.4rem !important;
+    font-size: 0.84rem !important;
+    font-weight: 700 !important;
+    box-shadow: none !important;
+}
+
 /* HUD Metric Gauges */
 .stats-hud {
     display: grid;
@@ -47,7 +84,7 @@
     line-height: 1.2;
 }
 
-/* Restored Circular Vector Speedometer Arc */
+/* Speedometer SVG */
 .speedometer-svg {
     position: absolute;
     right: 8px;
@@ -70,7 +107,7 @@
     transition: stroke-dashoffset 0.12s ease-out;
 }
 
-/* Cockpit 5-Shield Battery HUD for Survival Mode */
+/* Cockpit 5-Shield Battery HUD */
 .survival-shield-container {
     display: none;
     background: var(--bg-secondary);
@@ -199,7 +236,7 @@
     font-variant: normal !important;
 }
 
-/* Character Highlighting & Active Stroke State */
+/* Character Highlighting */
 .char {
     position: relative;
     transition: color 0.04s ease;

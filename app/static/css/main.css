@@ -12,6 +12,7 @@
     --accent: #38bdf8;
     --accent-hover: #0284c7;
     --accent-glow: rgba(56, 189, 248, 0.24);
+    --accent-contrast: #04101e; /* High contrast text on accent */
     --success: #10b981;
     --success-bg: rgba(16, 185, 129, 0.14);
     --danger: #f43f5e;
@@ -44,6 +45,7 @@
     --accent: #22c55e;
     --accent-hover: #16a34a;
     --accent-glow: rgba(34, 197, 94, 0.25);
+    --accent-contrast: #040806;
     --border-color: #173626;
     --border-focus: #22c55e;
     --warning: #f59e0b;
@@ -63,6 +65,7 @@
     --accent: #ec4899;
     --accent-hover: #db2777;
     --accent-glow: rgba(236, 72, 153, 0.28);
+    --accent-contrast: #ffffff;
     --border-color: #272d5c;
     --border-focus: #ec4899;
     --warning-bg: rgba(245, 158, 11, 0.22);
@@ -74,21 +77,22 @@
     --bg-secondary: #f4e6cb;
     --bg-card: #ebdcc0;
     --bg-elevated: #dfceaf;
-    --text-primary: #2d2013; /* High contrast dark obsidian brown */
+    --text-primary: #2d2013;
     --text-secondary: #5c4428;
     --text-muted: #7d6244;
-    --accent: #9a3412; /* Rich mahogany terracotta */
+    --accent: #9a3412;
     --accent-hover: #7c2d12;
-    --accent-glow: rgba(154, 52, 18, 0.2);
+    --accent-glow: rgba(154, 52, 18, 0.22);
+    --accent-contrast: #ffffff; /* Crisp white on dark terracotta */
     --border-color: #d1bda2;
     --border-focus: #9a3412;
-    --success: #15803d; /* Readable forest green on beige */
+    --success: #15803d;
     --success-bg: rgba(21, 128, 61, 0.14);
-    --danger: #b91c1c; /* Deep crimson */
+    --danger: #b91c1c;
     --danger-bg: rgba(185, 28, 28, 0.14);
     --warning: #b45309;
     --warning-bg: rgba(180, 83, 9, 0.16);
-    --warning-text: #78350f; /* Deep amber readable on light background */
+    --warning-text: #78350f;
 }
 
 [data-theme="light"] {
@@ -102,6 +106,7 @@
     --accent: #0284c7;
     --accent-hover: #0369a1;
     --accent-glow: rgba(2, 132, 199, 0.16);
+    --accent-contrast: #ffffff;
     --border-color: #cbd5e1;
     --border-focus: #0284c7;
     --success: #166534;
@@ -158,7 +163,6 @@ html, body {
     text-rendering: optimizeLegibility;
 }
 
-/* Main Content Container */
 .container {
     width: 100%;
     max-width: 1140px;
@@ -347,9 +351,9 @@ html, body {
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
 .btn-primary {
     background: var(--accent);
-    color: #04101e;
+    color: var(--accent-contrast);
     border-color: var(--accent);
-    font-weight: 700;
+    font-weight: 800;
 }
 .btn-primary:hover:not(:disabled) {
     background: var(--accent-hover);
@@ -371,9 +375,82 @@ html, body {
 .btn.active-choice {
     background: var(--accent) !important;
     border-color: var(--accent) !important;
-    color: #04101e !important;
+    color: var(--accent-contrast) !important; /* Perfect readable contrast across themes */
     font-weight: 800 !important;
     box-shadow: 0 0 12px var(--accent-glow) !important;
+}
+
+/* -------------------------------------------------------------
+   GLOBAL FORM CONTROLS OVERHAUL (Select, Input, Textarea)
+   ------------------------------------------------------------- */
+/* Strips raw 1990s native browser bevels and replaces with modern custom styling */
+select, 
+.form-select {
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+    background-color: var(--bg-card) !important;
+    color: var(--text-primary) !important;
+    border: 1.5px solid var(--border-color) !important;
+    border-radius: var(--radius-sm) !important;
+    padding: 0.45rem 2.2rem 0.45rem 0.85rem !important;
+    font-family: inherit !important;
+    font-size: 0.86rem !important;
+    font-weight: 600 !important;
+    line-height: 1.4 !important;
+    outline: none !important;
+    cursor: pointer !important;
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast) !important;
+    
+    /* Clean custom vector chevron arrow */
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 0.75rem center !important;
+    background-size: 12px !important;
+}
+
+select:hover, 
+.form-select:hover {
+    border-color: var(--accent) !important;
+}
+
+select:focus, 
+.form-select:focus {
+    border-color: var(--accent) !important;
+    box-shadow: 0 0 0 3px var(--accent-glow) !important;
+}
+
+select option {
+    background-color: var(--bg-secondary) !important;
+    color: var(--text-primary) !important;
+    padding: 0.5rem !important;
+}
+
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="date"],
+textarea {
+    background-color: var(--bg-card);
+    color: var(--text-primary);
+    border: 1.5px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 0.55rem 0.85rem;
+    font-family: inherit;
+    font-size: 0.9rem;
+    outline: none;
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus,
+input[type="number"]:focus,
+input[type="date"]:focus,
+textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-glow);
 }
 
 /* -------------------------------------------------------------
@@ -392,7 +469,6 @@ html, body {
 }
 .card:hover { border-color: rgba(56, 189, 248, 0.3); }
 
-/* 2-Column Parallel Grid for Arcade Games */
 .arcade-cards-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr) !important;
