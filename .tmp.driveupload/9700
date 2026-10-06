@@ -1,0 +1,209 @@
+{% extends 'admin/base_admin.html' %}
+{% block title %}Review Queue & Reported Passages | TypeSphere Control Center{% endblock %}
+
+{% block admin_content %}
+<!-- Sub-Navigation Strip for Passage Library Modules -->
+<div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--admin-border); padding-bottom:0.75rem; margin-bottom:1.25rem; flex-wrap:wrap; gap:0.75rem;">
+  <div>
+    <h1 style="font-size:1.6rem; font-weight:800; margin:0 0 0.25rem 0;">Passage Review Queue</h1>
+    <p style="color:var(--admin-text-muted); font-size:0.85rem; margin:0;">
+      Audit community-reported passages, review incoming editorial drafts, and authorize verified content.
+    </p>
+  </div>
+  <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
+    <a href="{{ url_for('admin.passages_list') }}" class="btn btn-sm">All Passages</a>
+    <a href="{{ url_for('admin.passage_create') }}" class="btn btn-sm">+ Add Passage</a>
+    <a href="{{ url_for('admin.passage_collections') }}" class="btn btn-sm">Collections</a>
+    <a href="{{ url_for('admin.passage_categories') }}" class="btn btn-sm">Categories & Rules</a>
+    <a href="{{ url_for('admin.passage_review_queue') }}" class="btn btn-sm btn-primary">Review Queue</a>
+    <a href="{{ url_for('admin.passage_bulk_import') }}" class="btn btn-sm">Bulk Import</a>
+    <a href="{{ url_for('admin.passage_analytics') }}" class="btn btn-sm">Analytics</a>
+  </div>
+</div>
+
+<!-- Overview Status HUD -->
+<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:1rem; margin-bottom:1.5rem;">
+  <div class="card" style="margin:0;">
+    <div style="font-size:0.72rem; color:var(--admin-text-muted); font-weight:800; text-transform:uppercase;">PENDING USER REPORTS</div>
+    <div style="font-size:1.85rem; font-weight:900; color:var(--admin-danger); margin-top:0.2rem;">{{ reports|length }}</div>
+    <div style="font-size:0.75rem; color:var(--admin-text-muted);">Typographical or formatting issues</div>
+  </div>
+  <div class="card" style="margin:0;">
+    <div style="font-size:0.72rem; color:var(--admin-text-muted); font-weight:800; text-transform:uppercase;">EDITORIAL REVIEW</div>
+    <div style="font-size:1.85rem; font-weight:900; color:var(--admin-accent); margin-top:0.2rem;">{{ review_passages|length }}</div>
+    <div style="font-size:0.75rem; color:var(--admin-text-muted);">Awaiting publishing authorization</div>
+  </div>
+  <div class="card" style="margin:0;">
+    <div style="font-size:0.72rem; color:var(--admin-text-muted); font-weight:800; text-transform:uppercase;">DRAFT STAGED</div>
+    <div style="font-size:1.85rem; font-weight:900; color:var(--admin-warning); margin-top:0.2rem;">{{ draft_passages|length }}</div>
+    <div style="font-size:0.75rem; color:var(--admin-text-muted);">Unpublished work in progress</div>
+  </div>
+</div>
+
+<!-- 1. Community Reported Passages Queue -->
+<div class="card" style="padding:0; overflow:hidden; margin-bottom:1.75rem; border:1.5px solid {{ 'var(--admin-danger)' if reports else 'var(--admin-border)' }};">
+  <div style="padding:0.85rem 1.25rem; border-bottom:1px solid var(--admin-border); background:var(--admin-elevated); display:flex; justify-content:space-between; align-items:center;">
+    <div style="display:flex; align-items:center; gap:0.5rem;">
+      <span style="font-size:1.2rem;">🚨</span>
+      <h3 style="font-size:1.05rem; font-weight:800; margin:0; color:#fff;">Reported Passages Queue</h3>
+    </div>
+    <span class="badge {{ 'badge-danger' if reports else 'badge-success' }}">
+      {{ reports|length }} PENDING REPORTS
+    </span>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Passage</th>
+        <th>Report Category</th>
+        <th>Report Details</th>
+        <th>Reporter</th>
+        <th>Date</th>
+        <th style="text-align:right;">Resolution Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in reports %}
+      <tr>
+        <td>
+          <strong style="color:var(--admin-text-main);">{{ r.passage.title }}</strong>
+          <div style="font-size:0.75rem; color:var(--admin-text-muted); font-family:var(--admin-mono);">#{{ r.passage.id }} &bull; {{ r.passage.category }}</div>
+        </td>
+        <td>
+          <span class="badge badge-warning">{{ r.reason|upper }}</span>
+        </td>
+        <td style="font-size:0.82rem; color:var(--admin-text-muted); max-width:280px;">
+          {{ r.details or 'No additional details provided.' }}
+        </td>
+        <td style="font-size:0.8rem;">
+          {{ r.user.display_callsign if r.user else 'Cadet (Guest)' }}
+        </td>
+        <td style="font-size:0.78rem; color:var(--admin-text-muted);">
+          {{ r.created_at.strftime('%Y-%m-%d') }}
+        </td>
+        <td style="text-align:right;">
+          <div style="display:inline-flex; gap:0.35rem;">
+            <a href="{{ url_for('admin.passage_edit', passage_id=r.passage.id) }}" class="btn btn-sm">Edit Passage</a>
+            <form method="POST" action="{{ url_for('admin.resolve_passage_report', report_id=r.id) }}" style="display:inline;">
+              <input type="hidden" name="resolution_action" value="resolve">
+              <button type="submit" class="btn btn-sm btn-primary">Resolve ✓</button>
+            </form>
+            <form method="POST" action="{{ url_for('admin.resolve_passage_report', report_id=r.id) }}" style="display:inline;">
+              <input type="hidden" name="resolution_action" value="dismiss">
+              <button type="submit" class="btn btn-sm">&times; Dismiss</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="6" style="text-align:center; padding:2rem; color:var(--admin-text-muted);">
+          ✓ Zero reported passages pending review. Content library integrity is nominal.
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- 2. Passages Awaiting Editorial Authorization -->
+<div class="card" style="padding:0; overflow:hidden; margin-bottom:1.75rem;">
+  <div style="padding:0.85rem 1.25rem; border-bottom:1px solid var(--admin-border); background:var(--admin-elevated); display:flex; justify-content:space-between; align-items:center;">
+    <h3 style="font-size:1.05rem; font-weight:800; margin:0;">Passages in Editorial Review ({{ review_passages|length }})</h3>
+    <span style="font-size:0.78rem; color:var(--admin-text-muted);">Awaiting authorization for public test rotation</span>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Passage Title</th>
+        <th>Language</th>
+        <th>Category</th>
+        <th>Difficulty</th>
+        <th>Words</th>
+        <th>Created By</th>
+        <th style="text-align:right;">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in review_passages %}
+      <tr>
+        <td>
+          <div style="font-weight:700; color:var(--admin-text-main);">{{ p.title }}</div>
+          <div style="font-size:0.75rem; color:var(--admin-text-muted);">"{{ p.display_preview }}"</div>
+        </td>
+        <td><span class="badge badge-primary">{{ p.language|upper }}</span></td>
+        <td>{{ p.category }}</td>
+        <td><span class="badge badge-warning">{{ p.difficulty|upper }}</span></td>
+        <td style="font-family:var(--admin-mono); font-weight:700;">{{ p.word_count }}</td>
+        <td style="font-size:0.8rem; color:var(--admin-text-muted);">{{ p.created_by }}</td>
+        <td style="text-align:right;">
+          <div style="display:inline-flex; gap:0.35rem;">
+            <form method="POST" action="{{ url_for('admin.approve_passage', passage_id=p.id) }}" style="display:inline;">
+              <button type="submit" class="btn btn-sm btn-primary">Approve & Publish ✓</button>
+            </form>
+            <a href="{{ url_for('admin.passage_edit', passage_id=p.id) }}" class="btn btn-sm">Edit</a>
+          </div>
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="7" style="text-align:center; padding:1.75rem; color:var(--admin-text-muted);">
+          No passages currently staged for editorial review.
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- 3. Staged Drafts Archive -->
+<div class="card" style="padding:0; overflow:hidden;">
+  <div style="padding:0.85rem 1.25rem; border-bottom:1px solid var(--admin-border); background:var(--admin-elevated); display:flex; justify-content:space-between; align-items:center;">
+    <h3 style="font-size:1.05rem; font-weight:800; margin:0;">Draft Passages ({{ draft_passages|length }})</h3>
+    <span style="font-size:0.78rem; color:var(--admin-text-muted);">Work-in-progress content hidden from live benchmarks</span>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Title</th>
+        <th>Category</th>
+        <th>Type</th>
+        <th>Length</th>
+        <th>Created</th>
+        <th style="text-align:right;">Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for d in draft_passages %}
+      <tr>
+        <td>
+          <strong>{{ d.title }}</strong>
+          <div style="font-size:0.75rem; color:var(--admin-text-muted);">"{{ d.display_preview }}"</div>
+        </td>
+        <td>{{ d.category }}</td>
+        <td><span style="font-size:0.78rem; text-transform:capitalize;">{{ d.passage_type }}</span></td>
+        <td style="font-family:var(--admin-mono);">{{ d.word_count }} wds</td>
+        <td style="font-size:0.78rem; color:var(--admin-text-muted);">{{ d.created_at.strftime('%Y-%m-%d') }}</td>
+        <td style="text-align:right;">
+          <div style="display:inline-flex; gap:0.35rem;">
+            <form method="POST" action="{{ url_for('admin.approve_passage', passage_id=d.id) }}" style="display:inline;">
+              <button type="submit" class="btn btn-sm btn-primary">Publish</button>
+            </form>
+            <a href="{{ url_for('admin.passage_edit', passage_id=d.id) }}" class="btn btn-sm">Edit</a>
+            <form method="POST" action="{{ url_for('admin.passage_delete', passage_id=d.id) }}" onsubmit="return confirm('Permanently discard this draft?');" style="display:inline;">
+              <button type="submit" class="btn btn-sm btn-danger">&times;</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="6" style="text-align:center; padding:1.75rem; color:var(--admin-text-muted);">
+          No draft passages currently staged.
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

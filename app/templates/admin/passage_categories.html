@@ -1,0 +1,188 @@
+{% extends 'admin/base_admin.html' %}
+{% block title %}Taxonomy, Categories & Exam Rules | TypeSphere Control Center{% endblock %}
+
+{% block admin_content %}
+<!-- Sub-Navigation Strip for Passage Library Modules -->
+<div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--admin-border); padding-bottom:0.75rem; margin-bottom:1.25rem; flex-wrap:wrap; gap:0.75rem;">
+  <div>
+    <h1 style="font-size:1.6rem; font-weight:800; margin:0 0 0.25rem 0;">Taxonomy & Category Rules Manager</h1>
+    <p style="color:var(--admin-text-muted); font-size:0.85rem; margin:0;">
+      Control content categories, exam certification profiles, passage types, and keyword tags.
+    </p>
+  </div>
+  <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
+    <a href="{{ url_for('admin.passages_list') }}" class="btn btn-sm">All Passages</a>
+    <a href="{{ url_for('admin.passage_create') }}" class="btn btn-sm">+ Add Passage</a>
+    <a href="{{ url_for('admin.passage_collections') }}" class="btn btn-sm">Collections</a>
+    <a href="{{ url_for('admin.passage_categories') }}" class="btn btn-sm btn-primary">Categories & Rules</a>
+    <a href="{{ url_for('admin.export_csv', data_type='passages') }}" class="btn btn-sm">Export CSV</a>
+  </div>
+</div>
+
+<div style="display:grid; grid-template-columns: 1.25fr 1fr; gap:1.5rem; margin-bottom:1.5rem;">
+  <!-- Section 1: Categories Breakdown & Renaming -->
+  <div class="card" style="margin:0; padding:0; overflow:hidden;">
+    <div style="padding:0.85rem 1.25rem; border-bottom:1px solid var(--admin-border); display:flex; justify-content:space-between; align-items:center;">
+      <h3 style="font-size:1.05rem; font-weight:800; margin:0;">1. Content Categories ({{ categories_data|length }})</h3>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Category Name</th>
+          <th>Passage Count</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for cat_name, cnt in categories_data %}
+        <tr>
+          <td><strong style="color:var(--admin-text-main);">{{ cat_name or 'Uncategorized' }}</strong></td>
+          <td>
+            <a href="{{ url_for('admin.passages_list', category=cat_name) }}" style="color:var(--admin-accent); font-family:var(--admin-mono); font-weight:700; text-decoration:none;">
+              {{ cnt }} passages &rarr;
+            </a>
+          </td>
+          <td>
+            <button type="button" onclick="openRenameModal('{{ cat_name }}')" class="btn btn-sm">
+              Rename / Merge
+            </button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Section 2: Exam Profiles Directory -->
+  <div class="card" style="margin:0; padding:0; overflow:hidden;">
+    <div style="padding:0.85rem 1.25rem; border-bottom:1px solid var(--admin-border);">
+      <h3 style="font-size:1.05rem; font-weight:800; margin:0;">2. Statutory Exam Profiles</h3>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Exam Profile</th>
+          <th>Passage Count</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for profile_code, cnt in exam_profiles_data %}
+        <tr>
+          <td>
+            <strong style="color:var(--admin-warning);">{{ profile_code|upper }}</strong>
+            <div style="font-size:0.75rem; color:var(--admin-text-muted);">
+              {% if profile_code == 'ssc_cgl' %}Staff Selection Commission Combined Graduate Level (2000 strokes)
+              {% elif profile_code == 'ssc_chsl' %}Combined Higher Secondary Level (1750 strokes)
+              {% elif profile_code == 'rrb' %}Railway Recruitment Board NTPC Skill Test
+              {% elif profile_code == 'cpct' %}Computer Proficiency Certification Test (MP)
+              {% elif profile_code == 'court_steno' %}High Court & District Judicial Clerical / Steno
+              {% else %}Government Administrative Service
+              {% endif %}
+            </div>
+          </td>
+          <td>
+            <a href="{{ url_for('admin.passages_list', exam_profile=profile_code) }}" style="color:var(--admin-accent); font-family:var(--admin-mono); font-weight:700; text-decoration:none;">
+              {{ cnt }} passages &rarr;
+            </a>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="2" style="text-align:center; padding:1.5rem; color:var(--admin-text-muted);">No passages tagged with exam profiles.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div style="display:grid; grid-template-columns: 1fr 1.5fr; gap:1.5rem; margin-bottom:1.5rem;">
+  <!-- Section 3: Passage Types Breakdown -->
+  <div class="card" style="margin:0; padding:0; overflow:hidden;">
+    <div style="padding:0.85rem 1.25rem; border-bottom:1px solid var(--admin-border);">
+      <h3 style="font-size:1.05rem; font-weight:800; margin:0;">3. Passage Types Breakdown</h3>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Passages</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p_type, cnt in passage_types_data %}
+        <tr>
+          <td><strong style="text-transform:capitalize;">{{ (p_type or 'paragraph')|replace('_', ' ') }}</strong></td>
+          <td>
+            <a href="{{ url_for('admin.passages_list', passage_type=p_type) }}" style="color:var(--admin-accent); font-family:var(--admin-mono); font-weight:700; text-decoration:none;">
+              {{ cnt }} passages &rarr;
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Section 4: Tags Directory & Pruning -->
+  <div class="card" style="margin:0;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; border-bottom:1px solid var(--admin-border); padding-bottom:0.4rem;">
+      <h3 style="font-size:1.05rem; font-weight:800; margin:0;">4. Tags Registry ({{ tags|length }})</h3>
+      <form method="POST" action="{{ url_for('admin.prune_unused_tags') }}" onsubmit="return confirm('Prune all tags with 0 associated passages?');">
+        <button type="submit" class="btn btn-sm btn-danger">🧹 Prune Unused Tags</button>
+      </form>
+    </div>
+    <p style="color:var(--admin-text-muted); font-size:0.8rem; margin-bottom:1rem;">
+      Keywords used across passages for granular indexing. Click a tag to delete or filter.
+    </p>
+
+    <div style="display:flex; gap:0.45rem; flex-wrap:wrap; max-height:220px; overflow-y:auto; padding:0.25rem;">
+      {% for t in tags %}
+      <div style="display:inline-flex; align-items:center; gap:0.35rem; background:var(--admin-elevated); border:1px solid var(--admin-border); padding:0.2rem 0.55rem; border-radius:4px; font-size:0.78rem;">
+        <span style="font-weight:700; color:var(--admin-accent);">#{{ t.name }}</span>
+        <span style="font-size:0.7rem; color:var(--admin-text-muted);">({{ t.passages.count() }})</span>
+        <form method="POST" action="{{ url_for('admin.delete_tag', tag_id=t.id) }}" onsubmit="return confirm('Delete tag #{{ t.name }}?');" style="display:inline;">
+          <button type="submit" style="background:none; border:none; color:var(--admin-danger); cursor:pointer; font-weight:800; font-size:0.85rem; padding:0 0 0 2px;">&times;</button>
+        </form>
+      </div>
+      {% else %}
+      <span style="color:var(--admin-text-muted); font-size:0.85rem;">No tags established. Add tags directly when creating or editing passages.</span>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<!-- Rename / Merge Modal -->
+<div id="rename-category-modal" class="cmd-overlay" onclick="if(event.target===this)closeRenameModal()">
+  <div class="cmd-dialog" style="max-width:440px; padding:1.5rem; background:var(--admin-surface); border:1.5px solid var(--admin-accent);">
+    <h3 style="font-size:1.15rem; font-weight:800; margin-bottom:0.75rem; color:#fff;">Rename / Merge Category</h3>
+    <p style="color:var(--admin-text-muted); font-size:0.82rem; margin-bottom:1rem;">
+      All passages currently using the old category name will be updated to the new designation immediately.
+    </p>
+    <form method="POST" action="{{ url_for('admin.rename_category') }}">
+      <input type="hidden" name="old_category" id="old-category-input">
+      <div style="margin-bottom:1rem;">
+        <label style="display:block; font-size:0.72rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.3rem;">Current Category</label>
+        <input type="text" id="display-old-category" disabled style="width:100%; padding:0.55rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:4px; color:var(--admin-accent); font-weight:700;">
+      </div>
+      <div style="margin-bottom:1.25rem;">
+        <label style="display:block; font-size:0.72rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.3rem;">New Category Name</label>
+        <input type="text" name="new_category" required placeholder="e.g. Aeronautical Engineering" style="width:100%; padding:0.55rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:4px; color:#fff;">
+      </div>
+      <div style="display:flex; justify-content:flex-end; gap:0.5rem;">
+        <button type="button" onclick="closeRenameModal()" class="btn btn-sm">Cancel</button>
+        <button type="submit" class="btn btn-sm btn-primary" style="font-weight:800;">Execute Update &rarr;</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function openRenameModal(catName) {
+  document.getElementById('old-category-input').value = catName;
+  document.getElementById('display-old-category').value = catName;
+  document.getElementById('rename-category-modal').style.display = 'flex';
+}
+function closeRenameModal() {
+  document.getElementById('rename-category-modal').style.display = 'none';
+}
+</script>
+{% endblock %}

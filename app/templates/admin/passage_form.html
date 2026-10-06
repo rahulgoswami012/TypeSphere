@@ -1,99 +1,437 @@
 {% extends 'admin/base_admin.html' %}
-{% block title %}{{ action }} Passage | TypeSphere Control Center{% endblock %}
+{% block title %}{{ action }} Passage Studio | TypeSphere Control Center{% endblock %}
 
 {% block admin_content %}
 <div style="margin-bottom:1.5rem;">
   <a href="{{ url_for('admin.passages_list') }}" style="color:var(--admin-accent); font-size:0.85rem; text-decoration:none;">&larr; Return to Passage Library</a>
-  <h1 style="font-size:1.6rem; font-weight:800; margin-top:0.4rem;">{{ action }} Typing Passage</h1>
-  <p style="color:var(--admin-text-muted); font-size:0.85rem;">Configure title, category, difficulty tier, and programming syntax tags.</p>
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.4rem; flex-wrap:wrap; gap:1rem;">
+    <div>
+      <h1 style="font-size:1.65rem; font-weight:800; margin:0;">{{ action }} Typing Passage</h1>
+      <p style="color:var(--admin-text-muted); font-size:0.85rem; margin-top:0.2rem;">
+        Complete textual composition, lexical analysis, exam alignment, duration guidelines, and metadata indexing.
+      </p>
+    </div>
+    <div style="display:flex; gap:0.5rem;">
+      <button type="button" onclick="previewCurrentPassage()" class="btn btn-sm">👁️ Live Preview</button>
+      <button type="button" onclick="cleanFormatting()" class="btn btn-sm">🧹 Clean Formatting</button>
+      <button type="button" onclick="checkDuplicatesAjax()" class="btn btn-sm btn-primary">🔍 Check Duplicates</button>
+    </div>
+  </div>
 </div>
 
-<div class="card" style="max-width:880px;">
-  <form method="POST">
-    <div style="display:grid; grid-template-columns: 2fr 1fr; gap:1rem; margin-bottom:1.25rem;">
+<!-- Duplicate Detection Alert Panel (Dynamically shown) -->
+<div id="duplicate-warning-banner" style="display:none; background:rgba(245, 158, 11, 0.12); border:1.5px solid var(--admin-warning); border-radius:8px; padding:1rem 1.25rem; margin-bottom:1.5rem;">
+  <div style="display:flex; align-items:center; justify-content:space-between;">
+    <div style="display:flex; align-items:center; gap:0.6rem;">
+      <span style="font-size:1.4rem;">⚠️</span>
+      <div>
+        <strong style="color:var(--admin-warning); font-size:0.95rem;">Possible Duplicate Passage Detected!</strong>
+        <div id="duplicate-details-msg" style="font-size:0.85rem; color:var(--admin-text-main); margin-top:0.2rem;">
+          Similarity match detected.
+        </div>
+      </div>
+    </div>
+    <button type="button" onclick="document.getElementById('duplicate-warning-banner').style.display='none'" class="btn btn-sm">&times; Dismiss</button>
+  </div>
+</div>
+
+<form method="POST" id="passage-editor-form">
+  <!-- ============================================================
+       SECTION 1: BASIC INFORMATION
+       ============================================================ -->
+  <div class="card" style="margin-bottom:1.25rem;">
+    <h3 style="font-size:1.05rem; font-weight:800; margin-bottom:1rem; border-bottom:1px solid var(--admin-border); padding-bottom:0.4rem; color:var(--admin-accent);">
+      1. Basic Information & Classification
+    </h3>
+
+    <div style="display:grid; grid-template-columns: 2fr 1fr; gap:1rem; margin-bottom:1rem;">
       <div>
         <label style="display:block; font-size:0.75rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.3rem;">Passage Title</label>
-        <input type="text" name="title" value="{{ passage.title if passage else '' }}" required placeholder="e.g. Supersonic Shockwave Physics" style="width:100%; padding:0.6rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff;">
+        <input type="text" name="title" id="passage-title" value="{{ passage.title if passage else '' }}" required placeholder="e.g. Digital India and the Future of Governance" style="width:100%; padding:0.6rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff; font-size:0.9rem;">
       </div>
       <div>
-        <label style="display:block; font-size:0.75rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.3rem;">Author / Source</label>
-        <input type="text" name="source" value="{{ passage.source if passage else 'Administrator' }}" style="width:100%; padding:0.6rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff;">
+        <label style="display:block; font-size:0.75rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.3rem;">Language</label>
+        <select name="language" id="passage-language" style="width:100%; padding:0.6rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff;">
+          <option value="english" {% if not passage or passage.language == 'english' %}selected{% endif %}>English</option>
+          <option value="hindi" {% if passage and passage.language == 'hindi' %}selected{% endif %}>Hindi</option>
+          <option value="hinglish" {% if passage and passage.language == 'hinglish' %}selected{% endif %}>Hinglish</option>
+          <option value="regional" {% if passage and passage.language == 'regional' %}selected{% endif %}>Other Regional Language</option>
+        </select>
       </div>
     </div>
 
-    <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:1rem; margin-bottom:1.25rem;">
+    <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:1rem; margin-bottom:1rem;">
       <div>
-        <label style="display:block; font-size:0.75rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.3rem;">Category</label>
-        <select name="category" style="width:100%; padding:0.6rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff;">
-          {% for cat in ['General', 'Literature', 'Education', 'Technology', 'Science', 'Business', 'Competitive Exam', 'Professional'] %}
+        <label style="display:block; font-size:0.75rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.3rem;">Content Category</label>
+        <select name="category" id="passage-category" style="width:100%; padding:0.6rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff;">
+          {% for cat in ['Technology', 'General', 'Literature', 'Education', 'Science', 'Business', 'History', 'Daily Life', 'Philosophy'] %}
           <option value="{{ cat }}" {% if passage and passage.category == cat %}selected{% endif %}>{{ cat }}</option>
           {% endfor %}
         </select>
       </div>
 
       <div>
-        <label style="display:block; font-size:0.75rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.3rem;">Difficulty Tier</label>
-        <select name="difficulty" style="width:100%; padding:0.6rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff;">
-          {% for diff in ['Easy', 'Medium', 'Hard', 'Expert'] %}
-          <option value="{{ diff }}" {% if passage and passage.difficulty == diff %}selected{% endif %}>{{ diff }}</option>
+        <label style="display:block; font-size:0.75rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.3rem;">Passage Type</label>
+        <select name="passage_type" id="passage-type" style="width:100%; padding:0.6rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff;">
+          {% for pt, label in [('paragraph','General Paragraph'), ('article','Article'), ('story','Story / Fiction'), ('quote','Quote'), ('dialogue','Dialogue'), ('business','Business & Office Memo'), ('technical','Technical Documentation'), ('numbers','Numbers Practice'), ('code','Programming Code'), ('exam_style','Exam Style')] %}
+          <option value="{{ pt }}" {% if passage and passage.passage_type == pt %}selected{% endif %}>{{ label }}</option>
           {% endfor %}
         </select>
       </div>
 
       <div>
-        <label style="display:block; font-size:0.75rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.3rem;">Programming Syntax</label>
-        <select name="code_lang" id="code-lang-select" style="width:100%; padding:0.6rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff;">
-          <option value="">None (Standard Prose)</option>
-          {% for lang in ['python', 'javascript', 'html', 'css', 'sql', 'java', 'c', 'cpp'] %}
-          <option value="{{ lang }}" {% if passage and passage.code_lang == lang %}selected{% endif %}>{{ lang|upper }}</option>
-          {% endfor %}
+        <label style="display:block; font-size:0.75rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.3rem;">Difficulty Tier</label>
+        <select name="difficulty" id="passage-difficulty" style="width:100%; padding:0.6rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff;">
+          <option value="easy" {% if passage and passage.difficulty == 'easy' %}selected{% endif %}>Easy (Short, 1-syllable)</option>
+          <option value="moderate" {% if not passage or passage.difficulty == 'moderate' %}selected{% endif %}>Moderate (Standard English)</option>
+          <option value="hard" {% if passage and passage.difficulty == 'hard' %}selected{% endif %}>Hard (Polysyllabic & Technical)</option>
+          <option value="expert" {% if passage and passage.difficulty == 'expert' %}selected{% endif %}>Expert (Complex vocabulary)</option>
         </select>
       </div>
     </div>
 
-    <div style="margin-bottom:1.25rem;">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.35rem;">
-        <label style="font-size:0.75rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700;">Complete Passage Text</label>
-        <span id="passage-metrics" style="font-size:0.75rem; color:var(--admin-accent); font-family:var(--admin-mono);">0 words | 0 characters</span>
+    <!-- Multi-Select Purpose -->
+    <div>
+      <label style="display:block; font-size:0.75rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.4rem;">
+        Passage Purposes (Select all that apply)
+      </label>
+      {% set active_purposes = passage.purpose_list if passage else ['general_practice'] %}
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); gap:0.5rem; background:var(--admin-elevated); padding:0.75rem; border-radius:6px;">
+        {% for p_code, p_name in [('general_practice','General Practice'), ('speed_practice','Speed Practice'), ('accuracy_practice','Accuracy Practice'), ('exam_prep','Exam Preparation'), ('beginner_practice','Beginner Practice'), ('advanced_practice','Advanced Practice'), ('numbers_practice','Numbers Practice'), ('symbols_practice','Symbols Practice'), ('multiplayer','Multiplayer Grid'), ('daily_challenge','Daily Recon (24H)')] %}
+        <label style="display:flex; align-items:center; gap:0.4rem; font-size:0.84rem; cursor:pointer;">
+          <input type="checkbox" name="purpose" value="{{ p_code }}" {% if p_code in active_purposes %}checked{% endif %}>
+          <span>{{ p_name }}</span>
+        </label>
+        {% endfor %}
       </div>
-      <textarea id="passage-content" name="content" rows="8" required placeholder="Paste or type passage here..." oninput="updatePassageMetrics()" style="width:100%; padding:0.75rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff; font-family:var(--admin-mono); line-height:1.65;">{{ passage.content if passage else '' }}</textarea>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       SECTION 2: PASSAGE CONTENT & LIVE METRICS
+       ============================================================ -->
+  <div class="card" style="margin-bottom:1.25rem;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; border-bottom:1px solid var(--admin-border); padding-bottom:0.4rem;">
+      <h3 style="font-size:1.05rem; font-weight:800; margin:0; color:var(--admin-accent);">
+        2. Passage Content & Real-Time Lexical Statistics
+      </h3>
+      <div style="display:flex; gap:0.4rem;">
+        <button type="button" onclick="calculateLiveStats()" class="btn btn-sm">📊 Calculate Stats</button>
+        <button type="button" onclick="cleanFormatting()" class="btn btn-sm">🧹 Clean Spaces</button>
+      </div>
     </div>
 
-    <!-- Live Preview Box -->
-    <div style="background:var(--admin-elevated); padding:1rem; border-radius:6px; margin-bottom:1.25rem; border:1px solid var(--admin-border);">
-      <div style="font-size:0.72rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.4rem;">Live Viewport Preview</div>
-      <div id="live-preview" style="font-family:var(--admin-mono); font-size:0.95rem; color:var(--admin-text-muted); line-height:1.6; max-height:100px; overflow-y:auto; word-break:break-word;">
-        {{ passage.content if passage else 'Passage preview will render here...' }}
+    <div style="margin-bottom:1rem;">
+      <textarea id="passage-content" name="content" rows="10" required placeholder="Paste or compose the authentic passage text here..." oninput="calculateLiveStats()" style="width:100%; padding:0.85rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff; font-family:var(--admin-mono); font-size:0.95rem; line-height:1.75; outline:none;">{{ passage.content if passage else '' }}</textarea>
+    </div>
+
+    <!-- Live Lexical Telemetry Ribbon -->
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:0.65rem; background:var(--admin-elevated); padding:0.75rem; border-radius:6px; text-align:center;">
+      <div>
+        <span style="font-size:0.68rem; color:var(--admin-text-muted); text-transform:uppercase;">Word Count</span>
+        <div id="stat-words" style="font-size:1.2rem; font-weight:800; color:var(--admin-accent);">{{ passage.word_count if passage else 0 }}</div>
+      </div>
+      <div>
+        <span style="font-size:0.68rem; color:var(--admin-text-muted); text-transform:uppercase;">Characters (all)</span>
+        <div id="stat-chars" style="font-size:1.2rem; font-weight:800;">{{ passage.character_count if passage else 0 }}</div>
+      </div>
+      <div>
+        <span style="font-size:0.68rem; color:var(--admin-text-muted); text-transform:uppercase;">Characters (no space)</span>
+        <div id="stat-chars-no-sp" style="font-size:1.2rem; font-weight:800;">{{ passage.character_count_no_spaces if passage else 0 }}</div>
+      </div>
+      <div>
+        <span style="font-size:0.68rem; color:var(--admin-text-muted); text-transform:uppercase;">Sentences</span>
+        <div id="stat-sentences" style="font-size:1.2rem; font-weight:800;">{{ passage.sentence_count if passage else 0 }}</div>
+      </div>
+      <div>
+        <span style="font-size:0.68rem; color:var(--admin-text-muted); text-transform:uppercase;">Paragraphs</span>
+        <div id="stat-paragraphs" style="font-size:1.2rem; font-weight:800;">{{ passage.paragraph_count if passage else 1 }}</div>
+      </div>
+      <div>
+        <span style="font-size:0.68rem; color:var(--admin-text-muted); text-transform:uppercase;">Avg Word Length</span>
+        <div id="stat-avg-word" style="font-size:1.2rem; font-weight:800;">{{ passage.avg_word_length if passage else 0.0 }}</div>
+      </div>
+      <div>
+        <span style="font-size:0.68rem; color:var(--admin-text-muted); text-transform:uppercase;">Estimated Difficulty</span>
+        <div id="stat-complexity" style="font-size:1.2rem; font-weight:800; color:var(--admin-warning);">{{ passage.difficulty|upper if passage else 'MODERATE' }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       SECTION 3: EXAM & PROVENANCE CLASSIFICATION
+       ============================================================ -->
+  <div class="card" style="margin-bottom:1.25rem;">
+    <h3 style="font-size:1.05rem; font-weight:800; margin-bottom:1rem; border-bottom:1px solid var(--admin-border); padding-bottom:0.4rem; color:var(--admin-accent);">
+      3. Exam Profile & Source Provenance
+    </h3>
+
+    <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:1rem; margin-bottom:1rem;">
+      <div>
+        <label style="display:block; font-size:0.75rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.3rem;">Exam Profile Alignment</label>
+        <select name="exam_profile" style="width:100%; padding:0.6rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff;">
+          <option value="" {% if not passage or not passage.exam_profile %}selected{% endif %}>None (General Practice)</option>
+          <option value="ssc_cgl" {% if passage and passage.exam_profile == 'ssc_cgl' %}selected{% endif %}>SSC CGL Tier-II (2000 Depressions)</option>
+          <option value="ssc_chsl" {% if passage and passage.exam_profile == 'ssc_chsl' %}selected{% endif %}>SSC CHSL (1750 Depressions)</option>
+          <option value="rrb" {% if passage and passage.exam_profile == 'rrb' %}selected{% endif %}>RRB NTPC Typing Skill Test</option>
+          <option value="cpct" {% if passage and passage.exam_profile == 'cpct' %}selected{% endif %}>CPCT (Madhya Pradesh)</option>
+          <option value="court_steno" {% if passage and passage.exam_profile == 'court_steno' %}selected{% endif %}>High Court Clerical / Steno</option>
+          <option value="banking" {% if passage and passage.exam_profile == 'banking' %}selected{% endif %}>Banking & PSUs</option>
+          <option value="state_gov" {% if passage and passage.exam_profile == 'state_gov' %}selected{% endif %}>State Public Service Commission</option>
+        </select>
+      </div>
+
+      <div>
+        <label style="display:block; font-size:0.75rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.3rem;">Exam Formatting Style</label>
+        <select name="exam_style" style="width:100%; padding:0.6rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff;">
+          <option value="general" {% if not passage or passage.exam_style == 'general' %}selected{% endif %}>General Prose</option>
+          <option value="ssc_style" {% if passage and passage.exam_style == 'ssc_style' %}selected{% endif %}>Official SSC Memorandum Style</option>
+          <option value="cpct_style" {% if passage and passage.exam_style == 'cpct_style' %}selected{% endif %}>CPCT Tabular & Legal Style</option>
+          <option value="court_style" {% if passage and passage.exam_style == 'court_style' %}selected{% endif %}>High Court Judgment Style</option>
+          <option value="office_style" {% if passage and passage.exam_style == 'office_style' %}selected{% endif %}>Executive Briefing Memo</option>
+        </select>
+      </div>
+
+      <div>
+        <label style="display:block; font-size:0.75rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.3rem;">Geographic Region</label>
+        <input type="text" name="region" value="{{ passage.region if passage else 'India' }}" style="width:100%; padding:0.6rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff;">
       </div>
     </div>
 
-    {% if passage %}
-    <div style="margin-bottom:1.5rem;">
-      <label style="display:flex; align-items:center; gap:0.5rem; font-size:0.85rem; cursor:pointer;">
-        <input type="checkbox" name="is_active" {% if passage.is_active %}checked{% endif %}>
-        <span>Enable this passage in active test selection rotation</span>
+    <div style="display:grid; grid-template-columns: 1fr 1fr 2fr; gap:1rem;">
+      <div>
+        <label style="display:block; font-size:0.75rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.3rem;">Source Provenance Type</label>
+        <select name="source_type" style="width:100%; padding:0.6rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff;">
+          <option value="original_practice" {% if not passage or passage.source_type == 'original_practice' %}selected{% endif %}>Original Practice Passage</option>
+          <option value="exam_style" {% if passage and passage.source_type == 'exam_style' %}selected{% endif %}>Exam-Style Simulated Material</option>
+          <option value="official_source" {% if passage and passage.source_type == 'official_source' %}selected{% endif %}>Official Gazette Source</option>
+          <option value="previous_year" {% if passage and passage.source_type == 'previous_year' %}selected{% endif %}>Previous Year Paper</option>
+          <option value="user_submitted" {% if passage and passage.source_type == 'user_submitted' %}selected{% endif %}>Community Submitted</option>
+        </select>
+      </div>
+
+      <div>
+        <label style="display:block; font-size:0.75rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.3rem;">Source Name / Author</label>
+        <input type="text" name="source" value="{{ passage.source if passage else 'Administrator' }}" style="width:100%; padding:0.6rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff;">
+      </div>
+
+      <div>
+        <label style="display:block; font-size:0.75rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.3rem;">Reference Link / Source URL (Optional)</label>
+        <input type="url" name="source_url" value="{{ passage.source_url if passage else '' }}" placeholder="https://..." style="width:100%; padding:0.6rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff;">
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       SECTION 4: PUBLISHING STATUS & GOVERNANCE
+       ============================================================ -->
+  <div class="card" style="margin-bottom:1.25rem;">
+    <h3 style="font-size:1.05rem; font-weight:800; margin-bottom:1rem; border-bottom:1px solid var(--admin-border); padding-bottom:0.4rem; color:var(--admin-accent);">
+      4. Publishing Governance & Visibility
+    </h3>
+
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.25rem; margin-bottom:1rem;">
+      <div>
+        <label style="display:block; font-size:0.75rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.3rem;">Publication Status</label>
+        <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+          {% for st_val, st_lbl in [('draft','Draft'), ('review','Review Queue'), ('published','Published'), ('archived','Archived')] %}
+          <label style="display:flex; align-items:center; gap:0.35rem; background:var(--admin-elevated); padding:0.4rem 0.75rem; border-radius:4px; font-size:0.85rem; cursor:pointer;">
+            <input type="radio" name="status" value="{{ st_val }}" {% if (passage and passage.status == st_val) or (not passage and st_val == 'published') %}checked{% endif %}>
+            <span>{{ st_lbl }}</span>
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div>
+        <label style="display:block; font-size:0.75rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.3rem;">Access Visibility</label>
+        <select name="visibility" style="width:100%; padding:0.6rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff;">
+          <option value="everyone" {% if not passage or passage.visibility == 'everyone' %}selected{% endif %}>Everyone (Cadets & Registered Pilots)</option>
+          <option value="logged_in" {% if passage and passage.visibility == 'logged_in' %}selected{% endif %}>Registered Pilots Only</option>
+          <option value="admin_only" {% if passage and passage.visibility == 'admin_only' %}selected{% endif %}>Admin Clearance Only</option>
+        </select>
+      </div>
+    </div>
+
+    <div style="display:flex; gap:1.5rem; flex-wrap:wrap; background:var(--admin-elevated); padding:0.75rem 1rem; border-radius:6px;">
+      <label style="display:flex; align-items:center; gap:0.4rem; font-size:0.85rem; cursor:pointer;">
+        <input type="checkbox" name="is_featured" {% if passage and passage.is_featured %}checked{% endif %}>
+        <span>★ Feature Passage on Homepage</span>
+      </label>
+      <label style="display:flex; align-items:center; gap:0.4rem; font-size:0.85rem; cursor:pointer;">
+        <input type="checkbox" name="allow_random" {% if not passage or passage.allow_random %}checked{% endif %}>
+        <span>Allow in Random Test Selector</span>
+      </label>
+      <label style="display:flex; align-items:center; gap:0.4rem; font-size:0.85rem; cursor:pointer;">
+        <input type="checkbox" name="allow_multiplayer" {% if not passage or passage.allow_multiplayer %}checked{% endif %}>
+        <span>Allow in Multiplayer Air Grid</span>
       </label>
     </div>
-    {% endif %}
+  </div>
 
-    <div style="display:flex; justify-content:flex-end; gap:0.75rem;">
-      <a href="{{ url_for('admin.passages_list') }}" class="btn">Cancel</a>
-      <button type="submit" class="btn btn-primary" style="padding:0.65rem 1.75rem; font-weight:800;">
-        {{ action }} Passage &rarr;
-      </button>
+  <!-- ============================================================
+       SECTION 5: DURATION RULES
+       ============================================================ -->
+  <div class="card" style="margin-bottom:1.25rem;">
+    <h3 style="font-size:1.05rem; font-weight:800; margin-bottom:1rem; border-bottom:1px solid var(--admin-border); padding-bottom:0.4rem; color:var(--admin-accent);">
+      5. Multi-Duration Guidelines & Limits
+    </h3>
+    <p style="color:var(--admin-text-muted); font-size:0.82rem; margin-bottom:1rem;">
+      TypeSphere passages scale dynamically. A single 600-word passage can serve 1m, 2m, 5m, or full No-Time flights.
+    </p>
+
+    <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:1rem;">
+      <div>
+        <label style="display:block; font-size:0.75rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.3rem;">Recommended Flight Duration</label>
+        <select name="recommended_duration" style="width:100%; padding:0.6rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff;">
+          <option value="60" {% if not passage or passage.recommended_duration == 60 %}selected{% endif %}>1 Minute (60s)</option>
+          <option value="120" {% if passage and passage.recommended_duration == 120 %}selected{% endif %}>2 Minutes (120s)</option>
+          <option value="300" {% if passage and passage.recommended_duration == 300 %}selected{% endif %}>5 Minutes (300s)</option>
+          <option value="600" {% if passage and passage.recommended_duration == 600 %}selected{% endif %}>10 Minutes (600s)</option>
+          <option value="900" {% if passage and passage.recommended_duration == 900 %}selected{% endif %}>15 Minutes (900s)</option>
+          <option value="0" {% if passage and passage.recommended_duration == 0 %}selected{% endif %}>No Time Limit (Single Pass)</option>
+        </select>
+      </div>
+
+      <div>
+        <label style="display:block; font-size:0.75rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.3rem;">Minimum Allowed Duration (s)</label>
+        <input type="number" name="min_duration" value="{{ passage.min_duration if passage else 15 }}" style="width:100%; padding:0.6rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff;">
+      </div>
+
+      <div>
+        <label style="display:block; font-size:0.75rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.3rem;">Maximum Allowed Duration (s)</label>
+        <input type="number" name="max_duration" value="{{ passage.max_duration if passage else 1200 }}" style="width:100%; padding:0.6rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff;">
+      </div>
     </div>
-  </form>
-</div>
+  </div>
+
+  <!-- ============================================================
+       SECTION 6: TAGS & SECTION 7: COLLECTIONS
+       ============================================================ -->
+  <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.25rem; margin-bottom:1.5rem;">
+    <!-- Section 6: Tags -->
+    <div class="card" style="margin:0;">
+      <h3 style="font-size:1.05rem; font-weight:800; margin-bottom:0.75rem; border-bottom:1px solid var(--admin-border); padding-bottom:0.4rem; color:var(--admin-accent);">
+        6. Search & Topical Tags
+      </h3>
+      <p style="color:var(--admin-text-muted); font-size:0.8rem; margin-bottom:0.5rem;">
+        Comma-separated keywords for flexible indexing without cluttering categories.
+      </p>
+      {% set tag_names = passage.tags|map(attribute='name')|join(', ') if passage else '' %}
+      <input type="text" name="tags" id="passage-tags" value="{{ tag_names }}" placeholder="e.g. technology, india, ssc-cgl, civil-service, aerodynamics" oninput="renderTagPills()" style="width:100%; padding:0.6rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff; font-size:0.85rem; margin-bottom:0.75rem;">
+      <div id="tag-pills-preview" style="display:flex; gap:0.35rem; flex-wrap:wrap; min-height:26px;"></div>
+    </div>
+
+    <!-- Section 7: Collections -->
+    <div class="card" style="margin:0;">
+      <h3 style="font-size:1.05rem; font-weight:800; margin-bottom:0.75rem; border-bottom:1px solid var(--admin-border); padding-bottom:0.4rem; color:var(--admin-accent);">
+        7. Assigned Collections / Packs
+      </h3>
+      <p style="color:var(--admin-text-muted); font-size:0.8rem; margin-bottom:0.5rem;">
+        Group this passage into structured student packs or daily practice sequences.
+      </p>
+      {% set active_collection_ids = passage.collections|map(attribute='id')|list if passage else [] %}
+      <div style="max-height:130px; overflow-y:auto; display:flex; flex-direction:column; gap:0.4rem; background:var(--admin-elevated); padding:0.6rem; border-radius:6px;">
+        {% for col in all_collections %}
+        <label style="display:flex; align-items:center; gap:0.4rem; font-size:0.84rem; cursor:pointer;">
+          <input type="checkbox" name="collections" value="{{ col.id }}" {% if col.id in active_collection_ids %}checked{% endif %}>
+          <span><strong>{{ col.title }}</strong> <span style="font-size:0.72rem; color:var(--admin-text-muted);">({{ col.passages.count() }} items)</span></span>
+        </label>
+        {% else %}
+        <span style="font-size:0.8rem; color:var(--admin-text-muted);">No collections established yet.</span>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Form Actions -->
+  <div style="display:flex; justify-content:flex-end; gap:0.75rem; padding-top:1rem; border-top:1px solid var(--admin-border);">
+    <a href="{{ url_for('admin.passages_list') }}" class="btn">Cancel</a>
+    <button type="submit" class="btn btn-primary" style="padding:0.75rem 2.25rem; font-weight:800; font-size:0.95rem;">
+      {{ action }} Passage to Library &rarr;
+    </button>
+  </div>
+</form>
 
 <script>
-  function updatePassageMetrics() {
-    const text = document.getElementById('passage-content').value;
-    const chars = text.length;
-    const words = text.trim() ? text.trim().split(/\s+/).length : 0;
-    document.getElementById('passage-metrics').textContent = `${words} words | ${chars} characters`;
-    const preview = document.getElementById('live-preview');
-    preview.textContent = text || 'Passage preview will render here...';
+function calculateLiveStats() {
+  const text = document.getElementById('passage-content').value || "";
+  const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+  const chars = text.length;
+  const charsNoSp = text.replace(/\s/g, '').length;
+  const sentences = text.trim() ? (text.match(/[.!?]+/g) || []).length : 0;
+  const paragraphs = text.trim() ? text.split(/\n+/).filter(p => p.trim()).length : 1;
+  const avgWordLen = words > 0 ? (charsNoSp / words).toFixed(2) : 0.0;
+
+  document.getElementById('stat-words').textContent = words;
+  document.getElementById('stat-chars').textContent = chars;
+  document.getElementById('stat-chars-no-sp').textContent = charsNoSp;
+  document.getElementById('stat-sentences').textContent = Math.max(1, sentences);
+  document.getElementById('stat-paragraphs').textContent = Math.max(1, paragraphs);
+  document.getElementById('stat-avg-word').textContent = avgWordLen;
+}
+
+function cleanFormatting() {
+  const el = document.getElementById('passage-content');
+  let val = el.value;
+  val = val.replace(/[\u2018\u2019]/g, "'").replace(/[\u201C\u201D]/g, '"');
+  val = val.replace(/ {2,}/g, ' ');
+  val = val.replace(/\n{3,}/g, '\n\n');
+  el.value = val.trim();
+  calculateLiveStats();
+}
+
+function renderTagPills() {
+  const input = document.getElementById('passage-tags').value;
+  const container = document.getElementById('tag-pills-preview');
+  container.innerHTML = '';
+  if (!input.trim()) return;
+
+  const tags = input.split(',').map(t => t.trim()).filter(t => t.length > 0);
+  tags.forEach(t => {
+    const pill = document.createElement('span');
+    pill.className = 'badge badge-primary';
+    pill.style.fontSize = '0.72rem';
+    pill.textContent = '#' + t;
+    container.appendChild(pill);
+  });
+}
+
+function checkDuplicatesAjax() {
+  const text = document.getElementById('passage-content').value.trim();
+  if (text.length < 20) {
+    alert("Please enter at least 20 characters of passage text to perform duplicate checking.");
+    return;
   }
-  document.addEventListener('DOMContentLoaded', updatePassageMetrics);
+
+  fetch('/admin/passages/api/check-duplicate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      text: text,
+      exclude_id: {{ passage.id if passage else 'null' }}
+    })
+  })
+  .then(res => res.json())
+  .then(data => {
+    const banner = document.getElementById('duplicate-warning-banner');
+    const msg = document.getElementById('duplicate-details-msg');
+    if (data.duplicates && data.duplicates.length > 0) {
+      const top = data.duplicates[0];
+      msg.innerHTML = `${top.similarity}% lexical similarity with existing passage: <strong>"${top.title}"</strong> (#${top.id}).`;
+      banner.style.display = 'block';
+      banner.scrollIntoView({ behavior: 'smooth' });
+    } else {
+      banner.style.display = 'none';
+      alert("✓ No duplicates detected! Passage text is unique.");
+    }
+  })
+  .catch(() => alert("Could not complete duplicate check."));
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  calculateLiveStats();
+  renderTagPills();
+});
 </script>
 {% endblock %}

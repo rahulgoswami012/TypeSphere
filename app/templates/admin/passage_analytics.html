@@ -1,0 +1,136 @@
+{% extends 'admin/base_admin.html' %}
+{% block title %}Passage Health & Performance Analytics | TypeSphere Control Center{% endblock %}
+
+{% block admin_content %}
+<!-- Sub-Navigation Strip for Passage Library Modules -->
+<div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--admin-border); padding-bottom:0.75rem; margin-bottom:1.25rem; flex-wrap:wrap; gap:0.75rem;">
+  <div>
+    <h1 style="font-size:1.6rem; font-weight:800; margin:0 0 0.25rem 0;">Passage Performance & Health Analytics</h1>
+    <p style="color:var(--admin-text-muted); font-size:0.85rem; margin:0;">
+      Real-time usage telemetry, difficulty accuracy audit, and content health monitoring.
+    </p>
+  </div>
+  <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
+    <a href="{{ url_for('admin.passages_list') }}" class="btn btn-sm">All Passages</a>
+    <a href="{{ url_for('admin.passage_create') }}" class="btn btn-sm">+ Add Passage</a>
+    <a href="{{ url_for('admin.passage_collections') }}" class="btn btn-sm">Collections</a>
+    <a href="{{ url_for('admin.passage_categories') }}" class="btn btn-sm">Categories & Rules</a>
+    <a href="{{ url_for('admin.passage_review_queue') }}" class="btn btn-sm">Review Queue</a>
+    <a href="{{ url_for('admin.passage_bulk_import') }}" class="btn btn-sm">Bulk Import</a>
+    <a href="{{ url_for('admin.passage_analytics') }}" class="btn btn-sm btn-primary">Analytics</a>
+  </div>
+</div>
+
+<!-- Fleet Topline Overview -->
+<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:1rem; margin-bottom:1.5rem;">
+  <div class="card" style="margin:0;">
+    <div style="font-size:0.72rem; color:var(--admin-text-muted); font-weight:800; text-transform:uppercase;">TOTAL FLIGHT SESSIONS</div>
+    <div style="font-size:1.85rem; font-weight:900; color:var(--admin-accent); margin-top:0.2rem;">{{ total_usage }}</div>
+    <div style="font-size:0.75rem; color:var(--admin-text-muted);">Passage typing runs logged</div>
+  </div>
+  <div class="card" style="margin:0;">
+    <div style="font-size:0.72rem; color:var(--admin-text-muted); font-weight:800; text-transform:uppercase;">ACTIVE PASSAGES FLOWN</div>
+    <div style="font-size:1.85rem; font-weight:900; color:var(--admin-success); margin-top:0.2rem;">{{ active_passages_flown }}</div>
+    <div style="font-size:0.75rem; color:var(--admin-text-muted);">Passages completed &ge; 1 time</div>
+  </div>
+  <div class="card" style="margin:0;">
+    <div style="font-size:0.72rem; color:var(--admin-text-muted); font-weight:800; text-transform:uppercase;">DEFECT / HEALTH WATCH</div>
+    <div style="font-size:1.85rem; font-weight:900; color:var(--admin-danger); margin-top:0.2rem;">{{ low_health_passages|length }}</div>
+    <div style="font-size:0.75rem; color:var(--admin-text-muted);">Passages scoring &lt; 75% health</div>
+  </div>
+</div>
+
+<!-- Section 1: Difficulty Reality Comparison Matrix -->
+<div class="card" style="margin-bottom:1.5rem;">
+  <div style="border-bottom:1px solid var(--admin-border); padding-bottom:0.5rem; margin-bottom:1rem;">
+    <h3 style="font-size:1.1rem; font-weight:800; margin:0; color:var(--admin-accent);">Difficulty Reality Matrix</h3>
+    <p style="color:var(--admin-text-muted); font-size:0.8rem; margin-top:0.2rem;">
+      Audits whether assigned difficulty tiers reflect true human typist velocity.
+    </p>
+  </div>
+  <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:1rem;">
+    {% for diff, target_wpm, actual_wpm, count in diff_matrix %}
+    <div style="background:var(--admin-elevated); padding:1rem; border-radius:6px; border:1px solid var(--admin-border);">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem;">
+        <strong style="text-transform:uppercase; font-size:0.9rem;">{{ diff }}</strong>
+        <span class="badge badge-primary">{{ count }} items</span>
+      </div>
+      <div style="font-size:0.8rem; color:var(--admin-text-muted); margin-bottom:0.2rem;">Expected Velocity: {{ target_wpm }} WPM</div>
+      <div style="font-size:1.25rem; font-weight:900; color:var(--admin-accent); font-family:var(--admin-mono);">
+        {{ actual_wpm }} <span style="font-size:0.8rem; color:var(--admin-text-muted);">Actual WPM</span>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<div style="display:grid; grid-template-columns: 1.25fr 1fr; gap:1.5rem; margin-bottom:1.5rem;">
+  <!-- Section 2: Top 10 Most Popular Passages -->
+  <div class="card" style="margin:0; padding:0; overflow:hidden;">
+    <div style="padding:0.85rem 1.25rem; border-bottom:1px solid var(--admin-border);">
+      <h3 style="font-size:1.05rem; font-weight:800; margin:0;">Top 10 Most Flown Passages</h3>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Passage Title</th>
+          <th>Category</th>
+          <th>Tier</th>
+          <th>Usage Runs</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in top_passages %}
+        <tr>
+          <td>
+            <strong>{{ p.title }}</strong>
+            <div style="font-size:0.75rem; color:var(--admin-text-muted); font-family:var(--admin-mono);">{{ p.word_count }} words</div>
+          </td>
+          <td>{{ p.category }}</td>
+          <td><span class="badge badge-primary">{{ p.difficulty|upper }}</span></td>
+          <td style="font-family:var(--admin-mono); font-weight:800; color:var(--admin-accent);">{{ p.times_used }} flights</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4" style="text-align:center; padding:1.5rem; color:var(--admin-text-muted);">No passage flight records logged yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Section 3: Passage Health & Defect Watch -->
+  <div class="card" style="margin:0; padding:0; overflow:hidden;">
+    <div style="padding:0.85rem 1.25rem; border-bottom:1px solid var(--admin-border); background:rgba(244, 63, 94, 0.08);">
+      <h3 style="font-size:1.05rem; font-weight:800; margin:0; color:var(--admin-danger);">Passages Requiring Calibration</h3>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Passage</th>
+          <th>Health</th>
+          <th>Reports</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in low_health_passages %}
+        <tr>
+          <td>
+            <strong>{{ p.title }}</strong>
+            <div style="font-size:0.75rem; color:var(--admin-text-muted);">#{{ p.id }} &bull; {{ p.word_count }} wds</div>
+          </td>
+          <td>
+            <span class="badge badge-danger">{{ p.health_score or 100 }}%</span>
+          </td>
+          <td style="color:var(--admin-warning); font-weight:700;">{{ p.report_count or 0 }}</td>
+          <td>
+            <a href="{{ url_for('admin.passage_edit', passage_id=p.id) }}" class="btn btn-sm">Calibrate</a>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4" style="text-align:center; padding:1.5rem; color:var(--admin-text-muted);">All passages meet verified health standards!</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

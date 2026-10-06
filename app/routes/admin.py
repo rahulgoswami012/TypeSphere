@@ -19,7 +19,10 @@ from flask_login import login_required, current_user, login_user
 from sqlalchemy import func, desc, or_, text
 from app import db
 from app.models.user import User
-from app.models.typing import TypingTest, TypingText, TypingDNA
+from app.models.typing import (
+    TypingTest, TypingText, TypingDNA,
+    PassageTag, PassageCollection, PassageReport
+)
 from app.models.challenge import DailyChallenge, Achievement
 from app.models.curriculum import LessonStage
 from app.models.feedback import ContactMessage, FeedbackItem, RatingReview, Announcement
@@ -36,6 +39,7 @@ from app.services.admin_security import (
     log_security_incident, block_ip, unblock_ip,
     get_ip_location, parse_device_os
 )
+from app.services.passage_service import PassageService
 from app.utils.timezone import to_ist, now_ist, ist_today
 
 admin_bp = Blueprint('admin', __name__)
@@ -176,7 +180,7 @@ def get_live_active_sessions_data():
         seen_sessions.add(identifier)
 
         user_role = "guest"
-        role_priority = 4  # 1: super_admin, 2: admin, 3: pilot, 4: guest
+        role_priority = 4
         username = "Guest Flight"
         callsign = None
 
@@ -187,10 +191,10 @@ def get_live_active_sessions_data():
                 callsign = user.display_callsign
                 if user.is_super_admin:
                     user_role = "super_admin"
-                    role_priority = 1  # Super Admin strictly on top
+                    role_priority = 1
                 elif user.is_admin:
                     user_role = "admin"
-                    role_priority = 2  # Delegated Admin next
+                    role_priority = 2
                 else:
                     user_role = "pilot"
                     role_priority = 3
@@ -214,7 +218,6 @@ def get_live_active_sessions_data():
             'last_seen': to_ist(t.created_at).strftime('%H:%M:%S')
         })
 
-    # Point 3 Fix: Sort sessions by role priority (Super Admin top, Admin 2nd), then recency
     active_sessions.sort(key=lambda s: (s['role_priority'], -s['created_at_raw'].timestamp()))
 
     return {
@@ -713,9 +716,15 @@ def admin_global_search():
 
     shortcuts = [
         ('Dashboard', 'Command Center Overview', url_for('admin.dashboard')),
+        ('Passage Library', 'Manage all typing content and categories', url_for('admin.passages_list')),
+        ('Passage Collections', 'Manage curated passage packs', url_for('admin.passage_collections')),
+        ('Passage Categories & Rules', 'Taxonomy, exam profiles and tags', url_for('admin.passage_categories')),
+        ('Review Queue & Reports', 'Audit drafts and community reports', url_for('admin.passage_review_queue')),
+        ('Bulk CSV Import', 'Batch import passage datasets', url_for('admin.passage_bulk_import')),
+        ('Passage Performance Analytics', 'Usage curves and difficulty reality', url_for('admin.passage_analytics')),
         ('Live Active Sessions', 'Monitor real-time guest & pilot telemetry', url_for('admin.live_sessions')),
         ('Arcade Hangar Manager', 'Configure arcade game rules & reorder disciplines', url_for('admin.games_list')),
-        ('Tactical Challenges', 'Daily challenge & mission control', url_for('admin.challenges_manage')),
+        ('Tactical Missions', 'Daily challenge & mission control', url_for('admin.challenges_manage')),
         ('Academy Curriculum', 'Manage curriculum tracks & stages', url_for('admin.academy_manage')),
         ('Certificates Hub', 'Verify & audit pilot flight certificates', url_for('admin.certificates_manage')),
         ('Community Operations', 'Reviews, feedback & system announcements', url_for('admin.community_manage')),
@@ -742,7 +751,7 @@ def admin_global_search():
 
 
 # ==============================================================
-# 6. TYPING PASSAGE CMS
+# 6. COMPREHENSIVE TYPING PASSAGE CMS, REVIEW, IMPORT & ANALYTICS
 # ==============================================================
 
 @admin_bp.route('/passages')
@@ -750,86 +759,711 @@ def admin_global_search():
 def passages_list():
     page = request.args.get('page', 1, type=int)
     search = request.args.get('q', '').strip()
-    category = request.args.get('category', '')
-    difficulty = request.args.get('difficulty', '')
+    language_filter = request.args.get('language', '').strip()
+    category_filter = request.args.get('category', '').strip()
+    type_filter = request.args.get('passage_type', '').strip()
+    difficulty_filter = request.args.get('difficulty', '').strip()
+    status_filter = request.args.get('status', '').strip()
+    exam_filter = request.args.get('exam_profile', '').strip()
+    collection_id = request.args.get('collection_id', '', type=str)
 
     query = TypingText.query
+
     if search:
-        query = query.filter(or_(TypingText.title.ilike(f"%{search}%"), TypingText.content.ilike(f"%{search}%")))
-    if category:
-        query = query.filter_by(category=category)
-    if difficulty:
-        query = query.filter_by(difficulty=difficulty)
+        query = query.filter(or_(
+            TypingText.title.ilike(f"%{search}%"),
+            TypingText.content.ilike(f"%{search}%")
+        ))
+    if language_filter:
+        query = query.filter_by(language=language_filter)
+    if category_filter:
+        query = query.filter_by(category=category_filter)
+    if type_filter:
+        query = query.filter_by(passage_type=type_filter)
+    if difficulty_filter:
+        query = query.filter_by(difficulty=difficulty_filter)
+    if status_filter:
+        if status_filter == 'published':
+            query = query.filter(or_(TypingText.status == 'published', (TypingText.status == None) & (TypingText.is_active == True)))
+        elif status_filter == 'archived':
+            query = query.filter(or_(TypingText.status == 'archived', (TypingText.status == None) & (TypingText.is_active == False)))
+        else:
+            query = query.filter_by(status=status_filter)
+    if exam_filter:
+        query = query.filter_by(exam_profile=exam_filter)
+    if collection_id and collection_id.isdigit():
+        query = query.join(TypingText.collections).filter(PassageCollection.id == int(collection_id))
 
     passages_page = query.order_by(TypingText.id.desc()).paginate(page=page, per_page=15, error_out=False)
-    categories = [c[0] for c in db.session.query(TypingText.category).distinct().all()]
+
+    stats = PassageService.get_library_statistics()
+    categories = [c[0] for c in db.session.query(TypingText.category).distinct().filter(TypingText.category.isnot(None)).all()]
+    languages = [l[0] for l in db.session.query(TypingText.language).distinct().filter(TypingText.language.isnot(None)).all()]
+    passage_types = ['paragraph', 'article', 'story', 'quote', 'dialogue', 'business', 'technical', 'numbers', 'code', 'exam_style']
+    collections = PassageCollection.query.filter_by(is_active=True).order_by(PassageCollection.title.asc()).all()
+
     return render_template(
         'admin/passages.html',
         passages=passages_page,
+        stats=stats,
         search=search,
-        category=category,
-        difficulty=difficulty,
-        categories=categories
+        language_filter=language_filter,
+        category_filter=category_filter,
+        type_filter=type_filter,
+        difficulty_filter=difficulty_filter,
+        status_filter=status_filter,
+        exam_filter=exam_filter,
+        collection_id=collection_id,
+        categories=categories,
+        languages=languages,
+        passage_types=passage_types,
+        collections=collections
     )
+
+
+@admin_bp.route('/passages/collections', methods=['GET', 'POST'])
+@admin_permission_required('typing.view')
+def passage_collections():
+    if request.method == 'POST':
+        if not current_user.has_permission('typing.create'):
+            flash("Permission denied to create collections.", "danger")
+            return redirect(url_for('admin.passage_collections'))
+
+        title = request.form.get('title', '').strip()
+        description = request.form.get('description', '').strip()
+        is_active = request.form.get('is_active') == 'on'
+
+        if not title:
+            flash("Collection title cannot be empty.", "danger")
+            return redirect(url_for('admin.passage_collections'))
+
+        clean_slug = re.sub(r'[^a-zA-Z0-9]+', '-', title.lower()).strip('-')
+        base_slug = clean_slug[:120] if clean_slug else "pack"
+        unique_slug = base_slug
+        counter = 1
+        while PassageCollection.query.filter_by(slug=unique_slug).first():
+            unique_slug = f"{base_slug}-{counter}"
+            counter += 1
+
+        new_col = PassageCollection(
+            title=title,
+            slug=unique_slug,
+            description=description,
+            is_active=is_active,
+            created_by=current_user.username
+        )
+        db.session.add(new_col)
+        db.session.commit()
+
+        log_admin_action('COLLECTION_CREATE', 'collection', new_col.id, f"Created collection '{title}'")
+        flash(f"Collection '{title}' successfully established.", "success")
+        return redirect(url_for('admin.passage_collections'))
+
+    collections = PassageCollection.query.order_by(PassageCollection.id.desc()).all()
+    return render_template('admin/passage_collections.html', collections=collections)
+
+
+@admin_bp.route('/passages/collections/<int:collection_id>/toggle', methods=['POST'])
+@admin_permission_required('typing.edit')
+def toggle_collection(collection_id):
+    col = PassageCollection.query.get_or_404(collection_id)
+    col.is_active = not col.is_active
+    db.session.commit()
+    log_admin_action('COLLECTION_TOGGLE', 'collection', col.id, f"Collection '{col.title}' active state: {col.is_active}")
+    flash(f"Collection '{col.title}' {'activated' if col.is_active else 'disabled'}.", "success")
+    return redirect(url_for('admin.passage_collections'))
+
+
+@admin_bp.route('/passages/collections/<int:collection_id>/delete', methods=['POST'])
+@admin_permission_required('typing.delete')
+def delete_collection(collection_id):
+    col = PassageCollection.query.get_or_404(collection_id)
+    title = col.title
+    db.session.delete(col)
+    db.session.commit()
+    log_admin_action('COLLECTION_DELETE', 'collection', collection_id, f"Deleted collection '{title}'")
+    flash(f"Collection '{title}' deleted. Member passages were preserved.", "info")
+    return redirect(url_for('admin.passage_collections'))
+
+
+@admin_bp.route('/passages/categories')
+@admin_permission_required('typing.view')
+def passage_categories():
+    categories_data = db.session.query(
+        TypingText.category,
+        func.count(TypingText.id).label('count')
+    ).group_by(TypingText.category).order_by(desc('count')).all()
+
+    exam_profiles_data = db.session.query(
+        TypingText.exam_profile,
+        func.count(TypingText.id).label('count')
+    ).filter(TypingText.exam_profile.isnot(None), TypingText.exam_profile != '').group_by(TypingText.exam_profile).order_by(desc('count')).all()
+
+    passage_types_data = db.session.query(
+        TypingText.passage_type,
+        func.count(TypingText.id).label('count')
+    ).group_by(TypingText.passage_type).order_by(desc('count')).all()
+
+    tags = PassageTag.query.order_by(PassageTag.name.asc()).all()
+
+    return render_template(
+        'admin/passage_categories.html',
+        categories_data=categories_data,
+        exam_profiles_data=exam_profiles_data,
+        passage_types_data=passage_types_data,
+        tags=tags
+    )
+
+
+@admin_bp.route('/passages/categories/rename', methods=['POST'])
+@admin_permission_required('typing.edit')
+def rename_category():
+    old_cat = request.form.get('old_category', '').strip()
+    new_cat = request.form.get('new_category', '').strip()
+
+    if not old_cat or not new_cat:
+        flash("Both old and new category designations are required.", "danger")
+        return redirect(url_for('admin.passage_categories'))
+
+    updated_count = TypingText.query.filter_by(category=old_cat).update({'category': new_cat})
+    db.session.commit()
+
+    log_admin_action('CATEGORY_RENAME', 'category', details=f"Renamed '{old_cat}' -> '{new_cat}' across {updated_count} passages")
+    flash(f"Category '{old_cat}' renamed to '{new_cat}' across {updated_count} passage(s).", "success")
+    return redirect(url_for('admin.passage_categories'))
+
+
+@admin_bp.route('/passages/tags/<int:tag_id>/delete', methods=['POST'])
+@admin_permission_required('typing.edit')
+def delete_tag(tag_id):
+    tag = PassageTag.query.get_or_404(tag_id)
+    t_name = tag.name
+    db.session.delete(tag)
+    db.session.commit()
+    log_admin_action('TAG_DELETE', 'tag', tag_id, f"Deleted tag #{t_name}")
+    flash(f"Tag #{t_name} deleted.", "info")
+    return redirect(url_for('admin.passage_categories'))
+
+
+@admin_bp.route('/passages/tags/prune-unused', methods=['POST'])
+@admin_permission_required('typing.edit')
+def prune_unused_tags():
+    tags = PassageTag.query.all()
+    pruned = 0
+    for t in tags:
+        if t.passages.count() == 0:
+            db.session.delete(t)
+            pruned += 1
+    db.session.commit()
+    log_admin_action('TAGS_PRUNE', 'tag', details=f"Pruned {pruned} unused tags")
+    flash(f"Pruned {pruned} unused tags from database.", "success")
+    return redirect(url_for('admin.passage_categories'))
+
+
+@admin_bp.route('/passages/review-queue')
+@admin_permission_required('typing.view')
+def passage_review_queue():
+    reports = PassageReport.query.filter_by(status='pending').order_by(PassageReport.created_at.desc()).all()
+    review_passages = TypingText.query.filter_by(status='review').order_by(TypingText.created_at.desc()).all()
+    draft_passages = TypingText.query.filter_by(status='draft').order_by(TypingText.created_at.desc()).all()
+
+    return render_template(
+        'admin/passage_review_queue.html',
+        reports=reports,
+        review_passages=review_passages,
+        draft_passages=draft_passages
+    )
+
+
+@admin_bp.route('/passages/reports/<int:report_id>/resolve', methods=['POST'])
+@admin_permission_required('typing.edit')
+def resolve_passage_report(report_id):
+    report = PassageReport.query.get_or_404(report_id)
+    action = request.form.get('resolution_action', 'resolve')
+
+    report.status = 'resolved' if action == 'resolve' else 'dismissed'
+    report.resolved_at = datetime.utcnow()
+    report.resolved_by = current_user.username
+    db.session.commit()
+
+    log_admin_action('REPORT_RESOLVE', 'passage_report', report.id, f"Action: {action}")
+    flash(f"Report #{report.id} marked as {report.status}.", "success")
+    return redirect(url_for('admin.passage_review_queue'))
+
+
+@admin_bp.route('/passages/<int:passage_id>/approve', methods=['POST'])
+@admin_permission_required('typing.publish')
+def approve_passage(passage_id):
+    p = TypingText.query.get_or_404(passage_id)
+    p.status = 'published'
+    p.is_active = True
+    p.published_at = datetime.utcnow()
+    p.updated_by = current_user.username
+    db.session.commit()
+
+    log_admin_action('PASSAGE_APPROVE', 'passage', p.id, f"Approved & published '{p.title}'")
+    flash(f"Passage '{p.title}' approved and published live.", "success")
+    return redirect(url_for('admin.passage_review_queue'))
+
+
+@admin_bp.route('/passages/bulk-import', methods=['GET', 'POST'])
+@admin_permission_required('typing.create')
+def passage_bulk_import():
+    if request.method == 'POST':
+        file = request.files.get('csv_file')
+        publish_immediately = request.form.get('publish_immediately') == 'on'
+
+        if not file or not file.filename.endswith('.csv'):
+            flash("Please provide a valid .csv file.", "danger")
+            return redirect(url_for('admin.passage_bulk_import'))
+
+        try:
+            stream = io.StringIO(file.stream.read().decode('utf-8', errors='ignore'))
+            reader = csv.DictReader(stream)
+
+            imported_count = 0
+            skipped_duplicates = 0
+            skipped_invalid = 0
+
+            for row in reader:
+                # Normalize keys
+                row_norm = {k.strip().lower(): v.strip() for k, v in row.items() if k}
+                title = row_norm.get('title', 'Untitled Passage')
+                content = row_norm.get('content') or row_norm.get('text') or ''
+                if not content or len(content.strip()) < 15:
+                    skipped_invalid += 1
+                    continue
+
+                # Duplicate detection check (>80% similarity match)
+                dups = PassageService.detect_duplicates(content, threshold=0.80)
+                if dups:
+                    skipped_duplicates += 1
+                    continue
+
+                lang = row_norm.get('language', 'english').lower()
+                category = row_norm.get('category', 'General')
+                passage_type = row_norm.get('passage_type') or row_norm.get('type') or 'paragraph'
+                diff = row_norm.get('difficulty', 'moderate').lower()
+                status = 'published' if publish_immediately else 'draft'
+
+                clean_slug = re.sub(r'[^a-zA-Z0-9]+', '-', title.lower()).strip('-')[:140]
+                unique_slug = clean_slug or "passage"
+                counter = 1
+                while TypingText.query.filter_by(slug=unique_slug).first():
+                    unique_slug = f"{clean_slug}-{counter}"
+                    counter += 1
+
+                new_p = TypingText(
+                    title=title,
+                    slug=unique_slug,
+                    content=content,
+                    language=lang,
+                    category=category,
+                    passage_type=passage_type,
+                    difficulty=diff,
+                    status=status,
+                    is_active=(status == 'published'),
+                    published_at=datetime.utcnow() if status == 'published' else None,
+                    created_by=current_user.username
+                )
+                new_p.calculate_stats()
+                new_p.health_score = PassageService.calculate_health_score(new_p)
+
+                # Process tag column if present
+                tags_raw = row_norm.get('tags', '')
+                if tags_raw:
+                    for t_name in [t.strip().lower() for t in tags_raw.split(',') if t.strip()]:
+                        t_slug = re.sub(r'[^a-z0-9]+', '-', t_name).strip('-')
+                        if t_slug:
+                            tag_obj = PassageTag.query.filter_by(slug=t_slug).first()
+                            if not tag_obj:
+                                tag_obj = PassageTag(name=t_name, slug=t_slug)
+                                db.session.add(tag_obj)
+                            new_p.tags.append(tag_obj)
+
+                db.session.add(new_p)
+                imported_count += 1
+
+            db.session.commit()
+            log_admin_action('PASSAGE_BULK_IMPORT', 'passage', details=f"Imported {imported_count} passages (Skipped: {skipped_duplicates} duplicates, {skipped_invalid} invalid)")
+            flash(f"Import complete: {imported_count} passages imported successfully ({skipped_duplicates} duplicate(s) and {skipped_invalid} invalid rows skipped).", "success")
+            return redirect(url_for('admin.passages_list'))
+
+        except Exception as e:
+            db.session.rollback()
+            flash(f"CSV import error: {str(e)}", "danger")
+            return redirect(url_for('admin.passage_bulk_import'))
+
+    return render_template('admin/passage_bulk_import.html')
+
+
+@admin_bp.route('/passages/sample-csv')
+@admin_permission_required('typing.view')
+def download_sample_csv():
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(['title', 'content', 'language', 'category', 'passage_type', 'difficulty', 'tags'])
+    writer.writerow([
+        'Digital India and Telemetry',
+        'Digital computing infrastructure drives real-time event messaging across partitioned clusters with high availability.',
+        'english',
+        'Technology',
+        'paragraph',
+        'moderate',
+        'technology, digital, infrastructure'
+    ])
+    writer.writerow([
+        'Pride and Prejudice Opening',
+        'It is a truth universally acknowledged, that a single man in possession of a good fortune, must be in want of a wife.',
+        'english',
+        'Literature',
+        'quote',
+        'easy',
+        'literature, classics'
+    ])
+    writer.writerow([
+        'भारत की संस्कृति',
+        'भारतीय संस्कृति विश्व की सबसे प्राचीन और समृद्ध संस्कृतियों में से एक है जहां विविधता में एकता पाई जाती है।',
+        'hindi',
+        'General',
+        'paragraph',
+        'moderate',
+        'culture, india, hindi'
+    ])
+
+    output.seek(0)
+    return Response(
+        output.getvalue(),
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment;filename=typesphere_sample_passages.csv"}
+    )
+
+
+@admin_bp.route('/passages/analytics')
+@admin_permission_required('typing.view')
+def passage_analytics():
+    all_passages = TypingText.query.all()
+    total_usage = sum(p.times_used or 0 for p in all_passages)
+    active_passages_flown = sum(1 for p in all_passages if (p.times_used or 0) > 0)
+
+    top_passages = TypingText.query.order_by(desc(TypingText.times_used)).limit(10).all()
+    low_health_passages = TypingText.query.filter(TypingText.health_score < 75).order_by(TypingText.health_score.asc()).limit(10).all()
+
+    # Difficulty Reality Matrix
+    tiers = [
+        ('easy', 35.0),
+        ('moderate', 55.0),
+        ('hard', 80.0),
+        ('expert', 105.0)
+    ]
+    diff_matrix = []
+    for t_diff, expected_wpm in tiers:
+        passages_in_tier = [p for p in all_passages if (p.difficulty or 'moderate').lower() == t_diff]
+        count = len(passages_in_tier)
+        actual_wpms = [p.avg_wpm for p in passages_in_tier if (p.avg_wpm or 0) > 0]
+        actual_wpm = round(sum(actual_wpms) / len(actual_wpms), 1) if actual_wpms else expected_wpm
+        diff_matrix.append((t_diff, expected_wpm, actual_wpm, count))
+
+    return render_template(
+        'admin/passage_analytics.html',
+        total_usage=total_usage,
+        active_passages_flown=active_passages_flown,
+        top_passages=top_passages,
+        low_health_passages=low_health_passages,
+        diff_matrix=diff_matrix
+    )
+
+
+@admin_bp.route('/passages/bulk-action', methods=['POST'])
+@admin_permission_required('typing.edit')
+def passages_bulk_action():
+    action = request.form.get('action', '').strip()
+    passage_ids = request.form.getlist('selected_passage_ids', type=int)
+
+    if not passage_ids:
+        flash("No passages were selected for bulk action.", "warning")
+        return redirect(url_for('admin.passages_list'))
+
+    passages = TypingText.query.filter(TypingText.id.in_(passage_ids)).all()
+    count = 0
+
+    if action == 'publish':
+        for p in passages:
+            p.status = 'published'
+            p.is_active = True
+            p.published_at = datetime.utcnow()
+            count += 1
+    elif action == 'unpublish':
+        for p in passages:
+            p.status = 'draft'
+            p.is_active = False
+            count += 1
+    elif action == 'archive':
+        for p in passages:
+            p.status = 'archived'
+            p.is_active = False
+            count += 1
+    elif action == 'delete':
+        if not current_user.has_permission('typing.delete'):
+            flash("Permission denied: You lack clearance to delete passages in bulk.", "danger")
+            return redirect(url_for('admin.passages_list'))
+        for p in passages:
+            db.session.delete(p)
+            count += 1
+    elif action.startswith('set_difficulty_'):
+        target_diff = action.replace('set_difficulty_', '')
+        for p in passages:
+            p.difficulty = target_diff
+            count += 1
+    elif action.startswith('set_language_'):
+        target_lang = action.replace('set_language_', '')
+        for p in passages:
+            p.language = target_lang
+            count += 1
+    else:
+        flash(f"Unknown bulk action '{action}'.", "danger")
+        return redirect(url_for('admin.passages_list'))
+
+    db.session.commit()
+    log_admin_action('PASSAGE_BULK_ACTION', 'passage', details=f"Bulk action '{action}' performed on {count} passages")
+    flash(f"Bulk action '{action}' completed across {count} passages.", "success")
+    return redirect(url_for('admin.passages_list'))
+
+
+@admin_bp.route('/passages/api/preview/<int:passage_id>')
+@admin_permission_required('typing.view')
+def api_passage_preview(passage_id):
+    p = TypingText.query.get_or_404(passage_id)
+    return jsonify({
+        'id': p.id,
+        'title': p.title,
+        'content': p.content,
+        'language': p.language or 'english',
+        'category': p.category,
+        'passage_type': p.passage_type or 'paragraph',
+        'difficulty': p.difficulty,
+        'word_count': p.word_count,
+        'character_count': p.character_count,
+        'avg_word_length': p.avg_word_length,
+        'recommended_duration': p.recommended_duration,
+        'status': p.status or ('published' if p.is_active else 'archived'),
+        'times_used': p.times_used,
+        'health_score': p.health_score or 100,
+        'created_by': p.created_by,
+        'created_at': p.created_at.strftime('%Y-%m-%d') if p.created_at else ''
+    })
+
+
+@admin_bp.route('/passages/api/check-duplicate', methods=['POST'])
+@admin_permission_required('typing.view')
+def api_check_duplicate():
+    payload = request.get_json(silent=True) or {}
+    text_content = payload.get('text', '').strip()
+    exclude_id = payload.get('exclude_id')
+
+    if not text_content:
+        return jsonify({'duplicates': []})
+
+    duplicates = PassageService.detect_duplicates(text_content, exclude_id=exclude_id)
+    formatted = [
+        {
+            'id': p.id,
+            'title': p.title,
+            'similarity': sim
+        }
+        for p, sim in duplicates
+    ]
+    return jsonify({'duplicates': formatted})
+
+
+@admin_bp.route('/passages/api/analyze-text', methods=['POST'])
+@admin_permission_required('typing.view')
+def api_analyze_text():
+    payload = request.get_json(silent=True) or {}
+    text_content = payload.get('text', '')
+    metrics = PassageService.calculate_metrics(text_content)
+    return jsonify(metrics)
 
 
 @admin_bp.route('/passages/create', methods=['GET', 'POST'])
 @admin_permission_required('typing.create')
 def passage_create():
+    all_collections = PassageCollection.query.filter_by(is_active=True).order_by(PassageCollection.title.asc()).all()
+
     if request.method == 'POST':
         title = request.form.get('title', 'Untitled Passage').strip()
+        language = request.form.get('language', 'english').strip().lower()
         category = request.form.get('category', 'General').strip()
-        difficulty = request.form.get('difficulty', 'Medium').strip()
+        passage_type = request.form.get('passage_type', 'paragraph').strip()
+        difficulty = request.form.get('difficulty', 'moderate').strip()
         content = request.form.get('content', '').strip()
+
+        purposes = request.form.getlist('purpose')
+        purpose_str = ",".join(purposes) if purposes else "general_practice"
+
+        exam_profile = request.form.get('exam_profile', '').strip() or None
+        exam_style = request.form.get('exam_style', 'general').strip()
+        region = request.form.get('region', 'India').strip()
+
+        source_type = request.form.get('source_type', 'original_practice').strip()
         source = request.form.get('source', 'Administrator').strip()
-        is_code = request.form.get('is_code') == 'on'
-        code_lang = request.form.get('code_lang') if is_code else None
+        source_url = request.form.get('source_url', '').strip() or None
+
+        status = request.form.get('status', 'published').strip()
+        visibility = request.form.get('visibility', 'everyone').strip()
+        is_featured = request.form.get('is_featured') == 'on'
+        allow_random = request.form.get('allow_random') == 'on'
+        allow_multiplayer = request.form.get('allow_multiplayer') == 'on'
+
+        rec_dur = request.form.get('recommended_duration', 60, type=int)
+        min_dur = request.form.get('min_duration', 15, type=int)
+        max_dur = request.form.get('max_duration', 1200, type=int)
 
         if not content:
             flash("Passage text content cannot be blank.", "danger")
-            return render_template('admin/passage_form.html', action="Create", passage=None)
+            return render_template('admin/passage_form.html', action="Create", passage=None, all_collections=all_collections)
+
+        clean_slug = re.sub(r'[^a-zA-Z0-9]+', '-', title.lower()).strip('-')
+        base_slug = clean_slug[:150] if clean_slug else "passage"
+        unique_slug = base_slug
+        counter = 1
+        while TypingText.query.filter_by(slug=unique_slug).first():
+            unique_slug = f"{base_slug}-{counter}"
+            counter += 1
 
         passage = TypingText(
             title=title,
-            category=category,
-            difficulty=difficulty,
+            slug=unique_slug,
             content=content,
+            language=language,
+            category=category,
+            passage_type=passage_type,
+            difficulty=difficulty,
+            purpose=purpose_str,
+            exam_profile=exam_profile,
+            exam_style=exam_style,
+            region=region,
+            source_type=source_type,
             source=source,
-            is_code=is_code,
-            code_lang=code_lang,
+            source_url=source_url,
+            status=status,
+            visibility=visibility,
+            is_active=(status == 'published'),
+            is_featured=is_featured,
+            allow_random=allow_random,
+            allow_multiplayer=allow_multiplayer,
+            recommended_duration=rec_dur,
+            min_duration=min_dur,
+            max_duration=max_dur,
+            published_at=datetime.utcnow() if status == 'published' else None,
             created_by=current_user.username
         )
+
         passage.calculate_stats()
+        passage.health_score = PassageService.calculate_health_score(passage)
+
+        tag_str = request.form.get('tags', '').strip()
+        if tag_str:
+            tag_names = [t.strip().lower() for t in tag_str.split(',') if t.strip()]
+            tag_objects = []
+            for t_name in tag_names:
+                t_slug = re.sub(r'[^a-z0-9]+', '-', t_name).strip('-')
+                if not t_slug:
+                    continue
+                tag = PassageTag.query.filter_by(slug=t_slug).first()
+                if not tag:
+                    tag = PassageTag(name=t_name, slug=t_slug)
+                    db.session.add(tag)
+                tag_objects.append(tag)
+            passage.tags = list(set(tag_objects))
+
+        col_ids = request.form.getlist('collections', type=int)
+        if col_ids:
+            passage.collections = PassageCollection.query.filter(PassageCollection.id.in_(col_ids)).all()
+
         db.session.add(passage)
         db.session.commit()
-        log_admin_action('PASSAGE_CREATE', 'passage', passage.id, f"Added passage '{title}'")
-        flash(f"Passage #{passage.id} ('{title}') added successfully.", "success")
+
+        log_admin_action('PASSAGE_CREATE', 'passage', passage.id, f"Created '{title}' ({passage.word_count} words)")
+        flash(f"Passage #{passage.id} ('{title}') successfully published to library.", "success")
         return redirect(url_for('admin.passages_list'))
 
-    return render_template('admin/passage_form.html', action="Create", passage=None)
+    return render_template('admin/passage_form.html', action="Create", passage=None, all_collections=all_collections)
 
 
 @admin_bp.route('/passages/<int:passage_id>/edit', methods=['GET', 'POST'])
 @admin_permission_required('typing.edit')
 def passage_edit(passage_id):
     passage = TypingText.query.get_or_404(passage_id)
+    all_collections = PassageCollection.query.filter_by(is_active=True).order_by(PassageCollection.title.asc()).all()
+
     if request.method == 'POST':
         passage.title = request.form.get('title', passage.title).strip()
+        passage.language = request.form.get('language', passage.language or 'english').strip().lower()
         passage.category = request.form.get('category', passage.category).strip()
+        passage.passage_type = request.form.get('passage_type', passage.passage_type or 'paragraph').strip()
         passage.difficulty = request.form.get('difficulty', passage.difficulty).strip()
         passage.content = request.form.get('content', passage.content).strip()
+
+        purposes = request.form.getlist('purpose')
+        passage.purpose = ",".join(purposes) if purposes else "general_practice"
+
+        passage.exam_profile = request.form.get('exam_profile', '').strip() or None
+        passage.exam_style = request.form.get('exam_style', 'general').strip()
+        passage.region = request.form.get('region', 'India').strip()
+
+        passage.source_type = request.form.get('source_type', 'original_practice').strip()
         passage.source = request.form.get('source', passage.source).strip()
-        passage.is_code = request.form.get('is_code') == 'on'
-        passage.code_lang = request.form.get('code_lang') if passage.is_code else None
-        passage.is_active = request.form.get('is_active') == 'on'
+        passage.source_url = request.form.get('source_url', '').strip() or None
+
+        status = request.form.get('status', passage.status or 'published').strip()
+        passage.status = status
+        passage.visibility = request.form.get('visibility', 'everyone').strip()
+        passage.is_active = (status == 'published')
+        passage.is_featured = request.form.get('is_featured') == 'on'
+        passage.allow_random = request.form.get('allow_random') == 'on'
+        passage.allow_multiplayer = request.form.get('allow_multiplayer') == 'on'
+
+        passage.recommended_duration = request.form.get('recommended_duration', 60, type=int)
+        passage.min_duration = request.form.get('min_duration', 15, type=int)
+        passage.max_duration = request.form.get('max_duration', 1200, type=int)
         passage.updated_by = current_user.username
+
+        if status == 'published' and not passage.published_at:
+            passage.published_at = datetime.utcnow()
+
         passage.calculate_stats()
+        passage.health_score = PassageService.calculate_health_score(passage)
+
+        tag_str = request.form.get('tags', '').strip()
+        if tag_str:
+            tag_names = [t.strip().lower() for t in tag_str.split(',') if t.strip()]
+            tag_objects = []
+            for t_name in tag_names:
+                t_slug = re.sub(r'[^a-z0-9]+', '-', t_name).strip('-')
+                if not t_slug:
+                    continue
+                tag = PassageTag.query.filter_by(slug=t_slug).first()
+                if not tag:
+                    tag = PassageTag(name=t_name, slug=t_slug)
+                    db.session.add(tag)
+                tag_objects.append(tag)
+            passage.tags = list(set(tag_objects))
+        else:
+            passage.tags = []
+
+        col_ids = request.form.getlist('collections', type=int)
+        if col_ids:
+            passage.collections = PassageCollection.query.filter(PassageCollection.id.in_(col_ids)).all()
+        else:
+            passage.collections = []
+
         db.session.commit()
         log_admin_action('PASSAGE_UPDATE', 'passage', passage.id, f"Modified passage '{passage.title}'")
-        flash("Passage updated successfully.", "success")
+        flash(f"Passage #{passage.id} ('{passage.title}') successfully updated.", "success")
         return redirect(url_for('admin.passages_list'))
 
-    return render_template('admin/passage_form.html', action="Edit", passage=passage)
+    return render_template('admin/passage_form.html', action="Edit", passage=passage, all_collections=all_collections)
 
 
 @admin_bp.route('/passages/<int:passage_id>/duplicate', methods=['POST'])
@@ -840,18 +1474,33 @@ def passage_duplicate(passage_id):
         title=f"Copy of {original.title}",
         category=original.category,
         difficulty=original.difficulty,
+        language=original.language,
+        passage_type=original.passage_type,
+        purpose=original.purpose,
+        exam_profile=original.exam_profile,
+        exam_style=original.exam_style,
+        region=original.region,
         content=original.content,
         source=original.source,
+        source_type=original.source_type,
         is_code=original.is_code,
         code_lang=original.code_lang,
-        is_active=original.is_active,
+        is_active=False,
+        status='draft',
+        recommended_duration=original.recommended_duration,
+        min_duration=original.min_duration,
+        max_duration=original.max_duration,
         created_by=current_user.username
     )
     cloned.calculate_stats()
+    cloned.health_score = original.health_score
+    cloned.tags = list(original.tags)
+    cloned.collections = list(original.collections)
+
     db.session.add(cloned)
     db.session.commit()
     log_admin_action('PASSAGE_DUPLICATE', 'passage', cloned.id, f"Cloned passage #{original.id} into #{cloned.id}")
-    flash(f"Passage duplicated as #{cloned.id}.", "success")
+    flash(f"Passage duplicated as #{cloned.id} in Draft state.", "success")
     return redirect(url_for('admin.passage_edit', passage_id=cloned.id))
 
 
@@ -872,6 +1521,7 @@ def passage_delete(passage_id):
 def passage_toggle(passage_id):
     passage = TypingText.query.get_or_404(passage_id)
     passage.is_active = not passage.is_active
+    passage.status = 'published' if passage.is_active else 'archived'
     db.session.commit()
     log_admin_action('PASSAGE_TOGGLE', 'passage', passage.id, f"Active state: {passage.is_active}")
     return redirect(url_for('admin.passages_list'))
@@ -1117,7 +1767,6 @@ def certificate_restore(test_id):
 @admin_bp.route('/community')
 @admin_permission_required('reviews.view')
 def community_manage():
-    # Auto-seed exemplary reviews if completely empty so the admin can test moderation immediately
     try:
         if RatingReview.query.count() == 0 and User.query.first():
             first_user = User.query.first()
@@ -1148,7 +1797,6 @@ def community_manage():
 @admin_bp.route('/community/reviews/create-official', methods=['POST'])
 @admin_permission_required('reviews.moderate')
 def create_official_review():
-    """Allows Super Admin to seed and test reviews directly from Control Center."""
     title = request.form.get('review_title', '').strip()
     text_content = request.form.get('review_text', '').strip()
     rating = request.form.get('rating', 5, type=int)
@@ -1319,7 +1967,7 @@ def handle_unblock_ip(block_id):
 
 
 # ==============================================================
-# 13. WEBSITE CONTROL, MAINTENANCE & PRESERVED SCROLL CMS
+# 13. WEBSITE CONTROL & NAVIGATION CMS
 # ==============================================================
 
 @admin_bp.route('/website')
@@ -1578,7 +2226,7 @@ def traffic_analytics():
 
 
 # ==============================================================
-# 16. SYSTEM HEALTH & DATA RETENTION MANAGEMENT (WITH UNIQUE VISITS)
+# 16. SYSTEM HEALTH & DATA RETENTION MANAGEMENT
 # ==============================================================
 
 @admin_bp.route('/system/health')
@@ -1612,7 +2260,6 @@ def system_health():
             db.session.rollback()
             return 0
 
-    # Point 6 Fix: Unique Visits & IP Counts
     try:
         unique_visitor_sessions = db.session.query(func.count(func.distinct(VisitorTraffic.session_id))).scalar() or 0
         unique_ip_visitors = db.session.query(func.count(func.distinct(VisitorTraffic.ip_address))).scalar() or 0
@@ -1713,7 +2360,7 @@ def data_cleanup():
 
 
 # ==============================================================
-# 17. AUDIT LOGS, LEADERBOARD, SETTINGS (EXPANDED) & EXPORTS
+# 17. AUDIT LOGS, LEADERBOARD, SETTINGS & EXPORTS
 # ==============================================================
 
 @admin_bp.route('/audit-logs')
@@ -1771,7 +2418,6 @@ def test_delete(test_id):
 @admin_bp.route('/settings', methods=['GET', 'POST'])
 @admin_permission_required('website.settings')
 def system_settings():
-    """Point 7 Fix: Comprehensive Platform Runtime Parameters."""
     runtime_keys = [
         'maintenance_mode',
         'allow_registrations',
@@ -1819,6 +2465,10 @@ def export_csv(data_type):
         writer.writerow(['ID', 'User_ID', 'Mode', 'WPM', 'Accuracy', 'Consistency', 'Duration', 'Suspicious', 'Date'])
         for t in TypingTest.query.limit(2000).all():
             writer.writerow([t.id, t.user_id, t.mode, t.wpm, t.accuracy, t.consistency, t.duration, t.suspicious, t.completed_at])
+    elif data_type == 'passages':
+        writer.writerow(['ID', 'Title', 'Language', 'Category', 'Type', 'Difficulty', 'Words', 'Recommended_Duration', 'Status', 'Usage', 'Health'])
+        for p in TypingText.query.all():
+            writer.writerow([p.id, p.title, p.language, p.category, p.passage_type, p.difficulty, p.word_count, p.recommended_duration, p.status, p.times_used, p.health_score])
     elif data_type == 'audit':
         writer.writerow(['ID', 'Admin', 'Action', 'Target_Type', 'Target_ID', 'IP', 'Date'])
         for a in AdminAuditLog.query.order_by(AdminAuditLog.id.desc()).limit(2000).all():

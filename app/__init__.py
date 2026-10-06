@@ -25,7 +25,11 @@ def create_app(config_class=Config):
 
     # Register models before schema initialization
     from app.models.user import User
-    from app.models.typing import TypingTest, TypingText, TypingDNA
+    from app.models.typing import (
+        TypingTest, TypingText, TypingDNA,
+        PassageTag, PassageCollection, PassageReport,
+        passage_tags, passage_collections
+    )
     from app.models.challenge import DailyChallenge, Achievement, UserAchievement
     from app.models.settings import UserSettings
     from app.models.feedback import ContactMessage, FeedbackItem, RatingReview, SiteSetting, Announcement
@@ -54,7 +58,7 @@ def create_app(config_class=Config):
         db.create_all()
         try:
             with db.engine.connect() as conn:
-                # Patch users table with Pilot Identity attributes
+                # 1. Patch users table with Pilot Identity attributes
                 res = conn.execute(text("PRAGMA table_info(users)"))
                 u_cols = {row[1] for row in res.fetchall()}
                 if u_cols:
@@ -67,7 +71,7 @@ def create_app(config_class=Config):
                     if 'ranked_draws' not in u_cols:
                         conn.execute(text("ALTER TABLE users ADD COLUMN ranked_draws INTEGER DEFAULT 0"))
 
-                # Patch user_settings table with Cockpit preferences
+                # 2. Patch user_settings table with Cockpit preferences
                 res = conn.execute(text("PRAGMA table_info(user_settings)"))
                 s_cols = {row[1] for row in res.fetchall()}
                 if s_cols:
@@ -85,7 +89,7 @@ def create_app(config_class=Config):
                         if col_name not in s_cols:
                             conn.execute(text(f"ALTER TABLE user_settings ADD COLUMN {col_name} {col_def}"))
 
-                # Patch typing_tests table
+                # 3. Patch typing_tests table
                 res = conn.execute(text("PRAGMA table_info(typing_tests)"))
                 t_cols = {row[1] for row in res.fetchall()}
                 if t_cols:
@@ -96,12 +100,49 @@ def create_app(config_class=Config):
                     if 'time_of_day_ist' not in t_cols:
                         conn.execute(text("ALTER TABLE typing_tests ADD COLUMN time_of_day_ist INTEGER"))
 
-                # Patch arcade_game_configs with display_order (Issue 10 Fix)
+                # 4. Patch arcade_game_configs with display_order
                 res = conn.execute(text("PRAGMA table_info(arcade_game_configs)"))
                 ag_cols = {row[1] for row in res.fetchall()}
                 if ag_cols:
                     if 'display_order' not in ag_cols:
                         conn.execute(text("ALTER TABLE arcade_game_configs ADD COLUMN display_order INTEGER DEFAULT 1"))
+
+                # 5. Patch typing_texts table with multi-tier classification & rules
+                res = conn.execute(text("PRAGMA table_info(typing_texts)"))
+                txt_cols = {row[1] for row in res.fetchall()}
+                if txt_cols:
+                    text_patches = [
+                        ('slug', "VARCHAR(180)"),
+                        ('passage_type', "VARCHAR(32) DEFAULT 'paragraph'"),
+                        ('status', "VARCHAR(20) DEFAULT 'published'"),
+                        ('purpose', "VARCHAR(255) DEFAULT 'general_practice'"),
+                        ('exam_profile', "VARCHAR(64)"),
+                        ('exam_style', "VARCHAR(64)"),
+                        ('region', "VARCHAR(64) DEFAULT 'India'"),
+                        ('character_count_no_spaces', "INTEGER DEFAULT 0"),
+                        ('sentence_count', "INTEGER DEFAULT 0"),
+                        ('paragraph_count', "INTEGER DEFAULT 1"),
+                        ('avg_word_length', "FLOAT DEFAULT 0.0"),
+                        ('recommended_duration', "INTEGER DEFAULT 60"),
+                        ('min_duration', "INTEGER DEFAULT 15"),
+                        ('max_duration', "INTEGER DEFAULT 1200"),
+                        ('visibility', "VARCHAR(32) DEFAULT 'everyone'"),
+                        ('is_featured', "BOOLEAN DEFAULT 0"),
+                        ('allow_random', "BOOLEAN DEFAULT 1"),
+                        ('allow_multiplayer', "BOOLEAN DEFAULT 1"),
+                        ('source_type', "VARCHAR(64) DEFAULT 'original_practice'"),
+                        ('source_url', "VARCHAR(255)"),
+                        ('times_used', "INTEGER DEFAULT 0"),
+                        ('unique_users', "INTEGER DEFAULT 0"),
+                        ('avg_wpm', "FLOAT DEFAULT 0.0"),
+                        ('avg_accuracy', "FLOAT DEFAULT 0.0"),
+                        ('report_count', "INTEGER DEFAULT 0"),
+                        ('health_score', "INTEGER DEFAULT 100"),
+                        ('published_at', "DATETIME")
+                    ]
+                    for col_name, col_def in text_patches:
+                        if col_name not in txt_cols:
+                            conn.execute(text(f"ALTER TABLE typing_texts ADD COLUMN {col_name} {col_def}"))
 
                 conn.commit()
         except Exception:

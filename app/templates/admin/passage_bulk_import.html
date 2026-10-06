@@ -1,0 +1,80 @@
+{% extends 'admin/base_admin.html' %}
+{% block title %}Bulk Import Passages | TypeSphere Control Center{% endblock %}
+
+{% block admin_content %}
+<!-- Sub-Navigation Strip for Passage Library Modules -->
+<div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--admin-border); padding-bottom:0.75rem; margin-bottom:1.25rem; flex-wrap:wrap; gap:0.75rem;">
+  <div>
+    <h1 style="font-size:1.6rem; font-weight:800; margin:0 0 0.25rem 0;">Bulk CSV Passage Import Engine</h1>
+    <p style="color:var(--admin-text-muted); font-size:0.85rem; margin:0;">
+      Ingest complete corpora, curriculum stages, or exam passage banks with automatic lexical telemetry calculation.
+    </p>
+  </div>
+  <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
+    <a href="{{ url_for('admin.passages_list') }}" class="btn btn-sm">All Passages</a>
+    <a href="{{ url_for('admin.passage_create') }}" class="btn btn-sm">+ Add Passage</a>
+    <a href="{{ url_for('admin.passage_collections') }}" class="btn btn-sm">Collections</a>
+    <a href="{{ url_for('admin.passage_categories') }}" class="btn btn-sm">Categories & Rules</a>
+    <a href="{{ url_for('admin.passage_review_queue') }}" class="btn btn-sm">Review Queue</a>
+    <a href="{{ url_for('admin.passage_bulk_import') }}" class="btn btn-sm btn-primary">Bulk Import</a>
+    <a href="{{ url_for('admin.passage_analytics') }}" class="btn btn-sm">Analytics</a>
+  </div>
+</div>
+
+<div style="display:grid; grid-template-columns: 1.5fr 1fr; gap:1.5rem; margin-bottom:1.5rem;">
+  <!-- Upload Box -->
+  <div class="card" style="margin:0;">
+    <h3 style="font-size:1.1rem; font-weight:800; margin-bottom:0.75rem; color:var(--admin-accent);">
+      Upload Passage Dataset (CSV)
+    </h3>
+    <p style="color:var(--admin-text-muted); font-size:0.85rem; line-height:1.55; margin-bottom:1.25rem;">
+      Upload a UTF-8 encoded CSV file. Our server validates row integrity, detects duplicates against existing passages, calculates word counts and complexity scores, and stages content immediately.
+    </p>
+
+    <form method="POST" action="{{ url_for('admin.passage_bulk_import') }}" enctype="multipart/form-data">
+      <div style="border:2px dashed var(--admin-border); border-radius:8px; padding:2rem; text-align:center; background:var(--admin-elevated); margin-bottom:1.25rem;">
+        <div style="font-size:2.5rem; margin-bottom:0.5rem;">📄</div>
+        <input type="file" name="csv_file" accept=".csv" required style="display:block; margin:0 auto; color:var(--admin-text-main); font-size:0.85rem;">
+        <div style="font-size:0.75rem; color:var(--admin-text-muted); margin-top:0.6rem;">Maximum batch size: 500 passages per execution</div>
+      </div>
+
+      <div style="margin-bottom:1.25rem; background:var(--admin-bg); padding:0.85rem; border-radius:6px; border:1px solid var(--admin-border);">
+        <label style="display:flex; align-items:center; gap:0.5rem; font-size:0.85rem; cursor:pointer;">
+          <input type="checkbox" name="publish_immediately" checked>
+          <span><strong>Publish Immediately</strong> (Uncheck to import as Drafts for review)</span>
+        </label>
+      </div>
+
+      <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center; padding:0.75rem; font-weight:800; font-size:0.95rem;">
+        Validate & Import Dataset &rarr;
+      </button>
+    </form>
+  </div>
+
+  <!-- Format Documentation & Sample -->
+  <div class="card" style="margin:0; background:var(--admin-elevated);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; border-bottom:1px solid var(--admin-border); padding-bottom:0.4rem;">
+      <h3 style="font-size:1.05rem; font-weight:800; margin:0;">CSV Format Standards</h3>
+      <a href="{{ url_for('admin.download_sample_csv') }}" class="btn btn-sm btn-primary">📥 Sample CSV</a>
+    </div>
+
+    <p style="font-size:0.82rem; color:var(--admin-text-muted); line-height:1.55; margin-bottom:1rem;">
+      Your file should include the following header columns (case-insensitive):
+    </p>
+
+    <div style="font-family:var(--admin-mono); font-size:0.76rem; background:var(--admin-bg); padding:0.85rem; border-radius:6px; border:1px solid var(--admin-border); line-height:1.6; margin-bottom:1rem; overflow-x:auto;">
+      <strong>title</strong>: Passage title<br>
+      <strong>content</strong>: Complete text body<br>
+      <strong>language</strong>: english, hindi, etc.<br>
+      <strong>category</strong>: Technology, General, etc.<br>
+      <strong>passage_type</strong>: paragraph, quote, article<br>
+      <strong>difficulty</strong>: easy, moderate, hard, expert<br>
+      <strong>tags</strong>: comma-separated tags
+    </div>
+
+    <div style="font-size:0.78rem; color:var(--admin-text-muted); line-height:1.5;">
+      💡 <strong>Automatic Calculation:</strong> Word counts, character metrics, sentence counts, and readability scores are computed automatically by the engine upon import.
+    </div>
+  </div>
+</div>
+{% endblock %}
