@@ -12,7 +12,7 @@ import time
 import random
 from app import db, socketio
 from app.models.user import User
-from app.models.typing import TypingTest
+from app.models.typing import TypingTest, TypingText
 
 multiplayer_bp = Blueprint('multiplayer', __name__)
 
@@ -20,7 +20,7 @@ ROOMS = {}         # room_code -> dict
 QUICK_QUEUE = []   # [{'sid': sid, 'user_id': uid, 'name': str, 'queued_at': float}]
 SID_TO_ROOM = {}   # sid -> room_code
 
-# Scalable curated passages ensuring 300s & 600s races never terminate prematurely
+# Scalable curated passages ensuring races never terminate prematurely if DB passages are empty
 CURATED_PASSAGES = {
     30: [
         "Speed is born from economy of movement. Eliminate tension from your fingers and allow cadence to carry every keystroke across the keyboard.",
@@ -37,7 +37,6 @@ CURATED_PASSAGES = {
         "A solitary satellite drifted through the dark expanse above Earth, observing city lights flickering like scattered embers across the continents. For seven years, its solar panels had absorbed the unshielded glare of the sun, powering instruments that tracked melting glaciers and shifting desert dunes. It sent back terabytes of silent telemetry, an unblinking witness to the quiet transformation of a living world."
     ],
     300: [
-        # Scalable 500+ Word Passage for 5-Minute Endurance Flights
         (
             "Modern computational infrastructure increasingly depends on distributed event streaming pipelines to process "
             "real-time information at massive planetary scale. By decoupling data producers from consumer applications through "
@@ -63,7 +62,6 @@ CURATED_PASSAGES = {
         )
     ],
     600: [
-        # Scalable 800+ Word Passage for 10-Minute Endurance Flights
         (
             "During the fourth fiscal quarter, corporate operations experienced significant structural modernization following the "
             "deployment of automated telemetry diagnostics and decentralized ledger auditing across enterprise infrastructure. "
@@ -100,6 +98,21 @@ CURATED_PASSAGES = {
 def fetch_passage(duration, custom_text=None):
     if custom_text and len(custom_text.strip()) >= 10:
         return custom_text.strip()
+
+    # Dynamic Database Query: load admin-managed passages configured for multiplayer
+    try:
+        db_passages = TypingText.query.filter_by(
+            allow_multiplayer=True,
+            is_active=True
+        ).filter(
+            (TypingText.recommended_duration == duration) | (TypingText.category == 'multiplayer')
+        ).all()
+        if db_passages:
+            return random.choice(db_passages).content.strip()
+    except Exception:
+        pass
+
+    # Curated Endurance Fallback
     if duration <= 30:
         return random.choice(CURATED_PASSAGES[30])
     elif duration <= 60:
@@ -155,7 +168,6 @@ def update_competitive_match_elo(room):
     if len(active_finishers) < 2:
         return
 
-    # Pairwise Elo calculation for 1v1 duels or head-to-head top rankings
     winner_player = active_finishers[0]
     loser_player = active_finishers[1]
 
@@ -422,7 +434,6 @@ def handle_progress_update(data):
     player['accuracy'] = accuracy
     player['errors'] = errors
 
-    # Individual Finish Detection (non-blocking)
     if progress >= 100 and not player['finished']:
         player['finished'] = True
         finished_racers = [p for p in room['players'].values() if p['finished'] and not p.get('left_early')]

@@ -1,128 +1,147 @@
 {% extends 'base.html' %}
-{% block title %}AI Flight Coach & Biometric Scan | TypeSphere{% endblock %}
+{% block title %}AI Flight Coach & Biometric Diagnostic Deck | TypeSphere{% endblock %}
 {% block content %}
-<div class="card" style="max-width: 1080px; margin: 0 auto; padding: 2rem;">
+<div class="card" style="max-width: 1040px; margin: 0 auto; padding: 1.75rem;">
     <!-- Telemetry Header -->
-    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:1.5rem; margin-bottom:2rem; flex-wrap:wrap; gap:1rem;">
+    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:1.25rem; margin-bottom:1.75rem; flex-wrap:wrap; gap:1rem;">
         <div>
             <div style="display:flex; align-items:center; gap:0.65rem;">
                 <span style="font-size:2.2rem;">🎯</span>
                 <div>
-                    <h1 style="font-size:1.85rem; font-weight:800; margin:0;">Biometric Flight Scan</h1>
-                    <span style="font-size:0.78rem; font-weight:800; color:var(--accent); text-transform:uppercase; letter-spacing:0.06em;">AI Weakness Coach & Kinetic Diagnostics</span>
+                    <h1 style="font-size:1.75rem; font-weight:800; margin:0;">AI Flight Coach Deck</h1>
+                    <span style="font-size:0.75rem; font-weight:800; color:var(--accent); text-transform:uppercase; letter-spacing:0.06em;">Autonomous Biometric Telemetry & Dynamic Classes</span>
                 </div>
             </div>
-            <p style="color:var(--text-secondary); font-size:0.9rem; margin-top:0.4rem; line-height:1.55;">
-                Analyzes left-versus-right hand balance, sub-second latency stalls, and character confusion pairs to compose targeted muscle memory drills.
+            <p style="color:var(--text-secondary); font-size:0.88rem; margin-top:0.35rem; line-height:1.55;">
+                Your AI coach automatically scans your live keystroke telemetry, diagnoses hand imbalances and hesitation latencies, and composes real-time flight classes from the library.
             </p>
         </div>
         <a href="{{ url_for('typing.test_page') }}" class="btn btn-sm">&larr; Return to Flight Deck</a>
     </div>
 
     {% if not is_registered_pilot %}
-    <div class="guest-callout-ribbon">
+    <div class="guest-callout-ribbon" style="margin-bottom:1.5rem;">
         <div class="guest-callout-text">
             <span>🛡️</span>
-            <span>You are viewing a <strong>temporary local diagnostic scan</strong>. Enlist a persistent Pilot Profile to build long-term keystroke trends.</span>
+            <span>You are viewing a <strong>transient guest scan</strong>. Enlist a registered Pilot Profile to accumulate permanent Biometric DNA across flights.</span>
         </div>
         <a href="{{ url_for('auth.register') }}" class="btn btn-primary btn-sm" style="font-weight:800;">Enlist Pilot Profile</a>
     </div>
     {% endif %}
 
-    <!-- Biometric Radar Status Board -->
-    <div class="card" style="background:var(--bg-card); border:1.5px solid var(--accent); margin-bottom:2rem; padding:1.5rem;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem; flex-wrap:wrap; gap:0.5rem;">
+    <!-- Assigned Flight Class Card (Dynamically Formulated by AI Coach) -->
+    <div class="card" style="background:var(--bg-card); border:2px solid var(--accent); margin-bottom:1.75rem; padding:1.5rem;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:1rem; flex-wrap:wrap; gap:1rem;">
             <div>
-                <span style="font-size:0.75rem; font-weight:800; background:var(--accent-glow); color:var(--accent); padding:0.2rem 0.6rem; border-radius:4px; text-transform:uppercase;">
-                    Kinetic Telemetry
+                <span style="font-size:0.75rem; font-weight:800; background:var(--accent-glow); color:var(--accent); padding:0.2rem 0.6rem; border-radius:4px; text-transform:uppercase; letter-spacing:0.06em;">
+                    Assigned Flight Class &bull; {{ class_profile.class_code }}
                 </span>
-                <h3 style="font-size:1.25rem; font-weight:800; margin:0.35rem 0 0;">Algorithmic Flight Prescription</h3>
+                <h2 style="font-size:1.45rem; font-weight:800; margin:0.35rem 0 0; color:var(--text-primary);">
+                    {{ class_profile.class_name }}
+                </h2>
+                <div style="font-size:0.8rem; color:var(--text-muted); margin-top:0.2rem;">
+                    Dynamic Passage Source: <strong style="color:var(--text-primary);">{{ class_profile.matched_passage_title }}</strong>
+                </div>
             </div>
-            <button onclick="startAdaptiveDrill()" class="btn btn-primary" style="font-weight:800; padding:0.65rem 1.6rem; box-shadow:0 0 16px var(--accent-glow);">
-                ⚡ Launch Targeted Weakness Drill
+
+            <button onclick="launchAdaptiveClass()" class="btn btn-primary" style="font-weight:800; padding:0.75rem 2rem; box-shadow:0 0 20px var(--accent-glow);">
+                ⚡ Engage Assigned Class Drill &rarr;
             </button>
         </div>
 
-        <p style="color:var(--text-secondary); font-size:0.92rem; line-height:1.6; margin-bottom:1.5rem;">
-            {% if weak_keys %}
-                Sensors detected recurrent latency spikes and strike misalignments across keys:
-                <strong>{% for k, err, cnt in weak_keys %}'{{ k }}' ({{ err }}% error rate){% if not loop.last %}, {% endif %}{% endfor %}</strong>.
-                Launching the adaptive flight drill will isolate these specific n-grams to retrain your tactile cadence.
-            {% else %}
-                Complete 2 to 3 standard benchmark flights while signed in to unlock deeper biometric finger fatigue tracking and confusion pair matrices.
-            {% endif %}
+        <p style="color:var(--text-secondary); font-size:0.92rem; line-height:1.6; margin-bottom:1.25rem;">
+            {{ class_profile.diagnostic_reason }}
         </p>
 
-        <!-- Sensor Metrics Grid -->
-        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:1rem;">
-            <div style="background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:var(--radius-sm); padding:1rem 1.25rem;">
-                <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:700;">Hand Cadence Balance</div>
-                <div style="font-size:1.35rem; font-weight:900; font-family:var(--font-mono); color:var(--accent); margin-top:0.3rem;">
-                    {{ dna.left_hand_accuracy|round(1) if dna else 98.2 }}% L &bull; {{ dna.right_hand_accuracy|round(1) if dna else 99.1 }}% R
+        <!-- Live Threshold Targets Configured by Coach -->
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:1rem;">
+            <div style="background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:var(--radius-sm); padding:0.85rem 1rem;">
+                <div style="font-size:0.72rem; color:var(--text-muted); text-transform:uppercase; font-weight:700;">Target Velocity</div>
+                <div style="font-size:1.5rem; font-weight:900; font-family:var(--font-mono); color:var(--accent); margin-top:0.25rem;">
+                    {{ class_profile.target_wpm }} WPM
                 </div>
             </div>
-            <div style="background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:var(--radius-sm); padding:1rem 1.25rem;">
-                <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:700;">Top Confusion Pair</div>
-                <div style="font-size:1.15rem; font-weight:800; color:var(--warning); margin-top:0.3rem;">
-                    {% if top_confusions %}
-                        Expected '{{ top_confusions[0][0] }}' &rarr; Typed '{{ top_confusions[0][1] }}'
+            <div style="background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:var(--radius-sm); padding:0.85rem 1rem;">
+                <div style="font-size:0.72rem; color:var(--text-muted); text-transform:uppercase; font-weight:700;">Required Accuracy</div>
+                <div style="font-size:1.5rem; font-weight:900; font-family:var(--font-mono); color:var(--success); margin-top:0.25rem;">
+                    {{ class_profile.target_accuracy }}%
+                </div>
+            </div>
+            <div style="background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:var(--radius-sm); padding:0.85rem 1rem;">
+                <div style="font-size:0.72rem; color:var(--text-muted); text-transform:uppercase; font-weight:700;">Focus Anchors</div>
+                <div style="font-size:1.2rem; font-weight:800; color:var(--warning); font-family:var(--font-mono); margin-top:0.35rem;">
+                    {% if class_profile.focus_tokens %}
+                        {{ class_profile.focus_tokens|join(', ') }}
                     {% else %}
-                        No recurrent confusion
+                        Sprint Flow
                     {% endif %}
                 </div>
             </div>
-            <div style="background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:var(--radius-sm); padding:1rem 1.25rem;">
-                <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:700;">Punctuation Stability</div>
-                <div style="font-size:1.35rem; font-weight:900; font-family:var(--font-mono); color:var(--success); margin-top:0.3rem;">
-                    {{ dna.punctuation_accuracy|round(1) if dna else 96.0 }}%
-                </div>
-            </div>
         </div>
     </div>
 
-    <!-- Structured 6-Stage Touch Typing Curriculum -->
-    <div style="border-top:1px solid var(--border-color); padding-top:2rem;">
-        <h2 style="font-size:1.4rem; font-weight:800; margin-bottom:0.4rem;">Structured Tactical Exercises</h2>
-        <p style="color:var(--text-secondary); font-size:0.88rem; margin-bottom:1.5rem;">
-            Anchor your baseline touch typing fundamentals across progressive ergonomic rows:
-        </p>
-
-        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(310px, 1fr)); gap:1.25rem;">
-            {% for key, lesson in curriculum.items() %}
-            <div class="card" style="background:var(--bg-card); margin-bottom:0; display:flex; flex-direction:column; justify-content:space-between;">
-                <div>
-                    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.5rem;">
-                        <h3 style="font-size:1.1rem; font-weight:800; margin:0; color:var(--text-primary);">
-                            {{ lesson.title }}
-                        </h3>
-                        <span style="font-size:0.7rem; font-weight:800; background:var(--bg-secondary); border:1px solid var(--border-color); color:var(--accent); padding:0.15rem 0.5rem; border-radius:4px;">
-                            MODULE {{ loop.index }}
-                        </span>
-                    </div>
-                    <div style="font-family:var(--font-mono); font-size:0.82rem; color:var(--warning); font-weight:700; margin-bottom:0.6rem;">
-                        Anchors: {{ lesson.keys }}
-                    </div>
-                    <p style="color:var(--text-secondary); font-size:0.86rem; line-height:1.55; margin-bottom:1rem;">
-                        {{ lesson.description }}
-                    </p>
+    <!-- Diagnostic Telemetry Sensors Grid -->
+    <div style="margin-bottom:1.5rem;">
+        <h3 style="font-size:1.15rem; font-weight:800; margin-bottom:0.85rem;">Biometric Sensor Telemetry</h3>
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:1rem;">
+            <div class="card" style="background:var(--bg-card); margin:0; padding:1.15rem;">
+                <div style="font-size:0.72rem; color:var(--text-muted); text-transform:uppercase; font-weight:700;">Hand Cadence Balance</div>
+                <div style="font-size:1.35rem; font-weight:900; font-family:var(--font-mono); color:var(--accent); margin-top:0.3rem;">
+                    {{ dna.left_hand_accuracy|round(1) if dna else 98.2 }}% L &bull; {{ dna.right_hand_accuracy|round(1) if dna else 99.1 }}% R
                 </div>
-                <button onclick="launchLesson('{{ key }}')" class="btn btn-primary" style="width:100%; justify-content:center; font-weight:800; padding:0.65rem;">
-                    Engage Module &rarr;
-                </button>
+                <div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.35rem;">
+                    {% if diag.hand_imbalance %}
+                        <span style="color:var(--warning);">⚠️ {{ diag.hand_imbalance.diff }}% discrepancy on {{ diag.hand_imbalance.weaker_hand }} hand</span>
+                    {% else %}
+                        <span style="color:var(--success);">✓ Bilateral hand balance nominal</span>
+                    {% endif %}
+                </div>
             </div>
-            {% endfor %}
+
+            <div class="card" style="background:var(--bg-card); margin:0; padding:1.15rem;">
+                <div style="font-size:0.72rem; color:var(--text-muted); text-transform:uppercase; font-weight:700;">Isolated Weak Keys</div>
+                <div style="font-size:1.25rem; font-weight:800; color:var(--warning); font-family:var(--font-mono); margin-top:0.35rem;">
+                    {% if diag.weak_keys %}
+                        [{{ diag.weak_keys|join(', ') }}]
+                    {% else %}
+                        None Isolated
+                    {% endif %}
+                </div>
+                <div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.35rem;">
+                    Keys producing &gt; 5% error rates or latency pauses
+                </div>
+            </div>
+
+            <div class="card" style="background:var(--bg-card); margin:0; padding:1.15rem;">
+                <div style="font-size:0.72rem; color:var(--text-muted); text-transform:uppercase; font-weight:700;">Punctuation & Symbols</div>
+                <div style="font-size:1.35rem; font-weight:900; font-family:var(--font-mono); color:{{ 'var(--success)' if diag.punct_acc and diag.punct_acc >= 90 else 'var(--warning)' }}; margin-top:0.3rem;">
+                    {{ diag.punct_acc|round(1) if diag.punct_acc else 96.0 }}%
+                </div>
+                <div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.35rem;">
+                    Edge key reaches and bracket transitions
+                </div>
+            </div>
+
+            <div class="card" style="background:var(--bg-card); margin:0; padding:1.15rem;">
+                <div style="font-size:0.72rem; color:var(--text-muted); text-transform:uppercase; font-weight:700;">Top Confusion Pair</div>
+                <div style="font-size:1.15rem; font-weight:800; color:var(--text-primary); margin-top:0.4rem;">
+                    {% if diag.top_confusions %}
+                        '{{ diag.top_confusions[0][0] }}' &rarr; <span style="color:var(--danger);">'{{ diag.top_confusions[0][1] }}'</span>
+                    {% else %}
+                        Clean Transitions
+                    {% endif %}
+                </div>
+                <div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.35rem;">
+                    Most frequent errant substitution
+                </div>
+            </div>
         </div>
     </div>
 </div>
-{% endblock %}
 
-{% block scripts %}
 <script>
-function startAdaptiveDrill() {
+function launchAdaptiveClass() {
     window.location.href = "{{ url_for('typing.test_page') }}?mode=adaptive";
-}
-function launchLesson(lessonKey) {
-    window.location.href = `{{ url_for('typing.test_page') }}?lesson=${encodeURIComponent(lessonKey)}`;
 }
 </script>
 {% endblock %}

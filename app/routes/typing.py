@@ -46,72 +46,21 @@ def custom_text_page():
 @typing_bp.route('/practice', endpoint='practice_page')
 def practice_page():
     """
-    Renders the AI Flight Coach & Biometric Scan.
+    Renders the AI Flight Coach & Biometric Diagnostic Deck.
+    Autonomously diagnoses the pilot and formulates their flight class.
     """
     dna = None
-    weak_keys = []
-    top_confusions = []
+    diag = AdaptiveTrainingService.diagnose_pilot(current_user.id if current_user.is_authenticated else None)
+    _, _, class_profile = AdaptiveTrainingService.generate_drill(current_user.id if current_user.is_authenticated else None)
 
     if current_user.is_authenticated:
         dna = TypingDNA.query.filter_by(user_id=current_user.id).first()
-        if dna:
-            stats = dna.get_key_stats()
-            confusions = dna.get_confusion_matrix()
-
-            for k, val in stats.items():
-                if val.get('total', 0) >= 4 and k.isalpha():
-                    err_rate = round((val.get('errors', 0) / val['total']) * 100, 1)
-                    if err_rate > 5.0:
-                        weak_keys.append((k.upper(), err_rate, val['total']))
-            weak_keys.sort(key=lambda x: x[1], reverse=True)
-            weak_keys = weak_keys[:5]
-
-            for exp, mapped in confusions.items():
-                for got, cnt in mapped.items():
-                    if cnt >= 2:
-                        top_confusions.append((exp.upper(), got.upper(), cnt))
-            top_confusions.sort(key=lambda x: x[2], reverse=True)
-            top_confusions = top_confusions[:4]
-
-    curriculum = {
-        'home_row': {
-            'title': 'Home Row Resting Anchors',
-            'keys': 'A S D F J K L ;',
-            'description': 'Master finger resting positions on the home row baseline.'
-        },
-        'top_row': {
-            'title': 'Top Row Vertical Reaches',
-            'keys': 'Q W E R T Y U I O P',
-            'description': 'Train upward reaches without shifting your palm off the desk.'
-        },
-        'bottom_row': {
-            'title': 'Bottom Row Downward Tucks',
-            'keys': 'Z X C V B N M , . /',
-            'description': 'Develop downward finger curls while maintaining hand stability.'
-        },
-        'shifts': {
-            'title': 'Contralateral Shift Synchronization',
-            'keys': 'Left Shift + Right Shift',
-            'description': 'Use opposite shift keys for smooth capitalization.'
-        },
-        'numbers': {
-            'title': 'Numeric Row Reaches',
-            'keys': '1 2 3 4 5 6 7 8 9 0',
-            'description': 'Reach top numbers without looking at the keyboard.'
-        },
-        'symbols': {
-            'title': 'Brackets & Developer Syntax',
-            'keys': '{ } [ ] ( ) ; : < >',
-            'description': 'Isolate programming syntax symbols and punctuation flow.'
-        }
-    }
 
     return render_template(
         'typing/practice.html',
         dna=dna,
-        weak_keys=weak_keys,
-        top_confusions=top_confusions,
-        curriculum=curriculum
+        diag=diag,
+        class_profile=class_profile
     )
 
 
@@ -131,7 +80,6 @@ def result_page(test_id):
     """
     test = TypingTest.query.get_or_404(test_id)
 
-    # Determine Skill Tier
     wpm = test.wpm
     if wpm >= 100:
         skill_tier = "Grandmaster Pilot"
@@ -221,7 +169,6 @@ def certificate_page(test_id):
             test=test
         )
 
-    # Certification Thresholds
     wpm = test.wpm
     acc = test.accuracy
 
@@ -300,11 +247,17 @@ def get_daily_text():
 @typing_bp.route('/api/adaptive-drill')
 def get_adaptive_drill():
     """
-    Generates personalized drill isolating the pilot's weak keys.
+    Autonomous AI Coach API: dynamically composes an individual flight class
+    querying the existing database passages matching the pilot's weaknesses.
     """
     uid = current_user.id if current_user.is_authenticated else None
-    drill_text, weak_keys = AdaptiveTrainingService.generate_drill(uid)
-    return jsonify({'drill_text': drill_text, 'weak_keys': weak_keys})
+    drill_text, weak_keys, class_profile = AdaptiveTrainingService.generate_drill(uid)
+    return jsonify({
+        'content': drill_text,
+        'drill_text': drill_text,
+        'weak_keys': weak_keys,
+        'class_profile': class_profile
+    })
 
 
 @typing_bp.route('/api/ghost/<int:test_id>')
@@ -384,7 +337,6 @@ def submit_flight():
             except Exception:
                 pass
         else:
-            # Guest Flight Session
             guest_runs = session.get('guest_runs', [])
             guest_runs.append({
                 'wpm': metrics['wpm'],

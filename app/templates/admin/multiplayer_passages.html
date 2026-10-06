@@ -1,0 +1,167 @@
+{% extends 'admin/base_admin.html' %}
+{% block title %}1v1 Multiplayer Grid Passages | TypeSphere Control Center{% endblock %}
+
+{% block admin_content %}
+<!-- Sector Header & Primary Actions -->
+<div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--admin-border); padding-bottom:0.75rem; margin-bottom:1.25rem; flex-wrap:wrap; gap:0.75rem;">
+  <div>
+    <h1 style="font-size:1.6rem; font-weight:800; margin:0 0 0.25rem 0;">🏎️ 1v1 Grid Passages Manager</h1>
+    <p style="color:var(--admin-text-muted); font-size:0.85rem; margin:0;">
+      Manage scalable endurance passages served during real-time 1v1 ranked duels and public lobbies.
+    </p>
+  </div>
+  <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
+    <button type="button" onclick="openCreateModal()" class="btn btn-sm btn-primary">+ Add Grid Passage</button>
+    <a href="{{ url_for('admin.multiplayer_bulk_import') }}" class="btn btn-sm">📥 Bulk Import (CSV)</a>
+    <a href="{{ url_for('admin.multiplayer_sample_csv') }}" class="btn btn-sm">📄 Sample CSV</a>
+  </div>
+</div>
+
+<!-- Compact Metric HUD -->
+<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:1rem; margin-bottom:1.5rem;">
+  <div class="card" style="margin:0;">
+    <div style="font-size:0.72rem; color:var(--admin-text-muted); font-weight:800; text-transform:uppercase;">TOTAL GRID TEXTS</div>
+    <div style="font-size:1.75rem; font-weight:900; color:var(--admin-accent); margin-top:0.2rem;">{{ stats.total }}</div>
+    <div style="font-size:0.75rem; color:var(--admin-text-muted);">Active in match rotation</div>
+  </div>
+  <div class="card" style="margin:0;">
+    <div style="font-size:0.72rem; color:var(--admin-text-muted); font-weight:800; text-transform:uppercase;">30S & 60S SPRINTS</div>
+    <div style="font-size:1.75rem; font-weight:900; color:var(--admin-success); margin-top:0.2rem;">{{ stats.sprint }}</div>
+    <div style="font-size:0.75rem; color:var(--admin-text-muted);">Fast head-to-head duels</div>
+  </div>
+  <div class="card" style="margin:0;">
+    <div style="font-size:0.72rem; color:var(--admin-text-muted); font-weight:800; text-transform:uppercase;">5M MARATHONS (300S)</div>
+    <div style="font-size:1.75rem; font-weight:900; color:var(--admin-warning); margin-top:0.2rem;">{{ stats.five_min }}</div>
+    <div style="font-size:0.75rem; color:var(--admin-text-muted);">500+ word endurance texts</div>
+  </div>
+  <div class="card" style="margin:0;">
+    <div style="font-size:0.72rem; color:var(--admin-text-muted); font-weight:800; text-transform:uppercase;">10M GRAND PRIX (600S)</div>
+    <div style="font-size:1.75rem; font-weight:900; color:#ec4899; margin-top:0.2rem;">{{ stats.ten_min }}</div>
+    <div style="font-size:0.75rem; color:var(--admin-text-muted);">800+ word cognitive marathons</div>
+  </div>
+</div>
+
+<!-- Duration Bracket Filter Tabs -->
+<div style="display:flex; gap:0.4rem; margin-bottom:1.25rem; flex-wrap:wrap; background:var(--admin-surface); padding:0.6rem; border-radius:8px; border:1px solid var(--admin-border);">
+  <a href="{{ url_for('admin.multiplayer_passages') }}" class="btn btn-sm {{ 'btn-primary' if not duration_filter else '' }}">All Brackets</a>
+  <a href="{{ url_for('admin.multiplayer_passages', duration='30') }}" class="btn btn-sm {{ 'btn-primary' if duration_filter == '30' else '' }}">30s Sprint</a>
+  <a href="{{ url_for('admin.multiplayer_passages', duration='60') }}" class="btn btn-sm {{ 'btn-primary' if duration_filter == '60' else '' }}">60s Standard</a>
+  <a href="{{ url_for('admin.multiplayer_passages', duration='120') }}" class="btn btn-sm {{ 'btn-primary' if duration_filter == '120' else '' }}">120s Endurance</a>
+  <a href="{{ url_for('admin.multiplayer_passages', duration='300') }}" class="btn btn-sm {{ 'btn-primary' if duration_filter == '30' else '' }}">300s (5 Min)</a>
+  <a href="{{ url_for('admin.multiplayer_passages', duration='600') }}" class="btn btn-sm {{ 'btn-primary' if duration_filter == '600' else '' }}">600s (10 Min)</a>
+</div>
+
+<!-- Table of Multiplayer Passages -->
+<div class="card" style="padding:0; overflow:hidden;">
+  <table>
+    <thead>
+      <tr>
+        <th style="min-width:240px;">Passage Title & Content Preview</th>
+        <th>Duration Bracket</th>
+        <th>Length</th>
+        <th>Status</th>
+        <th style="text-align:right;">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in passages.items %}
+      <tr>
+        <td>
+          <div style="font-weight:700; color:var(--admin-text-main); font-size:0.92rem; margin-bottom:0.2rem;">
+            {{ p.title }}
+          </div>
+          <div style="font-size:0.78rem; color:var(--admin-text-muted); font-family:var(--admin-mono); line-height:1.4; max-width:440px;">
+            "{{ p.display_preview }}"
+          </div>
+        </td>
+        <td>
+          <span class="badge badge-primary" style="font-size:0.75rem;">
+            {{ p.recommended_duration }} SECONDS
+          </span>
+        </td>
+        <td style="font-family:var(--admin-mono); font-size:0.82rem;">
+          <strong>{{ p.word_count }}</strong> wds &bull; {{ p.character_count }} ch
+        </td>
+        <td>
+          <span class="badge {{ 'badge-success' if p.is_active else 'badge-danger' }}">
+            {{ 'ACTIVE' if p.is_active else 'DISABLED' }}
+          </span>
+        </td>
+        <td style="text-align:right;">
+          <form method="POST" action="{{ url_for('admin.multiplayer_passage_delete', passage_id=p.id) }}" onsubmit="return confirm('Remove this passage from multiplayer rotation?');" style="display:inline;">
+            <button type="submit" class="btn btn-sm btn-danger">&times; Remove</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="5" style="text-align:center; padding:2.5rem; color:var(--admin-text-muted);">
+          No custom multiplayer passages stored for this bracket. The engine automatically serves curated fallback passages during races.
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Pagination -->
+{% if passages.pages > 1 %}
+<div style="display:flex; justify-content:space-between; align-items:center; margin-top:1.25rem;">
+  <div style="font-size:0.8rem; color:var(--admin-text-muted);">
+    Page {{ passages.page }} of {{ passages.pages }} ({{ passages.total }} total items)
+  </div>
+  <div style="display:flex; gap:0.35rem;">
+    {% if passages.has_prev %}
+    <a href="{{ url_for('admin.multiplayer_passages', page=passages.prev_num, duration=duration_filter) }}" class="btn btn-sm">&larr; Previous</a>
+    {% endif %}
+    {% if passages.has_next %}
+    <a href="{{ url_for('admin.multiplayer_passages', page=passages.next_num, duration=duration_filter) }}" class="btn btn-sm">Next &rarr;</a>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+<!-- Add Modal -->
+<div id="modal-create-grid-passage" class="cmd-overlay" onclick="if(event.target===this)closeCreateModal()">
+  <div class="cmd-dialog" style="max-width:640px; padding:1.5rem; background:var(--admin-surface); border:1.5px solid var(--admin-accent);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; border-bottom:1px solid var(--admin-border); padding-bottom:0.5rem;">
+      <h3 style="font-size:1.15rem; font-weight:800; color:#fff; margin:0;">+ Add Multiplayer Grid Passage</h3>
+      <button type="button" onclick="closeCreateModal()" class="btn btn-sm">&times;</button>
+    </div>
+
+    <form method="POST" action="{{ url_for('admin.multiplayer_passage_create') }}">
+      <div style="display:grid; grid-template-columns: 2fr 1fr; gap:1rem; margin-bottom:1rem;">
+        <div>
+          <label style="display:block; font-size:0.72rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.25rem;">Passage Title</label>
+          <input type="text" name="title" required placeholder="e.g. Raft Consensus Protocol" style="width:100%; padding:0.55rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:4px; color:#fff; font-size:0.85rem;">
+        </div>
+        <div>
+          <label style="display:block; font-size:0.72rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.25rem;">Duration Bracket</label>
+          <select name="duration" style="width:100%; padding:0.55rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:4px; color:#fff; font-size:0.85rem;">
+            <option value="30">30 Seconds</option>
+            <option value="60" selected>60 Seconds</option>
+            <option value="120">120 Seconds</option>
+            <option value="300">300 Seconds (5m)</option>
+            <option value="600">600 Seconds (10m)</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="margin-bottom:1.25rem;">
+        <label style="display:block; font-size:0.72rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.25rem;">Passage Content</label>
+        <textarea name="content" rows="7" required placeholder="Paste the complete text passage for this duration bracket..." style="width:100%; padding:0.75rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:4px; color:#fff; font-family:var(--admin-mono); font-size:0.9rem; line-height:1.65; outline:none;"></textarea>
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; gap:0.5rem;">
+        <button type="button" onclick="closeCreateModal()" class="btn btn-sm">Cancel</button>
+        <button type="submit" class="btn btn-sm btn-primary" style="font-weight:800; padding:0.55rem 1.5rem;">Save Grid Passage &rarr;</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function openCreateModal() { document.getElementById('modal-create-grid-passage').style.display = 'flex'; }
+function closeCreateModal() { document.getElementById('modal-create-grid-passage').style.display = 'none'; }
+</script>
+{% endblock %}

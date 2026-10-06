@@ -1,0 +1,111 @@
+{% extends 'admin/base_admin.html' %}
+{% block title %}{{ action }} Benchmark Text | TypeSphere Control Center{% endblock %}
+
+{% block admin_content %}
+<div style="margin-bottom:1.5rem;">
+  <a href="{{ url_for('admin.benchmark_passages') }}" style="color:var(--admin-accent); font-size:0.85rem; text-decoration:none;">&larr; Return to Benchmark Passages</a>
+  <h1 style="font-size:1.6rem; font-weight:800; margin-top:0.4rem;">{{ action }} Benchmark Text</h1>
+  <p style="color:var(--admin-text-muted); font-size:0.85rem;">Configure title, discipline alignment, syntax options, and passage text.</p>
+</div>
+
+<div class="card" style="max-width:840px;">
+  <form method="POST">
+    <div style="display:grid; grid-template-columns: 2fr 1fr; gap:1rem; margin-bottom:1.25rem;">
+      <div>
+        <label style="display:block; font-size:0.75rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.3rem;">Passage Title</label>
+        <input type="text" name="title" value="{{ passage.title if passage else '' }}" required placeholder="e.g. Supersonic Transonic Flight" style="width:100%; padding:0.6rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff;">
+      </div>
+      <div>
+        <label style="display:block; font-size:0.75rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.3rem;">Source / Author</label>
+        <input type="text" name="source" value="{{ passage.source if passage else 'System' }}" style="width:100%; padding:0.6rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff;">
+      </div>
+    </div>
+
+    <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:1rem; margin-bottom:1.25rem;">
+      <!-- Public Flight Discipline -->
+      <div>
+        <label style="display:block; font-size:0.75rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.3rem;">Flight Discipline</label>
+        <select name="category" id="discipline-select" onchange="toggleCodeLang(this.value)" style="width:100%; padding:0.6rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff;">
+          {% for val, label in [
+            ('words', 'Words & Sentences'),
+            ('paragraphs', 'Full Passages'),
+            ('exam', 'Administrative & Clerical (SSC)'),
+            ('professional', 'Workplace Memos'),
+            ('quotes', 'Literature & Quotes'),
+            ('code', 'Programming Code'),
+            ('numbers', 'Numeric Only'),
+            ('punctuation', 'Punctuation Focus'),
+            ('data_entry', 'Data Entry Grid')
+          ] %}
+          <option value="{{ val }}" {% if passage and (passage.category|lower == val or (val == 'code' and passage.is_code)) %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Programming Language (only for Code) -->
+      <div id="code-lang-wrap" style="display:none;">
+        <label style="display:block; font-size:0.75rem; text-transform:uppercase; color:var(--admin-warning); font-weight:700; margin-bottom:0.3rem;">Code Syntax</label>
+        <select name="code_lang" style="width:100%; padding:0.6rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff;">
+          {% for lang in ['python', 'javascript', 'html', 'css', 'sql', 'java', 'c', 'cpp'] %}
+          <option value="{{ lang }}" {% if passage and passage.code_lang == lang %}selected{% endif %}>{{ lang|upper }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Difficulty -->
+      <div>
+        <label style="display:block; font-size:0.75rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.3rem;">Difficulty Tier</label>
+        <select name="difficulty" style="width:100%; padding:0.6rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff;">
+          <option value="easy" {% if passage and passage.difficulty|lower == 'easy' %}selected{% endif %}>Easy (Short, 1-syllable)</option>
+          <option value="moderate" {% if not passage or passage.difficulty|lower in ['moderate', 'medium'] %}selected{% endif %}>Moderate (Standard)</option>
+          <option value="hard" {% if passage and passage.difficulty|lower == 'hard' %}selected{% endif %}>Hard (Advanced)</option>
+          <option value="expert" {% if passage and passage.difficulty|lower == 'expert' %}selected{% endif %}>Expert (Polysyllabic)</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Content Text Area -->
+    <div style="margin-bottom:1.25rem;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.35rem;">
+        <label style="font-size:0.75rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700;">Benchmark Text Body</label>
+        <span id="live-text-metrics" style="font-size:0.75rem; color:var(--admin-accent); font-family:var(--admin-mono);">0 words &bull; 0 characters</span>
+      </div>
+      <textarea id="benchmark-content-box" name="content" rows="8" required placeholder="Paste or type benchmark text here..." oninput="updateMetrics()" style="width:100%; padding:0.75rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:6px; color:#fff; font-family:var(--admin-mono); line-height:1.65; outline:none;">{{ passage.content if passage else '' }}</textarea>
+    </div>
+
+    <div style="margin-bottom:1.5rem; background:var(--admin-elevated); padding:0.75rem 1rem; border-radius:6px;">
+      <label style="display:flex; align-items:center; gap:0.5rem; font-size:0.85rem; cursor:pointer;">
+        <input type="checkbox" name="is_active" {% if not passage or passage.is_active %}checked{% endif %}>
+        <span><strong>Active in Test Rotation</strong> (Pilots can receive this passage during benchmarks)</span>
+      </label>
+    </div>
+
+    <div style="display:flex; justify-content:flex-end; gap:0.75rem;">
+      <a href="{{ url_for('admin.benchmark_passages') }}" class="btn">Cancel</a>
+      <button type="submit" class="btn btn-primary" style="padding:0.65rem 1.75rem; font-weight:800;">
+        {{ action }} Benchmark Text &rarr;
+      </button>
+    </div>
+  </form>
+</div>
+
+<script>
+function toggleCodeLang(val) {
+  const wrap = document.getElementById('code-lang-wrap');
+  wrap.style.display = (val === 'code') ? 'block' : 'none';
+}
+
+function updateMetrics() {
+  const text = document.getElementById('benchmark-content-box').value || "";
+  const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+  const chars = text.length;
+  document.getElementById('live-text-metrics').textContent = `${words} words • ${chars} characters`;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const sel = document.getElementById('discipline-select');
+  if (sel) toggleCodeLang(sel.value);
+  updateMetrics();
+});
+</script>
+{% endblock %}

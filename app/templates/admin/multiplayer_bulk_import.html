@@ -1,0 +1,50 @@
+{% extends 'admin/base_admin.html' %}
+{% block title %}Bulk Import 1v1 Grid Passages | TypeSphere Control Center{% endblock %}
+
+{% block admin_content %}
+<div style="margin-bottom:1.5rem;">
+  <a href="{{ url_for('admin.multiplayer_passages') }}" style="color:var(--admin-accent); font-size:0.85rem; text-decoration:none;">&larr; Return to 1v1 Grid Passages</a>
+  <h1 style="font-size:1.6rem; font-weight:800; margin-top:0.4rem;">📥 Bulk Import 1v1 Grid Passages</h1>
+  <p style="color:var(--admin-text-muted); font-size:0.85rem;">Import batches of endurance passages categorized by race duration brackets.</p>
+</div>
+
+<div style="display:grid; grid-template-columns: 1.5fr 1fr; gap:1.5rem; max-width:960px;">
+  <!-- Upload Card -->
+  <div class="card" style="margin:0;">
+    <h3 style="font-size:1.05rem; font-weight:800; margin-bottom:0.75rem; color:var(--admin-accent);">Upload Multiplayer Passages (CSV)</h3>
+    <p style="color:var(--admin-text-muted); font-size:0.85rem; line-height:1.55; margin-bottom:1.25rem;">
+      Upload a UTF-8 encoded CSV. Rows are validated against allowed duration brackets (30, 60, 120, 300, 600 seconds) and word counts are calculated automatically.
+    </p>
+
+    <form method="POST" action="{{ url_for('admin.multiplayer_bulk_import') }}" enctype="multipart/form-data">
+      <div style="border:2px dashed var(--admin-border); border-radius:8px; padding:2rem 1.5rem; text-align:center; background:var(--admin-elevated); margin-bottom:1.25rem;">
+        <div style="font-size:2.5rem; margin-bottom:0.4rem;">🏎️</div>
+        <input type="file" name="csv_file" accept=".csv" required style="display:block; margin:0 auto; font-size:0.85rem;">
+        <div style="font-size:0.72rem; color:var(--admin-text-muted); margin-top:0.5rem;">Supports up to 250 passages per batch</div>
+      </div>
+
+      <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center; padding:0.75rem; font-weight:800;">
+        Import Grid Passages &rarr;
+      </button>
+    </form>
+  </div>
+
+  <!-- Format Guide Card -->
+  <div class="card" style="margin:0; background:var(--admin-elevated);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; border-bottom:1px solid var(--admin-border); padding-bottom:0.4rem;">
+      <h3 style="font-size:1.05rem; font-weight:800; margin:0;">CSV Format Standards</h3>
+      <a href="{{ url_for('admin.multiplayer_sample_csv') }}" class="btn btn-sm btn-primary">📄 Sample CSV</a>
+    </div>
+
+    <div style="font-family:var(--admin-mono); font-size:0.78rem; background:var(--admin-bg); padding:0.85rem; border-radius:6px; border:1px solid var(--admin-border); line-height:1.65; margin-bottom:1rem;">
+      <strong>title</strong>: Title string<br>
+      <strong>duration</strong>: 30, 60, 120, 300, or 600<br>
+      <strong>content</strong>: Full text passage
+    </div>
+
+    <div style="font-size:0.78rem; color:var(--admin-text-muted); line-height:1.5;">
+      💡 <strong>Non-Blocking Finishes:</strong> For 300s and 600s matches, passages must be at least 500 words to ensure no racers finish prematurely before the timer concludes.
+    </div>
+  </div>
+</div>
+{% endblock %}

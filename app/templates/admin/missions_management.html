@@ -1,0 +1,222 @@
+{% extends 'admin/base_admin.html' %}
+{% block title %}24H Daily Recon & Tactical Missions | TypeSphere Control Center{% endblock %}
+
+{% block admin_content %}
+<!-- Sector Header & Primary Actions -->
+<div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--admin-border); padding-bottom:0.75rem; margin-bottom:1.25rem; flex-wrap:wrap; gap:0.75rem;">
+  <div>
+    <h1 style="font-size:1.6rem; font-weight:800; margin:0 0 0.25rem 0;">🛰️ 24H Daily Recon & Missions Manager</h1>
+    <p style="color:var(--admin-text-muted); font-size:0.85rem; margin:0;">
+      Schedule synchronized 24-hour daily briefings governed strictly by Indian Standard Time (IST, UTC+05:30).
+    </p>
+  </div>
+  <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
+    <button type="button" onclick="openScheduleModal()" class="btn btn-sm btn-primary">+ Schedule Daily Briefing</button>
+    <a href="{{ url_for('admin.missions_bulk_import') }}" class="btn btn-sm">📥 Bulk Import (CSV)</a>
+    <a href="{{ url_for('admin.missions_sample_csv') }}" class="btn btn-sm">📄 Sample CSV</a>
+  </div>
+</div>
+
+<!-- Compact Metric HUD -->
+<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:1rem; margin-bottom:1.5rem;">
+  <div class="card" style="margin:0;">
+    <div style="font-size:0.72rem; color:var(--admin-text-muted); font-weight:800; text-transform:uppercase;">TODAY IN IST</div>
+    <div style="font-size:1.65rem; font-weight:900; color:var(--admin-accent); margin-top:0.2rem;">{{ today_date.strftime('%d %b %Y') }}</div>
+    <div style="font-size:0.75rem; color:var(--admin-text-muted);">Midnight rollover at 00:00 IST</div>
+  </div>
+  <div class="card" style="margin:0;">
+    <div style="font-size:0.72rem; color:var(--admin-text-muted); font-weight:800; text-transform:uppercase;">LIVE BRIEFING STATUS</div>
+    <div style="font-size:1.65rem; font-weight:900; color:{{ 'var(--admin-success)' if current_daily else 'var(--admin-warning)' }}; margin-top:0.2rem;">
+      {{ 'ACTIVE ONLINE' if current_daily else 'CALIBRATING...' }}
+    </div>
+    <div style="font-size:0.75rem; color:var(--admin-text-muted);">{{ current_daily.title if current_daily else 'No flight set for today' }}</div>
+  </div>
+  <div class="card" style="margin:0;">
+    <div style="font-size:0.72rem; color:var(--admin-text-muted); font-weight:800; text-transform:uppercase;">SCHEDULED AHEAD</div>
+    <div style="font-size:1.65rem; font-weight:900; color:var(--admin-accent); margin-top:0.2rem;">{{ scheduled_count }}</div>
+    <div style="font-size:0.75rem; color:var(--admin-text-muted);">Future briefings ready in queue</div>
+  </div>
+  <div class="card" style="margin:0;">
+    <div style="font-size:0.72rem; color:var(--admin-text-muted); font-weight:800; text-transform:uppercase;">TOTAL COMPLETED RUNS</div>
+    <div style="font-size:1.65rem; font-weight:900; margin-top:0.2rem;">{{ total_missions_completed }}</div>
+    <div style="font-size:0.75rem; color:var(--admin-text-muted);">Across all tactical disciplines</div>
+  </div>
+</div>
+
+<!-- Categorized Status Tabs -->
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem; flex-wrap:wrap; gap:0.75rem;">
+  <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
+    <a href="{{ url_for('admin.challenges_manage', status='all') }}" class="btn btn-sm {{ 'btn-primary' if status_filter == 'all' or not status_filter else '' }}">
+      All Briefings ({{ total_count }})
+    </a>
+    <a href="{{ url_for('admin.challenges_manage', status='live') }}" class="btn btn-sm {{ 'btn-primary' if status_filter == 'live' else '' }}" style="border-color:var(--admin-success); color:{{ '#04101e' if status_filter == 'live' else 'var(--admin-success)' }};">
+      ● Live Today ({{ 1 if current_daily else 0 }})
+    </a>
+    <a href="{{ url_for('admin.challenges_manage', status='scheduled') }}" class="btn btn-sm {{ 'btn-primary' if status_filter == 'scheduled' else '' }}">
+      ⏳ Scheduled Queue ({{ scheduled_count }})
+    </a>
+    <a href="{{ url_for('admin.challenges_manage', status='expired') }}" class="btn btn-sm {{ 'btn-primary' if status_filter == 'expired' else '' }}">
+      📁 Expired / Archived ({{ expired_count }})
+    </a>
+  </div>
+
+  <!-- Search Filter -->
+  <form method="GET" action="{{ url_for('admin.challenges_manage') }}" style="display:flex; gap:0.4rem;">
+    {% if status_filter %}<input type="hidden" name="status" value="{{ status_filter }}">{% endif %}
+    <input type="text" name="q" value="{{ search or '' }}" placeholder="Search title or text..." style="padding:0.4rem 0.65rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:4px; color:#fff; font-size:0.82rem; min-width:180px;">
+    <button type="submit" class="btn btn-sm">Filter</button>
+  </form>
+</div>
+
+<!-- Scalable Paginated Feed (Handles 100+ Items with Zero Bulk) -->
+<div class="card" style="padding:0; overflow:hidden;">
+  <table>
+    <thead>
+      <tr>
+        <th style="width:140px;">Target Date (IST)</th>
+        <th>Lifecycle State</th>
+        <th style="min-width:220px;">Briefing Title & Excerpt</th>
+        <th>Length</th>
+        <th style="text-align:right;">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for d in challenges_page.items %}
+      {% set is_live = (d.target_date == today_date) %}
+      {% set is_scheduled = (d.target_date > today_date) %}
+      {% set is_expired = (d.target_date < today_date) %}
+      <tr style="{{ 'background: rgba(16, 185, 129, 0.04);' if is_live else '' }}">
+        <td style="font-family:var(--admin-mono); font-weight:700; font-size:0.88rem; color:{{ 'var(--admin-success)' if is_live else ('var(--admin-accent)' if is_scheduled else 'var(--admin-text-muted)') }};">
+          {{ d.target_date.strftime('%Y-%m-%d') }}
+          <div style="font-size:0.7rem; color:var(--admin-text-muted); font-weight:normal;">{{ d.target_date.strftime('%A') }}</div>
+        </td>
+        <td>
+          {% if is_live %}
+            <span class="badge badge-success" style="font-weight:900;">● LIVE TODAY</span>
+          {% elif is_scheduled %}
+            <span class="badge badge-primary">⏳ SCHEDULED</span>
+          {% else %}
+            <span class="badge" style="background:var(--admin-elevated); color:var(--admin-text-muted);">ARCHIVED</span>
+          {% endif %}
+        </td>
+        <td>
+          <div style="font-weight:700; color:var(--admin-text-main); font-size:0.92rem;">{{ d.title }}</div>
+          <div style="font-size:0.78rem; color:var(--admin-text-muted); font-family:var(--admin-mono); line-height:1.4; max-width:440px; margin-top:0.15rem;">
+            "{{ d.content[:120] }}{{ '...' if d.content|length > 120 else '' }}"
+          </div>
+        </td>
+        <td style="font-family:var(--admin-mono); font-size:0.82rem; color:var(--admin-text-muted);">
+          {{ d.content.split()|length }} wds &bull; {{ d.content|length }} ch
+        </td>
+        <td style="text-align:right;">
+          <div style="display:inline-flex; gap:0.35rem;">
+            <button type="button" onclick="openEditModal({{ d.id }}, '{{ d.target_date.isoformat() }}', {{ d.title|tojson }}, {{ d.content|tojson }})" class="btn btn-sm">Edit</button>
+            <form method="POST" action="{{ url_for('admin.delete_daily_challenge', challenge_id=d.id) }}" onsubmit="return confirm('Delete briefing for {{ d.target_date.isoformat() }}?');" style="display:inline;">
+              <button type="submit" class="btn btn-sm btn-danger">&times;</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="5" style="text-align:center; padding:2.5rem; color:var(--admin-text-muted);">
+          No daily briefing records found matching the active filter.
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Pagination Controls -->
+{% if challenges_page.pages > 1 %}
+<div style="display:flex; justify-content:space-between; align-items:center; margin-top:1.25rem;">
+  <div style="font-size:0.8rem; color:var(--admin-text-muted);">
+    Page {{ challenges_page.page }} of {{ challenges_page.pages }} ({{ challenges_page.total }} total briefings)
+  </div>
+  <div style="display:flex; gap:0.35rem;">
+    {% if challenges_page.has_prev %}
+    <a href="{{ url_for('admin.challenges_manage', page=challenges_page.prev_num, status=status_filter, q=search) }}" class="btn btn-sm">&larr; Previous</a>
+    {% endif %}
+    {% if challenges_page.has_next %}
+    <a href="{{ url_for('admin.challenges_manage', page=challenges_page.next_num, status=status_filter, q=search) }}" class="btn btn-sm">Next &rarr;</a>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+<!-- ============================================================
+     COMPOSE / SCHEDULE MODAL (Leaves form blank on completion)
+     ============================================================ -->
+<div id="modal-schedule-challenge" class="cmd-overlay" onclick="if(event.target===this)closeScheduleModal()">
+  <div class="cmd-dialog" style="max-width:680px; padding:1.5rem; background:var(--admin-surface); border:1.5px solid var(--admin-accent);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; border-bottom:1px solid var(--admin-border); padding-bottom:0.5rem;">
+      <h3 style="font-size:1.15rem; font-weight:800; color:#fff; margin:0;" id="schedule-modal-title">+ Schedule Daily Flight Briefing</h3>
+      <button type="button" onclick="closeScheduleModal()" class="btn btn-sm">&times;</button>
+    </div>
+
+    <form method="POST" action="{{ url_for('admin.publish_daily_challenge') }}" id="schedule-challenge-form">
+      <input type="hidden" name="challenge_id" id="modal-challenge-id" value="">
+      
+      <div style="display:grid; grid-template-columns: 200px 1fr; gap:1rem; margin-bottom:1rem;">
+        <div>
+          <label style="display:block; font-size:0.72rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.25rem;">Target Date (IST)</label>
+          <input type="date" name="target_date" id="modal-target-date" required style="width:100%; padding:0.55rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:4px; color:#fff; font-family:var(--admin-mono); font-size:0.85rem;">
+        </div>
+        <div>
+          <label style="display:block; font-size:0.72rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.25rem;">Briefing Title</label>
+          <input type="text" name="title" id="modal-title" required placeholder="e.g. Supersonic Wave Drag Protocol" style="width:100%; padding:0.55rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:4px; color:#fff; font-size:0.85rem;">
+        </div>
+      </div>
+
+      <div style="margin-bottom:1.25rem;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.25rem;">
+          <label style="font-size:0.72rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700;">Briefing Passage Body</label>
+          <span id="modal-content-metrics" style="font-size:0.72rem; color:var(--admin-accent); font-family:var(--admin-mono);">0 words • 0 chars</span>
+        </div>
+        <textarea name="content" id="modal-content" rows="6" required placeholder="Enter the official synchronized briefing text for all pilots worldwide..." oninput="updateModalMetrics()" style="width:100%; padding:0.75rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:4px; color:#fff; font-family:var(--admin-mono); font-size:0.92rem; line-height:1.65; outline:none;"></textarea>
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; gap:0.5rem;">
+        <button type="button" onclick="closeScheduleModal()" class="btn btn-sm">Cancel</button>
+        <button type="submit" class="btn btn-sm btn-primary" style="font-weight:800; padding:0.55rem 1.5rem;">
+          Save Briefing &rarr;
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function openScheduleModal() {
+  document.getElementById('schedule-modal-title').textContent = '+ Schedule Daily Flight Briefing';
+  document.getElementById('modal-challenge-id').value = '';
+  document.getElementById('modal-target-date').value = '{{ today_date.isoformat() }}';
+  document.getElementById('modal-title').value = '';
+  document.getElementById('modal-content').value = '';
+  document.getElementById('modal-content-metrics').textContent = '0 words • 0 chars';
+  document.getElementById('modal-schedule-challenge').style.display = 'flex';
+}
+
+function openEditModal(id, dateStr, title, content) {
+  document.getElementById('schedule-modal-title').textContent = 'Edit Briefing: ' + dateStr;
+  document.getElementById('modal-challenge-id').value = id;
+  document.getElementById('modal-target-date').value = dateStr;
+  document.getElementById('modal-title').value = title;
+  document.getElementById('modal-content').value = content;
+  updateModalMetrics();
+  document.getElementById('modal-schedule-challenge').style.display = 'flex';
+}
+
+function closeScheduleModal() {
+  document.getElementById('modal-schedule-challenge').style.display = 'none';
+}
+
+function updateModalMetrics() {
+  const text = document.getElementById('modal-content').value || "";
+  const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+  const chars = text.length;
+  document.getElementById('modal-content-metrics').textContent = `${words} words • ${chars} chars`;
+}
+</script>
+{% endblock %}

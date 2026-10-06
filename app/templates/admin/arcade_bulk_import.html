@@ -1,0 +1,160 @@
+{% extends 'admin/base_admin.html' %}
+{% block title %}Arcade Wordbanks & Tracks | TypeSphere Control Center{% endblock %}
+
+{% block admin_content %}
+<!-- Sector Header & Primary Actions -->
+<div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--admin-border); padding-bottom:0.75rem; margin-bottom:1.25rem; flex-wrap:wrap; gap:0.75rem;">
+  <div>
+    <h1 style="font-size:1.6rem; font-weight:800; margin:0 0 0.25rem 0;">🕹️ Arcade Wordbanks & Tracks Manager</h1>
+    <p style="color:var(--admin-text-muted); font-size:0.85rem; margin:0;">
+      Manage target words, vehicle racing passages, spell tokens, and decryption strings across all 11 active arcade disciplines.
+    </p>
+  </div>
+  <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
+    <button type="button" onclick="openAddModal()" class="btn btn-sm btn-primary">+ Add Target Item</button>
+    <a href="{{ url_for('admin.arcade_bulk_import') }}" class="btn btn-sm">📥 Bulk Import (CSV)</a>
+    <a href="{{ url_for('admin.arcade_sample_csv') }}" class="btn btn-sm">📄 Sample CSV</a>
+    <a href="{{ url_for('admin.games_list') }}" class="btn btn-sm">⚙️ Configure Games</a>
+  </div>
+</div>
+
+<!-- 11 Discipline Filter Pills -->
+<div style="display:flex; gap:0.35rem; margin-bottom:1.25rem; flex-wrap:wrap; background:var(--admin-surface); padding:0.6rem; border-radius:8px; border:1px solid var(--admin-border);">
+  <a href="{{ url_for('admin.arcade_content_manage') }}" class="btn btn-sm {{ 'btn-primary' if not game_filter else '' }}">All ({{ total_items }})</a>
+  <a href="{{ url_for('admin.arcade_content_manage', game='speed_racer') }}" class="btn btn-sm {{ 'btn-primary' if game_filter == 'speed_racer' else '' }}">🏎️ Speed Racer</a>
+  <a href="{{ url_for('admin.arcade_content_manage', game='falling_words') }}" class="btn btn-sm {{ 'btn-primary' if game_filter == 'falling_words' else '' }}">☄️ Falling Words</a>
+  <a href="{{ url_for('admin.arcade_content_manage', game='bubble_pop') }}" class="btn btn-sm {{ 'btn-primary' if game_filter == 'bubble_pop' else '' }}">🫧 Bubble Pop</a>
+  <a href="{{ url_for('admin.arcade_content_manage', game='whack_a_word') }}" class="btn btn-sm {{ 'btn-primary' if game_filter == 'whack_a_word' else '' }}">🔨 Whack-A-Word</a>
+  <a href="{{ url_for('admin.arcade_content_manage', game='zombie_defense') }}" class="btn btn-sm {{ 'btn-primary' if game_filter == 'zombie_defense' else '' }}">🧟 Zombie Defense</a>
+  <a href="{{ url_for('admin.arcade_content_manage', game='zombie_duel') }}" class="btn btn-sm {{ 'btn-primary' if game_filter == 'zombie_duel' else '' }}">⚔️ Zombie Duel</a>
+  <a href="{{ url_for('admin.arcade_content_manage', game='cipher_hacker') }}" class="btn btn-sm {{ 'btn-primary' if game_filter == 'cipher_hacker' else '' }}">💻 Cipher Hacker</a>
+  <a href="{{ url_for('admin.arcade_content_manage', game='space_defender') }}" class="btn btn-sm {{ 'btn-primary' if game_filter == 'space_defender' else '' }}">🚀 Space Defender</a>
+  <a href="{{ url_for('admin.arcade_content_manage', game='bomb_defuse') }}" class="btn btn-sm {{ 'btn-primary' if game_filter == 'bomb_defuse' else '' }}">💣 Bomb Defuse</a>
+  <a href="{{ url_for('admin.arcade_content_manage', game='typing_ninja') }}" class="btn btn-sm {{ 'btn-primary' if game_filter == 'typing_ninja' else '' }}">🥷 Typing Ninja</a>
+  <a href="{{ url_for('admin.arcade_content_manage', game='memory_type') }}" class="btn btn-sm {{ 'btn-primary' if game_filter == 'memory_type' else '' }}">🧠 Memory Type</a>
+</div>
+
+<!-- Table of Custom Wordbank Items -->
+<div class="card" style="padding:0; overflow:hidden;">
+  <table>
+    <thead>
+      <tr>
+        <th>Discipline</th>
+        <th>Difficulty</th>
+        <th style="min-width:240px;">Target String / Track Content</th>
+        <th>Length</th>
+        <th>Status</th>
+        <th style="text-align:right;">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in items.items %}
+      <tr>
+        <td>
+          <strong style="color:var(--admin-accent); font-size:0.85rem;">
+            {{ item.game_mode|replace('_', ' ')|upper }}
+          </strong>
+        </td>
+        <td>
+          <span class="badge badge-primary">{{ item.difficulty|upper }}</span>
+        </td>
+        <td style="font-family:var(--admin-mono); font-weight:700; color:var(--admin-text-main); font-size:0.88rem;">
+          {{ item.target_text }}
+        </td>
+        <td style="font-family:var(--admin-mono); font-size:0.8rem; color:var(--admin-text-muted);">
+          {{ item.word_length }} ch
+        </td>
+        <td>
+          <span class="badge {{ 'badge-success' if item.is_active else 'badge-danger' }}">
+            {{ 'ACTIVE' if item.is_active else 'INACTIVE' }}
+          </span>
+        </td>
+        <td style="text-align:right;">
+          <form method="POST" action="{{ url_for('admin.arcade_delete_item', item_id=item.id) }}" onsubmit="return confirm('Remove this target item?');" style="display:inline;">
+            <button type="submit" class="btn btn-sm btn-danger">&times; Remove</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="6" style="text-align:center; padding:2.5rem; color:var(--admin-text-muted);">
+          No custom wordbank items logged for this discipline. The game engine is operating on calibrated default wordbanks.
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Pagination -->
+{% if items.pages > 1 %}
+<div style="display:flex; justify-content:space-between; align-items:center; margin-top:1.25rem;">
+  <div style="font-size:0.8rem; color:var(--admin-text-muted);">
+    Page {{ items.page }} of {{ items.pages }} ({{ items.total }} total items)
+  </div>
+  <div style="display:flex; gap:0.35rem;">
+    {% if items.has_prev %}
+    <a href="{{ url_for('admin.arcade_content_manage', page=items.prev_num, game=game_filter) }}" class="btn btn-sm">&larr; Previous</a>
+    {% endif %}
+    {% if items.has_next %}
+    <a href="{{ url_for('admin.arcade_content_manage', page=items.next_num, game=game_filter) }}" class="btn btn-sm">Next &rarr;</a>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+<!-- Add Modal -->
+<div id="modal-add-arcade-item" class="cmd-overlay" onclick="if(event.target===this)closeAddModal()">
+  <div class="cmd-dialog" style="max-width:540px; padding:1.5rem; background:var(--admin-surface); border:1.5px solid var(--admin-accent);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; border-bottom:1px solid var(--admin-border); padding-bottom:0.5rem;">
+      <h3 style="font-size:1.15rem; font-weight:800; color:#fff; margin:0;">+ Add Target Word or Passage</h3>
+      <button type="button" onclick="closeAddModal()" class="btn btn-sm">&times;</button>
+    </div>
+
+    <form method="POST" action="{{ url_for('admin.arcade_add_item') }}">
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem; margin-bottom:1rem;">
+        <div>
+          <label style="display:block; font-size:0.72rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.25rem;">Target Discipline</label>
+          <select name="game_mode" style="width:100%; padding:0.55rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:4px; color:#fff; font-size:0.85rem;">
+            <option value="speed_racer">Speed Racer (Track Text)</option>
+            <option value="falling_words" selected>Falling Words</option>
+            <option value="bubble_pop">Bubble Pop (Character)</option>
+            <option value="whack_a_word">Whack-A-Word</option>
+            <option value="zombie_defense">Zombie Defense</option>
+            <option value="zombie_duel">Zombie Duel (Spell)</option>
+            <option value="cipher_hacker">Cipher Hacker (Token)</option>
+            <option value="space_defender">Space Defender</option>
+            <option value="bomb_defuse">Bomb Defuse (Code)</option>
+            <option value="typing_ninja">Typing Ninja</option>
+            <option value="memory_type">Memory Type</option>
+          </select>
+        </div>
+        <div>
+          <label style="display:block; font-size:0.72rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.25rem;">Difficulty Tier</label>
+          <select name="difficulty" style="width:100%; padding:0.55rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:4px; color:#fff; font-size:0.85rem;">
+            <option value="easy">Easy</option>
+            <option value="moderate" selected>Moderate</option>
+            <option value="hard">Hard</option>
+            <option value="expert">Expert</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="margin-bottom:1.25rem;">
+        <label style="display:block; font-size:0.72rem; text-transform:uppercase; color:var(--admin-text-muted); font-weight:700; margin-bottom:0.25rem;">Target String / Word / Passage</label>
+        <textarea name="target_text" rows="3" required placeholder="Enter word, phrase, track paragraph, or hex token..." style="width:100%; padding:0.65rem; background:var(--admin-bg); border:1px solid var(--admin-border); border-radius:4px; color:#fff; font-family:var(--admin-mono); font-size:0.9rem; line-height:1.5; outline:none;"></textarea>
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; gap:0.5rem;">
+        <button type="button" onclick="closeAddModal()" class="btn btn-sm">Cancel</button>
+        <button type="submit" class="btn btn-sm btn-primary" style="font-weight:800; padding:0.55rem 1.5rem;">Add Item &rarr;</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function openAddModal() { document.getElementById('modal-add-arcade-item').style.display = 'flex'; }
+function closeAddModal() { document.getElementById('modal-add-arcade-item').style.display = 'none'; }
+</script>
+{% endblock %}

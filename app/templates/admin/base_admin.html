@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-admin-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,8 +7,17 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet">
+  <script>
+    (function() {
+      try {
+        var savedTheme = localStorage.getItem('typesphere_admin_theme') || 'dark';
+        document.documentElement.setAttribute('data-admin-theme', savedTheme);
+      } catch (e) {}
+    })();
+  </script>
   <style>
-    :root {
+    /* Default Dark Obsidian Cockpit */
+    :root, [data-admin-theme="dark"] {
       --admin-bg: #050811;
       --admin-surface: #0a0f1d;
       --admin-elevated: #11182c;
@@ -16,6 +25,7 @@
       --admin-border-focus: #38bdf8;
       --admin-accent: #38bdf8;
       --admin-accent-glow: rgba(56, 189, 248, 0.25);
+      --admin-accent-contrast: #04101e;
       --admin-success: #10b981;
       --admin-warning: #f59e0b;
       --admin-danger: #f43f5e;
@@ -24,6 +34,75 @@
       --admin-font: 'Plus Jakarta Sans', -apple-system, sans-serif;
       --admin-mono: 'JetBrains Mono', monospace;
     }
+
+    /* Cockpit HUD Neon Green */
+    [data-admin-theme="cockpit-hud"] {
+      --admin-bg: #040806;
+      --admin-surface: #09120e;
+      --admin-elevated: #11221a;
+      --admin-border: #173626;
+      --admin-border-focus: #22c55e;
+      --admin-accent: #22c55e;
+      --admin-accent-glow: rgba(34, 197, 94, 0.25);
+      --admin-accent-contrast: #040806;
+      --admin-success: #10b981;
+      --admin-warning: #f59e0b;
+      --admin-danger: #ef4444;
+      --admin-text-main: #e6fffa;
+      --admin-text-muted: #86efac;
+    }
+
+    /* Cyber Neon Pink */
+    [data-admin-theme="cyber"] {
+      --admin-bg: #050510;
+      --admin-surface: #0c0d24;
+      --admin-elevated: #16183d;
+      --admin-border: #232754;
+      --admin-border-focus: #ec4899;
+      --admin-accent: #ec4899;
+      --admin-accent-glow: rgba(236, 72, 153, 0.25);
+      --admin-accent-contrast: #ffffff;
+      --admin-success: #10b981;
+      --admin-warning: #f59e0b;
+      --admin-danger: #f43f5e;
+      --admin-text-main: #f1f5f9;
+      --admin-text-muted: #93c5fd;
+    }
+
+    /* Warm Sepia Pilot */
+    [data-admin-theme="sepia"] {
+      --admin-bg: #f5ebe0;
+      --admin-surface: #ebd9c5;
+      --admin-elevated: #dfc8af;
+      --admin-border: #cbb297;
+      --admin-border-focus: #9a3412;
+      --admin-accent: #9a3412;
+      --admin-accent-glow: rgba(154, 52, 18, 0.25);
+      --admin-accent-contrast: #ffffff;
+      --admin-success: #15803d;
+      --admin-warning: #b45309;
+      --admin-danger: #b91c1c;
+      --admin-text-main: #2b1f13;
+      --admin-text-muted: #6b533e;
+    }
+
+    /* Stratosphere Light */
+    [data-admin-theme="light"] {
+      --admin-bg: #f8fafc;
+      --admin-surface: #ffffff;
+      --admin-elevated: #f1f5f9;
+      --admin-border: #cbd5e1;
+      --admin-border-focus: #0284c7;
+      --admin-accent: #0284c7;
+      --admin-accent-glow: rgba(2, 132, 199, 0.2);
+      --admin-accent-contrast: #ffffff;
+      --admin-success: #166534;
+      --admin-warning: #b45309;
+      --admin-danger: #b91c1c;
+      --admin-text-main: #0f172a;
+      --admin-text-muted: #64748b;
+    }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       background: var(--admin-bg);
@@ -151,9 +230,9 @@
       color: var(--admin-text-main);
       transition: all 0.15s ease;
     }
-    .btn:hover { border-color: var(--admin-accent); color: #fff; box-shadow: 0 0 12px var(--admin-accent-glow); }
-    .btn-primary { background: var(--admin-accent); border-color: var(--admin-accent); color: #04101e; font-weight: 800; }
-    .btn-primary:hover { background: #0284c7; border-color: #0284c7; color: #fff; }
+    .btn:hover { border-color: var(--admin-accent); color: var(--admin-text-main); box-shadow: 0 0 12px var(--admin-accent-glow); }
+    .btn-primary { background: var(--admin-accent); border-color: var(--admin-accent); color: var(--admin-accent-contrast); font-weight: 800; }
+    .btn-primary:hover { opacity: 0.9; }
     .btn-danger { background: rgba(244, 63, 94, 0.15); border-color: var(--admin-danger); color: var(--admin-danger); }
     .btn-danger:hover { background: var(--admin-danger); color: #fff; }
     .btn-sm { padding: 0.3rem 0.6rem; font-size: 0.78rem; }
@@ -167,7 +246,7 @@
       text-transform: uppercase;
       letter-spacing: 0.04em;
     }
-    .badge-primary { background: var(--admin-accent-glow); color: var(--admin-accent); border: 1px solid rgba(56, 189, 248, 0.25); }
+    .badge-primary { background: var(--admin-accent-glow); color: var(--admin-accent); border: 1px solid var(--admin-accent); }
     .badge-success { background: rgba(16, 185, 129, 0.15); color: var(--admin-success); border: 1px solid rgba(16, 185, 129, 0.25); }
     .badge-danger { background: rgba(244, 63, 94, 0.15); color: var(--admin-danger); border: 1px solid rgba(244, 63, 94, 0.25); }
     .badge-warning { background: rgba(245, 158, 11, 0.15); color: var(--admin-warning); border: 1px solid rgba(245, 158, 11, 0.25); }
@@ -177,7 +256,6 @@
     td { padding: 0.75rem 0.85rem; border-bottom: 1px solid var(--admin-border); }
     tr:hover td { background: rgba(56, 189, 248, 0.03); }
 
-    /* Point 4: Unified Notification Toast Style Across Admin */
     .admin-toast-alert {
       display: flex;
       justify-content: space-between;
@@ -250,7 +328,7 @@
       border-bottom: 1px solid var(--admin-border);
       padding: 1rem 1.25rem;
       font-size: 1.05rem;
-      color: #fff;
+      color: var(--admin-text-main);
       outline: none;
       font-family: inherit;
     }
@@ -293,12 +371,24 @@
       font-family: var(--admin-mono);
       font-size: 0.72rem;
     }
+
+    .admin-theme-select {
+      background: var(--admin-elevated);
+      border: 1px solid var(--admin-border);
+      color: var(--admin-text-main);
+      font-size: 0.78rem;
+      font-weight: 700;
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      cursor: pointer;
+      outline: none;
+    }
   </style>
 </head>
 <body>
   {% if session.get('admin_impersonator_id') %}
   <div style="position:fixed; top:0; left:0; right:0; background:#b45309; color:#fff; padding:0.4rem 1.5rem; font-size:0.82rem; z-index:9999; display:flex; justify-content:space-between; align-items:center;">
-    <span>⚠️ You are simulating flight session as pilot: <strong>@{{ current_user.username }}</strong></span>
+    <span>⚠️ Simulating active session as pilot: <strong>@{{ current_user.username }}</strong></span>
     <a href="{{ url_for('admin.stop_impersonation') }}" style="color:#fff; font-weight:800; text-decoration:underline;">Exit Simulation &rarr;</a>
   </div>
   {% endif %}
@@ -310,27 +400,62 @@
       <span class="sidebar-brand-badge">CONTROL</span>
     </div>
 
-    <!-- 1. Command Center -->
-    <div class="sidebar-section-title">Command Center</div>
+    <!-- 1. Flight Tower Operations -->
+    <div class="sidebar-section-title">Control Tower</div>
     <ul class="sidebar-nav">
       <li>
         <a href="{{ url_for('admin.dashboard') }}" class="sidebar-link {{ 'active' if request.endpoint == 'admin.dashboard' else '' }}">
-          📊 Operational Overview
+          📊 Tower Dashboard
         </a>
       </li>
       <li>
         <a href="{{ url_for('admin.traffic_analytics') }}" class="sidebar-link {{ 'active' if request.endpoint == 'admin.traffic_analytics' else '' }}">
-          📈 Traffic & Analytics
+          📈 Fleet Telemetry & Traffic
         </a>
       </li>
     </ul>
 
-    <!-- 2. People & Access -->
-    <div class="sidebar-section-title">People & Access</div>
+    <!-- 2. Sector Passage CMS (Decoupled & Non-Bulky) -->
+    <div class="sidebar-section-title">Sector Passage CMS</div>
+    <ul class="sidebar-nav">
+      <li>
+        <a href="{{ url_for('admin.passages_list') }}" class="sidebar-link {{ 'active' if request.endpoint in ['admin.passages_list', 'admin.passage_create', 'admin.passage_edit'] else '' }}">
+          ⚡ Benchmark Passages
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('admin.challenges_manage') }}" class="sidebar-link {{ 'active' if request.endpoint == 'admin.challenges_manage' else '' }}">
+          🛰️ 24H Daily & Missions
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('admin.games_list') }}" class="sidebar-link {{ 'active' if request.endpoint in ['admin.games_list', 'admin.game_edit'] else '' }}">
+          🕹️ Arcade Wordbanks
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('admin.academy_manage') }}" class="sidebar-link {{ 'active' if request.endpoint in ['admin.academy_manage', 'admin.stage_edit'] else '' }}">
+          🎓 Flight School Stages
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('admin.passage_collections') }}" class="sidebar-link {{ 'active' if request.endpoint == 'admin.passage_collections' else '' }}">
+          🏎️ 1v1 Grid Passages
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('admin.passage_categories') }}" class="sidebar-link {{ 'active' if request.endpoint == 'admin.passage_categories' else '' }}">
+          🏷️ Categories & Rules
+        </a>
+      </li>
+    </ul>
+
+    <!-- 3. Pilot Personnel & Security -->
+    <div class="sidebar-section-title">Personnel & Clearance</div>
     <ul class="sidebar-nav">
       <li>
         <a href="{{ url_for('admin.users_list') }}" class="sidebar-link {{ 'active' if request.endpoint in ['admin.users_list', 'admin.user_detail'] else '' }}">
-          👥 User Directory
+          👥 Pilot Directory
         </a>
       </li>
       <li>
@@ -343,51 +468,6 @@
           📡 Live Active Sessions
         </a>
       </li>
-    </ul>
-
-    <!-- 3. Content Operations -->
-    <div class="sidebar-section-title">Flight Content</div>
-    <ul class="sidebar-nav">
-      <li>
-        <a href="{{ url_for('admin.passages_list') }}" class="sidebar-link {{ 'active' if request.endpoint in ['admin.passages_list', 'admin.passage_create', 'admin.passage_edit'] else '' }}">
-          📝 Typing Passages
-        </a>
-      </li>
-      <li>
-        <a href="{{ url_for('admin.games_list') }}" class="sidebar-link {{ 'active' if request.endpoint in ['admin.games_list', 'admin.game_edit'] else '' }}">
-          🕹️ Arcade Hangar
-        </a>
-      </li>
-      <li>
-        <a href="{{ url_for('admin.challenges_manage') }}" class="sidebar-link {{ 'active' if request.endpoint == 'admin.challenges_manage' else '' }}">
-          🔥 Tactical Missions
-        </a>
-      </li>
-      <li>
-        <a href="{{ url_for('admin.academy_manage') }}" class="sidebar-link {{ 'active' if request.endpoint in ['admin.academy_manage', 'admin.stage_edit'] else '' }}">
-          🎓 Academy Curriculum
-        </a>
-      </li>
-      <li>
-        <a href="{{ url_for('admin.certificates_manage') }}" class="sidebar-link {{ 'active' if request.endpoint == 'admin.certificates_manage' else '' }}">
-          🪽 Flight Certificates
-        </a>
-      </li>
-      <li>
-        <a href="{{ url_for('admin.community_manage') }}" class="sidebar-link {{ 'active' if request.endpoint == 'admin.community_manage' else '' }}">
-          💬 Reviews & Community
-        </a>
-      </li>
-      <li>
-        <a href="{{ url_for('admin.leaderboard_manage') }}" class="sidebar-link {{ 'active' if request.endpoint == 'admin.leaderboard_manage' else '' }}">
-          🏆 Leaderboard Verifier
-        </a>
-      </li>
-    </ul>
-
-    <!-- 4. Security & Audit -->
-    <div class="sidebar-section-title">Security & Audit</div>
-    <ul class="sidebar-nav">
       <li>
         <a href="{{ url_for('admin.security_center') }}" class="sidebar-link {{ 'active' if request.endpoint == 'admin.security_center' else '' }}">
           🚨 Threat Watch & IP Blocks
@@ -400,12 +480,27 @@
       </li>
     </ul>
 
-    <!-- 5. System Configuration & Data -->
-    <div class="sidebar-section-title">System & Infrastructure</div>
+    <!-- 4. Certifications & Operations -->
+    <div class="sidebar-section-title">Platform & Community</div>
     <ul class="sidebar-nav">
       <li>
+        <a href="{{ url_for('admin.certificates_manage') }}" class="sidebar-link {{ 'active' if request.endpoint == 'admin.certificates_manage' else '' }}">
+          🪽 Flight Certificates
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('admin.leaderboard_manage') }}" class="sidebar-link {{ 'active' if request.endpoint == 'admin.leaderboard_manage' else '' }}">
+          🏆 Leaderboard Verifier
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('admin.community_manage') }}" class="sidebar-link {{ 'active' if request.endpoint == 'admin.community_manage' else '' }}">
+          💬 Reviews & Announcements
+        </a>
+      </li>
+      <li>
         <a href="{{ url_for('admin.website_control') }}" class="sidebar-link {{ 'active' if request.endpoint == 'admin.website_control' else '' }}">
-          🎛️ Website Control CMS
+          🎛️ Navigation & Lockdown
         </a>
       </li>
       <li>
@@ -430,9 +525,9 @@
       </li>
     </ul>
 
-    <!-- Bottom Super Admin Identity Strip -->
-    <div style="margin-top:auto; padding:1.25rem; border-top:1px solid var(--admin-border); background:rgba(0,0,0,0.25);">
-      <div style="font-size:0.7rem; color:var(--admin-text-muted); text-transform:uppercase; font-weight:800; letter-spacing:0.06em;">Clearance Level</div>
+    <!-- Bottom Operator Identity Strip -->
+    <div style="margin-top:auto; padding:1.25rem; border-top:1px solid var(--admin-border); background:rgba(0,0,0,0.2);">
+      <div style="font-size:0.7rem; color:var(--admin-text-muted); text-transform:uppercase; font-weight:800; letter-spacing:0.06em;">CLEARANCE LEVEL</div>
       <div style="font-weight:900; font-size:0.92rem; color:var(--admin-accent); margin-top:0.15rem;">
         {{ 'SUPER ADMIN' if current_user.is_super_admin else current_user.role|upper }}
       </div>
@@ -444,17 +539,25 @@
   <div class="admin-main">
     <header class="admin-topbar">
       <button type="button" onclick="openCmdPalette()" class="btn btn-sm" style="border-color:var(--admin-border); background:var(--admin-elevated); color:var(--admin-text-muted); gap:0.6rem;">
-        <span>🔍 Search Users, Roles, Passages, Endpoints...</span>
+        <span>🔍 Search Pilots, Passages, Endpoints...</span>
         <span class="kbd-badge">Ctrl + K</span>
       </button>
 
       <div style="display:flex; align-items:center; gap:1rem;">
-        <div style="display:flex; align-items:center; gap:0.4rem; font-size:0.78rem; font-weight:700; color:var(--admin-success);">
-          <span style="width:7px; height:7px; border-radius:50%; background:var(--admin-success); box-shadow:0 0 8px var(--admin-success);"></span>
-          SYSTEM NOMINAL
+        <!-- Admin Theme Switcher Dropdown -->
+        <div style="display:flex; align-items:center; gap:0.35rem;">
+          <span style="font-size:0.75rem; color:var(--admin-text-muted); font-weight:700;">Theme:</span>
+          <select id="admin-theme-dropdown" onchange="changeAdminTheme(this.value)" class="admin-theme-select">
+            <option value="dark">Dark Obsidian</option>
+            <option value="cockpit-hud">Cockpit HUD</option>
+            <option value="cyber">Cyber Neon</option>
+            <option value="sepia">Warm Sepia</option>
+            <option value="light">Stratosphere Light</option>
+          </select>
         </div>
+
         <div style="font-family:var(--admin-mono); font-size:0.82rem; color:var(--admin-accent); font-weight:700;" id="admin-ist-clock">
-          --:-- IST
+          --:--:-- IST
         </div>
         <div style="display:flex; gap:0.4rem;">
           <a href="{{ url_for('admin.export_csv', data_type='users') }}" class="btn btn-sm">Export Users</a>
@@ -464,7 +567,6 @@
     </header>
 
     <div class="admin-content">
-      <!-- Point 4: Unified Toast-Style Notifications with Auto-Dismiss -->
       {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
           <div id="admin-flash-wrapper">
@@ -513,6 +615,16 @@
     }
     setInterval(updateIstClock, 1000);
     updateIstClock();
+
+    function changeAdminTheme(theme) {
+      document.documentElement.setAttribute('data-admin-theme', theme);
+      localStorage.setItem('typesphere_admin_theme', theme);
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+      const savedTheme = localStorage.getItem('typesphere_admin_theme') || 'dark';
+      const dropdown = document.getElementById('admin-theme-dropdown');
+      if (dropdown) dropdown.value = savedTheme;
+    });
 
     function dismissAdminAlert(btn) {
       const alert = btn.closest('.admin-toast-alert');
