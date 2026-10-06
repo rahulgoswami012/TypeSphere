@@ -1,709 +1,268 @@
 """
-TypeSphere - Multiplayer Flight Grid Controller & Real-Time Socket Engine
-Coordinates public lobbies, ranked 1v1 duels, scalable multi-paragraph endurance passages,
-non-blocking individual finishes, and authoritative server-side Elo calculation.
+TypeSphere - Autonomous Dynamic AI Flight Coach Engine
+Inspects user TypingDNA telemetry, diagnoses neuromuscular faults,
+and dynamically queries matching passages from the database library
+to formulate personalized training classes without manual CMS overhead.
 """
 
-from flask import Blueprint, render_template, request, jsonify
-from flask_login import current_user
-from flask_socketio import emit, join_room, leave_room
-import uuid
-import time
+import re
 import random
-from app import db, socketio
-from app.models.user import User
-from app.models.typing import TypingTest, TypingText
-
-multiplayer_bp = Blueprint('multiplayer', __name__)
-
-ROOMS = {}         # room_code -> dict
-QUICK_QUEUE = []   # [{'sid': sid, 'user_id': uid, 'name': str, 'queued_at': float}]
-SID_TO_ROOM = {}   # sid -> room_code
-
-# Scalable curated passages ensuring races never terminate prematurely if DB passages are empty
-CURATED_PASSAGES = {
-    30: [
-        "Speed is born from economy of movement. Eliminate tension from your fingers and allow cadence to carry every keystroke across the keyboard.",
-        "Consistency is the hallmark of the master pilot. Every accurate strike compounds into pure flow and unmatched tactile velocity.",
-        "Real velocity is quiet and disciplined. Breathe calmly, anchor your palms, and glide across the keys with unbroken rhythm."
-    ],
-    60: [
-        "Distributed computing architectures enable modern applications to process real-time events across globally partitioned clusters. When an individual server node encounters hardware interruption, partition leadership fails over automatically without data loss.",
-        "It is a truth universally acknowledged, that a single man in possession of a good fortune, must be in want of a wife. However little known the feelings or views of such a man may be on his first entering a neighbourhood, this truth is fixed.",
-        "The Constitution of India establishes an autonomous sovereign republic guaranteeing justice, liberty, equality, and fraternity to all citizens. Fundamental statutory rights ensure that administrative governance remains transparent and accountable."
-    ],
-    120: [
-        "It was the best of times, it was the worst of times, it was the age of wisdom, it was the age of foolishness, it was the epoch of belief, it was the epoch of incredulity, it was the season of light, it was the season of darkness, it was the spring of hope, it was the winter of despair. We had everything before us, we had nothing before us, we were all going direct to Heaven, we were all going direct the other way.",
-        "A solitary satellite drifted through the dark expanse above Earth, observing city lights flickering like scattered embers across the continents. For seven years, its solar panels had absorbed the unshielded glare of the sun, powering instruments that tracked melting glaciers and shifting desert dunes. It sent back terabytes of silent telemetry, an unblinking witness to the quiet transformation of a living world."
-    ],
-    300: [
-        (
-            "Modern computational infrastructure increasingly depends on distributed event streaming pipelines to process "
-            "real-time information at massive planetary scale. By decoupling data producers from consumer applications through "
-            "immutable, partitioned append-only commit logs, high-throughput systems achieve fault tolerance across globally "
-            "distributed server clusters. When an individual node fails or experiences hardware partition, leadership re-election "
-            "executes automatically without message corruption or data loss. In parallel, cognitive ergonomics examines how human "
-            "sensory perception, working memory, and neuromuscular motor responses interact with digital input mechanisms. "
-            "Extensive research demonstrates that physical tactile feedback, low-actuation mechanical switches, and predictable "
-            "keystroke latency significantly reduce cognitive fatigue during prolonged operational focus. When flight control "
-            "interfaces eliminate visual friction and unexpected layout shifts, operators enter a sustained cognitive state known "
-            "as deep flow. In the realm of public administrative governance, procedural transparency, statutory adherence, and "
-            "scrupulous punctuality across central secretariats remain vital pillars of civil service integrity. Official gazette "
-            "notifications, parliamentary committee briefs, and cabinet memoranda require absolute typographical precision to ensure "
-            "administrative continuity without ambiguous judicial interpretation. The study of supersonic aerodynamics further "
-            "illustrates how kinetic balance governs physical performance. As an interceptor airframe accelerates through the transonic "
-            "regime toward Mach 1, shockwaves form along the leading aerofoil edges, shifting the center of pressure rearward. Without "
-            "adaptive fly-by-wire trim computers continuously balancing flight surfaces, aerodynamic control collapses under atmospheric "
-            "drag. Similarly, touch typing represents the direct neurological interface between abstract cognition and digital output. "
-            "When individual finger keystrokes automate into pure unconscious reflex, cognitive bandwidth is liberated for strategic "
-            "decision-making, high-order reasoning, and creative problem solving. Calm hands strike cleanly and decisively without "
-            "second-guessing. Breathe steadily, observe the flight horizon, maintain posture discipline, and allow continuous rhythm "
-            "to guide your velocity through the full duration of the flight."
-        )
-    ],
-    600: [
-        (
-            "During the fourth fiscal quarter, corporate operations experienced significant structural modernization following the "
-            "deployment of automated telemetry diagnostics and decentralized ledger auditing across enterprise infrastructure. "
-            "Distributed computing architectures enable microservices to communicate asynchronously with high throughput and proven "
-            "resilience against hardware faults by decoupling message producers from downstream consumers using partitioned logs. "
-            "When designing high-velocity software interfaces, engineers must prioritize predictability, low input latency, and "
-            "intuitive spatial visual hierarchies. Repetitive strain injuries often manifest when typists maintain static isometric "
-            "contraction of forearm extensor muscles during prolonged typing bursts. Ergonomic keyboards designed with split key "
-            "clusters, tenting angles between ten and fifteen degrees, and low actuation-force mechanical switches substantially "
-            "reduce carpal tunnel hydrostatic pressure. Johannes Gutenberg introduced movable metal type printing to Europe around "
-            "fourteen forty, transforming the dissemination of knowledge forever. Books that previously required months of manual "
-            "copying by scribes could now be reproduced rapidly, accelerating the Renaissance and scientific discovery across continents. "
-            "In a similar vein, touch typing represents the direct neurological interface between human thought and digital reality. "
-            "When finger movements become fully automated reflexes, cognitive bandwidth is liberated for higher-order reasoning, "
-            "creative composition, and strategic execution. Maintain balanced hands, steady breath, and unbroken cadence across the "
-            "entire keyboard. The Raft consensus protocol resolves split-brain anomalies in distributed flight systems through an "
-            "authoritative leader election model. When a network partition isolates the leader, follower nodes timeout their election "
-            "timers and initiate a new voting cycle. Because commit operations require an absolute mathematical majority of acknowledgments, "
-            "stale minority partitions refuse writes, preventing data corruption. Once the network heals, log reconciliation forces "
-            "the outdated node to step down smoothly. Orbital flight mechanics further emphasize that stable velocity is not chaotic "
-            "rush, but balanced equilibrium between gravitational attraction and forward momentum. A spacecraft in low Earth orbit travels "
-            "at twenty-eight thousand kilometers per hour, continually falling toward the planetary horizon while forward velocity carries "
-            "it outward at an identical curve. Flight operators execute Hohmann transfer burns at precise orbital nodes to elevate apogee, "
-            "converting chemical energy into gravitational potential. In statutory administrative civil examinations, candidates must "
-            "demonstrate unwavering typographical stamina under strict countdown conditions. Evaluating speed without accounting for "
-            "uncorrected errors creates a false measure of competence. Deliberate, accurate movement precedes true velocity. Calm hands strike "
-            "cleanly and decisively without second-guessing. In high-stakes flight operations, a single miscalculated angle compromises the "
-            "mission. Maintain neutral wrist posture, anchor resting anchors firmly over the home keys, and execute each stroke with precision."
-        )
-    ]
-}
-
-
-def fetch_passage(duration, custom_text=None):
-    if custom_text and len(custom_text.strip()) >= 10:
-        return custom_text.strip()
-
-    # Dynamic Database Query: load admin-managed passages configured for multiplayer
-    try:
-        db_passages = TypingText.query.filter_by(
-            allow_multiplayer=True,
-            is_active=True
-        ).filter(
-            (TypingText.recommended_duration == duration) | (TypingText.category == 'multiplayer')
-        ).all()
-        if db_passages:
-            return random.choice(db_passages).content.strip()
-    except Exception:
-        pass
-
-    # Curated Endurance Fallback
-    if duration <= 30:
-        return random.choice(CURATED_PASSAGES[30])
-    elif duration <= 60:
-        return random.choice(CURATED_PASSAGES[60])
-    elif duration <= 120:
-        return random.choice(CURATED_PASSAGES[120])
-    elif duration <= 300:
-        return random.choice(CURATED_PASSAGES[300])
-    return random.choice(CURATED_PASSAGES[600])
-
-
-def serialize_public_rooms():
-    public_list = []
-    for code, r in ROOMS.items():
-        if r['type'] == 'public' and r['status'] == 'waiting':
-            active_count = len([p for p in r['players'].values() if not p.get('left_early')])
-            public_list.append({
-                'code': code,
-                'name': r['name'],
-                'host_name': r['host_name'],
-                'current_players': active_count,
-                'max_players': r['max_players'],
-                'duration': r['duration'],
-                'status': r['status']
-            })
-    return public_list
-
-
-def calculate_standings(room):
-    plist = list(room['players'].values())
-    plist.sort(key=lambda x: (
-        x.get('left_early', False),
-        not x.get('finished', False),
-        x.get('place') if x.get('place') is not None else 999,
-        -(x.get('wpm') or 0),
-        -(x.get('accuracy') or 0)
-    ))
-    return plist
-
-
-def update_competitive_match_elo(room):
-    """
-    Authoritative Elo calculation executed once all racers finish or match concludes.
-    Applies standard Elo updates (K=32) to registered pilots and saves changes to database.
-    """
-    if room.get('elo_processed'):
-        return
-    room['elo_processed'] = True
-
-    standings = calculate_standings(room)
-    active_finishers = [p for p in standings if p.get('finished') and not p.get('left_early') and p.get('user_id')]
-
-    if len(active_finishers) < 2:
-        return
-
-    winner_player = active_finishers[0]
-    loser_player = active_finishers[1]
-
-    winner_user = User.query.get(winner_player['user_id'])
-    loser_user = User.query.get(loser_player['user_id'])
-
-    if winner_user and loser_user and winner_user.id != loser_user.id:
-        try:
-            w_elo = winner_user.elo_rating or 1000
-            l_elo = loser_user.elo_rating or 1000
-
-            w_delta = winner_user.update_competitive_elo(l_elo, 'WIN', k_factor=32)
-            l_delta = loser_user.update_competitive_elo(w_elo, 'LOSS', k_factor=32)
-            db.session.commit()
-
-            winner_player['elo_delta'] = w_delta
-            winner_player['new_elo'] = winner_user.elo_rating
-            loser_player['elo_delta'] = l_delta
-            loser_player['new_elo'] = loser_user.elo_rating
-        except Exception:
-            db.session.rollback()
-
-
-@multiplayer_bp.route('/')
-def index():
-    user_elo = current_user.elo_rating if current_user.is_authenticated else 1000
-    user_division = current_user.rank_division if current_user.is_authenticated else "Bronze"
-    user_badge = current_user.rank_badge if current_user.is_authenticated else {
-        "icon": "🥉", "color": "#d97706", "bg": "rgba(217,119,6,0.15)"
-    }
-    wins = current_user.ranked_wins if current_user.is_authenticated else 0
-    losses = current_user.ranked_losses if current_user.is_authenticated else 0
-    draws = current_user.ranked_draws if current_user.is_authenticated else 0
-
-    return render_template(
-        'multiplayer/room.html',
-        user_elo=user_elo,
-        user_division=user_division,
-        user_badge=user_badge,
-        wins=wins,
-        losses=losses,
-        draws=draws
-    )
-
-
-@multiplayer_bp.route('/api/public-rooms')
-def get_public_rooms():
-    return jsonify({'rooms': serialize_public_rooms()})
-
-
-# ==============================================================
-# Socket.IO Real-Time Event Handlers
-# ==============================================================
-
-@socketio.on('request_public_rooms')
-def handle_request_public_rooms():
-    emit('public_rooms_update', {'rooms': serialize_public_rooms()})
-
-
-@socketio.on('create_room')
-def handle_create_room(data):
-    sid = request.sid
-    room_type = data.get('type', 'public')
-    name = (data.get('name') or f"Flight-{random.randint(100, 999)}").strip()
-    player_name = (data.get('player_name') or 'Pilot').strip()
-    duration = int(data.get('duration', 60))
-    max_players = 2 if room_type == 'private' else int(data.get('max_players', 4))
-    custom_text = (data.get('custom_text') or '').strip()
-
-    cleanup_player(sid)
-
-    code_prefix = "1V1" if room_type == 'private' else "PUB"
-    room_code = f"{code_prefix}-{uuid.uuid4().hex[:6].upper()}"
-
-    ROOMS[room_code] = {
-        'code': room_code,
-        'name': name,
-        'type': room_type,
-        'host_sid': sid,
-        'host_name': player_name,
-        'max_players': max_players,
-        'duration': duration,
-        'custom_text': custom_text,
-        'text': fetch_passage(duration, custom_text),
-        'status': 'waiting',
-        'race_start_time': None,
-        'created_at': time.time(),
-        'elo_processed': False,
-        'players': {}
-    }
-
-    ROOMS[room_code]['players'][sid] = {
-        'sid': sid,
-        'user_id': current_user.id if current_user.is_authenticated else None,
-        'name': player_name,
-        'ready': True,
-        'is_host': True,
-        'progress': 0,
-        'wpm': 0,
-        'accuracy': 100,
-        'errors': 0,
-        'finished': False,
-        'finish_time': None,
-        'place': None,
-        'left_early': False,
-        'elo_delta': 0,
-        'new_elo': current_user.elo_rating if current_user.is_authenticated else 1000
-    }
-
-    SID_TO_ROOM[sid] = room_code
-    join_room(room_code)
-
-    emit('room_joined', {'room': ROOMS[room_code], 'your_sid': sid})
-    emit('public_rooms_update', {'rooms': serialize_public_rooms()}, broadcast=True)
-
-
-@socketio.on('join_room')
-def handle_join_room(data):
-    sid = request.sid
-    room_code = (data.get('code') or '').strip().upper()
-    player_name = (data.get('player_name') or 'Pilot').strip()
-
-    if room_code not in ROOMS:
-        emit('join_error', {'message': f"Flight room '{room_code}' does not exist or has concluded."})
-        return
-
-    room = ROOMS[room_code]
-    if room['status'] != 'waiting':
-        emit('join_error', {'message': "This match is currently in progress."})
-        return
-
-    active_racers = [p for p in room['players'].values() if not p.get('left_early')]
-    if len(active_racers) >= room['max_players']:
-        emit('join_error', {'message': f"Room '{room_code}' has reached maximum pilot capacity."})
-        return
-
-    if sid in room['players']:
-        emit('room_joined', {'room': room, 'your_sid': sid})
-        return
-
-    cleanup_player(sid)
-
-    room['players'][sid] = {
-        'sid': sid,
-        'user_id': current_user.id if current_user.is_authenticated else None,
-        'name': player_name,
-        'ready': False,
-        'is_host': False,
-        'progress': 0,
-        'wpm': 0,
-        'accuracy': 100,
-        'errors': 0,
-        'finished': False,
-        'finish_time': None,
-        'place': None,
-        'left_early': False,
-        'elo_delta': 0,
-        'new_elo': current_user.elo_rating if current_user.is_authenticated else 1000
-    }
-
-    SID_TO_ROOM[sid] = room_code
-    join_room(room_code)
-
-    emit('room_joined', {'room': room, 'your_sid': sid})
-    emit('room_state_updated', {'room': room}, room=room_code)
-    emit('public_rooms_update', {'rooms': serialize_public_rooms()}, broadcast=True)
-
-
-@socketio.on('toggle_ready')
-def handle_toggle_ready():
-    sid = request.sid
-    room_code = SID_TO_ROOM.get(sid)
-    if not room_code or room_code not in ROOMS:
-        return
-    room = ROOMS[room_code]
-    if room['status'] != 'waiting':
-        return
-    if sid in room['players']:
-        room['players'][sid]['ready'] = not room['players'][sid]['ready']
-        emit('room_state_updated', {'room': room}, room=room_code)
-
-
-@socketio.on('start_match')
-def handle_start_match():
-    sid = request.sid
-    room_code = SID_TO_ROOM.get(sid)
-    if not room_code or room_code not in ROOMS:
-        return
-    room = ROOMS[room_code]
-    if room['status'] != 'waiting':
-        return
-    if room['host_sid'] != sid:
-        emit('action_error', {'message': 'Only the host pilot can initiate the match.'})
-        return
-
-    players = room['players']
-    active_players = [p for p in players.values() if not p.get('left_early')]
-
-    if room['type'] in ['private', 'quick'] and len(active_players) < 2:
-        emit('action_error', {'message': 'Cannot initiate a 1v1 match without an opponent.'})
-        return
-
-    not_ready = [p['name'] for p in active_players if not p['ready']]
-    if not_ready:
-        emit('action_error', {'message': f"Waiting for pilots to ready up: {', '.join(not_ready)}"})
-        return
-
-    room['status'] = 'countdown'
-    room['elo_processed'] = False
-
-    for p in players.values():
-        p['progress'] = 0
-        p['wpm'] = 0
-        p['accuracy'] = 100
-        p['errors'] = 0
-        p['finished'] = False
-        p['finish_time'] = None
-        p['place'] = None
-        p['left_early'] = False
-        p['elo_delta'] = 0
-
-    emit('match_countdown_started', {
-        'room_code': room_code,
-        'duration': room['duration'],
-        'text': room['text']
-    }, room=room_code)
-    emit('public_rooms_update', {'rooms': serialize_public_rooms()}, broadcast=True)
-
-
-@socketio.on('client_race_active')
-def handle_client_race_active():
-    sid = request.sid
-    room_code = SID_TO_ROOM.get(sid)
-    if room_code and room_code in ROOMS:
-        room = ROOMS[room_code]
-        if room['status'] == 'countdown':
-            room['status'] = 'in_progress'
-            room['race_start_time'] = time.time()
-
-
-@socketio.on('progress_update')
-def handle_progress_update(data):
-    sid = request.sid
-    room_code = SID_TO_ROOM.get(sid)
-    if not room_code or room_code not in ROOMS:
-        return
-    room = ROOMS[room_code]
-    if room['status'] not in ['countdown', 'in_progress']:
-        return
-    if sid not in room['players']:
-        return
-
-    player = room['players'][sid]
-    if player.get('finished') or player.get('left_early'):
-        return
-
-    progress = max(0, min(100, float(data.get('progress', 0))))
-    wpm = max(0, float(data.get('wpm', 0)))
-    accuracy = max(0, min(100, float(data.get('accuracy', 100))))
-    errors = int(data.get('errors', 0))
-
-    player['progress'] = progress
-    player['wpm'] = wpm
-    player['accuracy'] = accuracy
-    player['errors'] = errors
-
-    if progress >= 100 and not player['finished']:
-        player['finished'] = True
-        finished_racers = [p for p in room['players'].values() if p['finished'] and not p.get('left_early')]
-        player['place'] = len(finished_racers)
-        elapsed = time.time() - room['race_start_time'] if room.get('race_start_time') else room['duration']
-        player['finish_time'] = round(elapsed, 2)
-
-        if player.get('user_id'):
-            try:
-                test_rec = TypingTest(
-                    user_id=player['user_id'],
-                    mode='multiplayer',
-                    duration=float(player['finish_time']),
-                    wpm=round(wpm, 1),
-                    raw_wpm=round(wpm, 1),
-                    accuracy=round(accuracy, 1),
-                    consistency=100.0,
-                    errors=errors,
-                    suspicious=False
-                )
-                db.session.add(test_rec)
-                db.session.commit()
-            except Exception:
-                db.session.rollback()
-
-        active_remaining = [p for p in room['players'].values() if not p['finished'] and not p.get('left_early')]
-        all_done = (len(active_remaining) == 0)
-
-        if all_done:
-            room['status'] = 'finished'
-            update_competitive_match_elo(room)
-
-        emit('individual_player_finished', {
-            'player': player,
-            'remaining_count': len(active_remaining),
-            'all_finished': all_done,
-            'standings': calculate_standings(room) if all_done else []
-        }, room=room_code)
-
-    emit('room_progress_update', {'players': list(room['players'].values())}, room=room_code)
-
-
-@socketio.on('time_expired_finish')
-def handle_time_expired():
-    sid = request.sid
-    room_code = SID_TO_ROOM.get(sid)
-    if not room_code or room_code not in ROOMS:
-        return
-    room = ROOMS[room_code]
-    if room['status'] != 'in_progress':
-        return
-
-    room['status'] = 'finished'
-    for p in room['players'].values():
-        if not p['finished'] and not p.get('left_early'):
-            p['finished'] = True
-            p['place'] = 'DNF' if p['progress'] < 100 else p.get('place', 99)
-
-    update_competitive_match_elo(room)
-    emit('race_concluded', {
-        'room': room,
-        'standings': calculate_standings(room)
-    }, room=room_code)
-
-
-@socketio.on('leave_race_after_finish')
-def handle_leave_after_finish():
-    sid = request.sid
-    room_code = SID_TO_ROOM.get(sid)
-    if not room_code or room_code not in ROOMS:
-        emit('left_room_confirmed')
-        return
-
-    room = ROOMS[room_code]
-    leave_room(room_code, sid=sid)
-    SID_TO_ROOM.pop(sid, None)
-    emit('left_room_confirmed')
-
-    active_remaining = [p for p in room['players'].values() if not p['finished'] and not p.get('left_early')]
-    if len(active_remaining) == 0 and room['status'] == 'in_progress':
-        room['status'] = 'finished'
-        update_competitive_match_elo(room)
-        emit('race_concluded', {
-            'room': room,
-            'standings': calculate_standings(room)
-        }, room=room_code)
-
-
-@socketio.on('rematch_request')
-def handle_rematch():
-    sid = request.sid
-    room_code = SID_TO_ROOM.get(sid)
-    if not room_code or room_code not in ROOMS:
-        return
-    room = ROOMS[room_code]
-    room['status'] = 'waiting'
-    room['race_start_time'] = None
-    room['elo_processed'] = False
-    room['text'] = fetch_passage(room['duration'], room.get('custom_text'))
-
-    for p in room['players'].values():
-        p['progress'] = 0
-        p['wpm'] = 0
-        p['accuracy'] = 100
-        p['errors'] = 0
-        p['finished'] = False
-        p['finish_time'] = None
-        p['place'] = None
-        p['left_early'] = False
-        p['elo_delta'] = 0
-        p['ready'] = (p['sid'] == room['host_sid'])
-
-    emit('rematch_accepted', {'room': room}, room=room_code)
-    emit('public_rooms_update', {'rooms': serialize_public_rooms()}, broadcast=True)
-
-
-# ==============================================================
-# Automated 1v1 Queue Pairing
-# ==============================================================
-
-@socketio.on('join_quick_queue')
-def handle_join_quick_queue(data):
-    sid = request.sid
-    player_name = (data.get('name') or 'Pilot').strip()
-    user_id = current_user.id if current_user.is_authenticated else None
-
-    cleanup_player(sid)
-
-    for q in list(QUICK_QUEUE):
-        if q['sid'] == sid:
-            QUICK_QUEUE.remove(q)
-
-    if len(QUICK_QUEUE) > 0:
-        opponent = QUICK_QUEUE.pop(0)
-        if opponent['sid'] == sid:
-            QUICK_QUEUE.append({'sid': sid, 'user_id': user_id, 'name': player_name, 'queued_at': time.time()})
-            emit('quick_queue_waiting')
-            return
-
-        match_code = f"QM-{uuid.uuid4().hex[:6].upper()}"
-        duration = 60
-        text = fetch_passage(duration)
-
-        ROOMS[match_code] = {
-            'code': match_code,
-            'name': 'Ranked 1v1 Duel',
-            'type': 'quick',
-            'host_sid': sid,
-            'host_name': player_name,
-            'max_players': 2,
-            'duration': duration,
-            'custom_text': '',
-            'text': text,
-            'status': 'waiting',
-            'race_start_time': None,
-            'created_at': time.time(),
-            'elo_processed': False,
-            'players': {
-                sid: {
-                    'sid': sid,
-                    'user_id': user_id,
-                    'name': player_name,
-                    'ready': True,
-                    'is_host': True,
-                    'progress': 0,
-                    'wpm': 0,
-                    'accuracy': 100,
-                    'errors': 0,
-                    'finished': False,
-                    'finish_time': None,
-                    'place': None,
-                    'left_early': False,
-                    'elo_delta': 0,
-                    'new_elo': current_user.elo_rating if current_user.is_authenticated else 1000
-                },
-                opponent['sid']: {
-                    'sid': opponent['sid'],
-                    'user_id': opponent['user_id'],
-                    'name': opponent['name'],
-                    'ready': True,
-                    'is_host': False,
-                    'progress': 0,
-                    'wpm': 0,
-                    'accuracy': 100,
-                    'errors': 0,
-                    'finished': False,
-                    'finish_time': None,
-                    'place': None,
-                    'left_early': False,
-                    'elo_delta': 0,
-                    'new_elo': 1000
-                }
+from typing import Tuple, List, Dict, Any
+
+
+class AdaptiveTrainingService:
+    @staticmethod
+    def diagnose_pilot(user_id: int) -> Dict[str, Any]:
+        """
+        Performs a full diagnostic evaluation of the pilot's telemetry history.
+        """
+        from app.models.typing import TypingDNA, TypingTest
+
+        if not user_id:
+            return {
+                'has_data': False,
+                'status': 'uncalibrated',
+                'weak_keys': ['E', 'T', 'A', 'O'],
+                'top_confusions': [],
+                'hand_imbalance': None,
+                'avg_wpm': 45.0,
+                'avg_acc': 95.0,
+                'primary_fault': 'baseline_calibration'
             }
+
+        dna = TypingDNA.query.filter_by(user_id=user_id).first()
+        recent_tests = TypingTest.query.filter_by(
+            user_id=user_id,
+            suspicious=False
+        ).order_by(TypingTest.completed_at.desc()).limit(10).all()
+
+        if not dna or not recent_tests:
+            return {
+                'has_data': False,
+                'status': 'uncalibrated',
+                'weak_keys': ['E', 'R', 'T'],
+                'top_confusions': [],
+                'hand_imbalance': None,
+                'avg_wpm': 40.0,
+                'avg_acc': 94.0,
+                'primary_fault': 'baseline_calibration'
+            }
+
+        # Calculate fleet averages for this pilot
+        avg_wpm = round(sum(t.wpm for t in recent_tests) / len(recent_tests), 1)
+        avg_acc = round(sum(t.accuracy for t in recent_tests) / len(recent_tests), 1)
+
+        # 1. Identify slow and error-prone keys from DNA stats
+        stats = dna.get_key_stats()
+        scored_keys = []
+        for char, data in stats.items():
+            if data.get('total', 0) >= 4 and char.isalpha():
+                err_rate = data.get('errors', 0) / data['total']
+                delays = data.get('delays', [0.15])
+                avg_delay = sum(delays) / len(delays) if delays else 0.15
+                severity = (err_rate * 0.7) + (min(avg_delay, 0.5) * 0.3)
+                if err_rate > 0.05 or avg_delay > 0.28:
+                    scored_keys.append((char.lower(), err_rate, avg_delay, severity))
+
+        scored_keys.sort(key=lambda x: x[3], reverse=True)
+        weak_keys = [k[0] for k in scored_keys[:4]]
+
+        # 2. Extract top confusion pairs
+        confusions = dna.get_confusion_matrix()
+        top_confusions = []
+        for exp, mapped in confusions.items():
+            for got, cnt in mapped.items():
+                if cnt >= 2 and exp.isalpha() and got.isalpha():
+                    top_confusions.append((exp.upper(), got.upper(), cnt))
+        top_confusions.sort(key=lambda x: x[2], reverse=True)
+
+        # 3. Detect Bilateral Hand & Category Imbalances
+        left_acc = dna.left_hand_accuracy or 100.0
+        right_acc = dna.right_hand_accuracy or 100.0
+        punct_acc = dna.punctuation_accuracy or 100.0
+        num_acc = dna.numbers_accuracy or 100.0
+
+        hand_diff = round(abs(left_acc - right_acc), 1)
+        hand_imbalance = None
+        if hand_diff >= 4.5:
+            weaker_hand = "Left" if left_acc < right_acc else "Right"
+            hand_imbalance = {
+                'weaker_hand': weaker_hand,
+                'diff': hand_diff,
+                'left_acc': left_acc,
+                'right_acc': right_acc
+            }
+
+        # 4. Determine Primary Flight Fault
+        if punct_acc < 90.0:
+            primary_fault = 'punctuation_deficit'
+        elif num_acc < 88.0:
+            primary_fault = 'numeric_deficit'
+        elif hand_imbalance:
+            primary_fault = 'bilateral_imbalance'
+        elif weak_keys:
+            primary_fault = 'weak_keys'
+        elif avg_acc >= 97.0 and avg_wpm >= 50.0:
+            primary_fault = 'velocity_expansion'
+        else:
+            primary_fault = 'cadence_flow'
+
+        return {
+            'has_data': True,
+            'status': 'calibrated',
+            'weak_keys': [k.upper() for k in weak_keys],
+            'top_confusions': top_confusions[:3],
+            'hand_imbalance': hand_imbalance,
+            'punct_acc': punct_acc,
+            'num_acc': num_acc,
+            'avg_wpm': avg_wpm,
+            'avg_acc': avg_acc,
+            'primary_fault': primary_fault
         }
 
-        SID_TO_ROOM[sid] = match_code
-        SID_TO_ROOM[opponent['sid']] = match_code
+    @staticmethod
+    def generate_drill(user_id: int) -> Tuple[str, List[str], Dict[str, Any]]:
+        """
+        Dynamically formulates an AI flight class by querying the existing
+        database library for passages that naturally reinforce the diagnosed weakness.
+        """
+        from app.models.typing import TypingText
 
-        join_room(match_code, sid=sid)
-        join_room(match_code, sid=opponent['sid'])
+        diag = AdaptiveTrainingService.diagnose_pilot(user_id)
+        fault = diag.get('primary_fault', 'baseline_calibration')
+        weak_keys = diag.get('weak_keys', ['E', 'R', 'T'])
+        avg_wpm = diag.get('avg_wpm', 45.0)
 
-        emit('quick_match_paired', {'room': ROOMS[match_code], 'your_sid': sid}, room=sid)
-        emit('quick_match_paired', {'room': ROOMS[match_code], 'your_sid': opponent['sid']}, room=opponent['sid'])
-    else:
-        QUICK_QUEUE.append({'sid': sid, 'user_id': user_id, 'name': player_name, 'queued_at': time.time()})
-        emit('quick_queue_waiting')
+        active_passages = TypingText.query.filter(
+            (TypingText.is_active == True) &
+            ((TypingText.status == 'published') | (TypingText.status == None))
+        ).all()
+
+        class_profile = {
+            'class_code': 'FC-101',
+            'class_name': 'Foundational Flight Calibration',
+            'target_wpm': max(25, round(avg_wpm + 3)),
+            'target_accuracy': 96.0,
+            'focus_tokens': weak_keys,
+            'diagnostic_reason': 'Establish baseline rhythm across standard high-frequency English vocabulary.',
+            'matched_passage_title': 'General Aviation Corpus'
+        }
+
+        # Fault A: Punctuation Deficit
+        if fault == 'punctuation_deficit':
+            candidates = [p for p in active_passages if p.category in ['exam', 'professional', 'punctuation'] or p.is_code]
+            if not candidates:
+                candidates = active_passages
+
+            selected = random.choice(candidates) if candidates else None
+            drill_text = selected.content.strip() if selected else (
+                "Official public communications require scrupulous adherence to statutory punctuation; semicolons, colons, and quotation marks establish administrative clarity."
+            )
+            class_profile.update({
+                'class_code': 'P-101',
+                'class_name': 'Class P-1: Punctuation & Syntax Realignment',
+                'target_wpm': max(20, round(avg_wpm - 2)),
+                'target_accuracy': 98.0,
+                'focus_tokens': [';', ':', '"', ',', '.'],
+                'diagnostic_reason': f"Your punctuation accuracy ({diag.get('punct_acc')}%) lags behind your base speed. This class exercises edge punctuation anchors.",
+                'matched_passage_title': selected.title if selected else 'Administrative Gazette'
+            })
+            return drill_text, [';', ':', '"'], class_profile
+
+        # Fault B: Numeric Reach Deficit
+        elif fault == 'numeric_deficit':
+            candidates = [p for p in active_passages if p.category in ['numbers', 'data_entry'] or any(c.isdigit() for c in p.content)]
+            selected = random.choice(candidates) if candidates else None
+            drill_text = selected.content.strip() if selected else (
+                "Invoice 8402 total 195 dollars on 2026-09-15 tracking number 7391054 with 42 units dispatched across sector 10."
+            )
+            class_profile.update({
+                'class_code': 'N-201',
+                'class_name': 'Class N-1: Top-Row Numeric Trajectory',
+                'target_wpm': max(22, round(avg_wpm - 4)),
+                'target_accuracy': 97.0,
+                'focus_tokens': ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'],
+                'diagnostic_reason': f"Your number row accuracy ({diag.get('num_acc')}%) causes hesitation spikes. This class trains upward vertical reaches without wrist shifting.",
+                'matched_passage_title': selected.title if selected else 'Data Telemetry Ledger'
+            })
+            return drill_text, ['1', '2', '3', '8', '9'], class_profile
+
+        # Fault C: Bilateral Hand Imbalance
+        elif fault == 'bilateral_imbalance' and diag.get('hand_imbalance'):
+            imb = diag['hand_imbalance']
+            weaker = imb['weaker_hand']
+            class_profile.update({
+                'class_code': 'H-301',
+                'class_name': f'Class H-1: Bilateral Cadence Balance ({weaker} Hand Focus)',
+                'target_wpm': round(avg_wpm),
+                'target_accuracy': 97.5,
+                'focus_tokens': ['ASDF', 'JKL;'],
+                'diagnostic_reason': f"A {imb['diff']}% accuracy gap was detected between hands ({imb['left_acc']}% L vs {imb['right_acc']}% R). This class restores equilibrium.",
+                'matched_passage_title': 'Balanced Aeronautical Corpus'
+            })
+            candidates = [p for p in active_passages if p.category in ['Literature', 'Daily Life', 'paragraphs', 'words']]
+            selected = random.choice(candidates) if candidates else None
+            drill_text = selected.content.strip() if selected else (
+                "Calm hands strike cleanly and decisively without second-guessing. Breathe steadily and let cadence carry velocity across both sides of the keyboard."
+            )
+            return drill_text, weak_keys, class_profile
+
+        # Fault D: Specific Weak Keys
+        elif fault == 'weak_keys' and weak_keys:
+            scored = []
+            for p in active_passages:
+                content_lower = p.content.lower()
+                matches = sum(content_lower.count(k.lower()) for k in weak_keys)
+                density = matches / max(1, p.word_count)
+                scored.append((p, density))
+
+            scored.sort(key=lambda x: x[1], reverse=True)
+            best_passage = scored[0][0] if scored else None
+
+            drill_text = best_passage.content.strip() if best_passage else (
+                "Continuous deliberate movement compounds into unstoppable tactile velocity under intense pressure. Keep your resting fingers anchored firmly."
+            )
+
+            words = drill_text.split()
+            if len(words) > 80:
+                drill_text = " ".join(words[:80])
+
+            class_profile.update({
+                'class_code': f"K-{len(weak_keys)}01",
+                'class_name': f"Class K-{len(weak_keys)}: Precision Realignment on [{', '.join(weak_keys)}]",
+                'target_wpm': max(25, round(avg_wpm + 2)),
+                'target_accuracy': 97.0,
+                'focus_tokens': weak_keys,
+                'diagnostic_reason': f"Sensors isolated latency spikes and errant strikes on [{', '.join(weak_keys)}]. This class queries library passages rich in these specific n-grams.",
+                'matched_passage_title': best_passage.title if best_passage else 'Targeted Corpus'
+            })
+            return drill_text, weak_keys, class_profile
+
+        # Fault E: Velocity Expansion
+        elif fault == 'velocity_expansion':
+            candidates = [p for p in active_passages if p.difficulty in ['hard', 'expert'] or p.category in ['Technology', 'Science', 'professional']]
+            selected = random.choice(candidates) if candidates else None
+            drill_text = selected.content.strip() if selected else (
+                "The afterburners ignited with a deafening roar as the interceptor surged through the sound barrier into open airspace. Fast reactions lock trajectory on target."
+            )
+            class_profile.update({
+                'class_code': 'V-501',
+                'class_name': 'Class V-1: Supersonic Cruising Velocity Expansion',
+                'target_wpm': max(50, round(avg_wpm + 8)),
+                'target_accuracy': 95.0,
+                'focus_tokens': ['Sprint Cadence'],
+                'diagnostic_reason': f"Flawless accuracy ({avg_acc}%) achieved on recent flights. The coach is lifting your speed ceiling into the next division.",
+                'matched_passage_title': selected.title if selected else 'Supersonic Intercept'
+            })
+            return drill_text, [], class_profile
+
+        # Default Fallback: Balanced Prose
+        selected = random.choice(active_passages) if active_passages else None
+        drill_text = selected.content.strip() if selected else (
+            "Consistency is the hallmark of the master pilot. Every accurate strike compounds into pure flow and unmatched tactile velocity."
+        )
+        class_profile['matched_passage_title'] = selected.title if selected else 'Core Library'
+        return drill_text, weak_keys, class_profile
 
 
-@socketio.on('cancel_quick_queue')
-def handle_cancel_quick_queue():
-    sid = request.sid
-    for q in list(QUICK_QUEUE):
-        if q['sid'] == sid:
-            QUICK_QUEUE.remove(q)
-    emit('quick_queue_cancelled')
-
-
-@socketio.on('leave_room_voluntary')
-def handle_leave_room_voluntary():
-    cleanup_player(request.sid)
-    emit('left_room_confirmed')
-    emit('public_rooms_update', {'rooms': serialize_public_rooms()}, broadcast=True)
-
-
-@socketio.on('disconnect')
-def handle_disconnect():
-    cleanup_player(request.sid)
-    emit('public_rooms_update', {'rooms': serialize_public_rooms()}, broadcast=True)
-
-
-def cleanup_player(sid):
-    for q in list(QUICK_QUEUE):
-        if q['sid'] == sid:
-            QUICK_QUEUE.remove(q)
-
-    room_code = SID_TO_ROOM.pop(sid, None)
-    if not room_code or room_code not in ROOMS:
-        return
-
-    room = ROOMS[room_code]
-    leave_room(room_code, sid=sid)
-
-    if sid in room['players']:
-        player = room['players'][sid]
-        if room['status'] in ['countdown', 'in_progress'] and not player.get('finished'):
-            player['left_early'] = True
-            player['place'] = 'DNF'
-        elif room['status'] == 'waiting':
-            del room['players'][sid]
-
-        active_members = [p for p in room['players'].values() if not p.get('left_early')]
-        if not active_members:
-            del ROOMS[room_code]
-            return
-
-        if room['status'] == 'waiting' and room['host_sid'] == sid:
-            next_sid = next(iter(room['players']))
-            room['host_sid'] = next_sid
-            room['host_name'] = room['players'][next_sid]['name']
-            room['players'][next_sid]['is_host'] = True
-            room['players'][next_sid]['ready'] = True
-
-        if room['status'] == 'in_progress':
-            active_remaining = [p for p in room['players'].values() if not p['finished'] and not p.get('left_early')]
-            if len(active_remaining) == 0:
-                room['status'] = 'finished'
-                update_competitive_match_elo(room)
-                emit('race_concluded', {
-                    'room': room,
-                    'standings': calculate_standings(room)
-                }, room=room_code)
-
-        emit('room_state_updated', {'room': room}, room=room_code)
+__all__ = ['AdaptiveTrainingService']

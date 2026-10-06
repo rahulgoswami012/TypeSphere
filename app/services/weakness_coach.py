@@ -5,7 +5,6 @@ identifying which academy track and arcade discipline will best overcome their f
 """
 
 from typing import Dict, Any
-from app.services.adaptive_training import AdaptiveTrainingService
 
 
 class WeaknessCoach:
@@ -13,7 +12,10 @@ class WeaknessCoach:
     def analyze_and_recommend(user_id: int) -> Dict[str, Any]:
         """
         Synthesizes biometric telemetry into immediate actionable recommendations.
+        Safe scoped import eliminates circular import locks during application boot.
         """
+        from app.services.adaptive_training import AdaptiveTrainingService
+
         diag = AdaptiveTrainingService.diagnose_pilot(user_id)
         fault = diag.get('primary_fault', 'baseline_calibration')
         weak_keys = diag.get('weak_keys', ['E', 'T', 'O', 'N'])
@@ -105,3 +107,6 @@ class WeaknessCoach:
             'weak_keys': weak_keys,
             'recommendation': rec
         }
+
+
+__all__ = ['WeaknessCoach']
