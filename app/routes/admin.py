@@ -535,8 +535,8 @@ def admin_global_search():
 # 6. SECTOR PASSAGE CMS: BENCHMARK PASSAGES
 # ==============================================================
 
-@admin_bp.route('/content/benchmark')
-@admin_bp.route('/passages')
+@admin_bp.route('/content/benchmark', endpoint='benchmark_passages')
+@admin_bp.route('/passages', endpoint='passages_list')
 @admin_permission_required('typing.view')
 def benchmark_passages():
     page = request.args.get('page', 1, type=int)
@@ -586,7 +586,8 @@ def benchmark_passages():
     )
 
 
-@admin_bp.route('/content/benchmark/create', methods=['GET', 'POST'])
+@admin_bp.route('/content/benchmark/create', endpoint='benchmark_passage_create')
+@admin_bp.route('/passages/create', endpoint='passage_create')
 @admin_permission_required('typing.create')
 def benchmark_passage_create():
     if request.method == 'POST':
@@ -627,7 +628,8 @@ def benchmark_passage_create():
     return render_template('admin/benchmark_passage_form.html', action="Create", passage=None)
 
 
-@admin_bp.route('/content/benchmark/<int:passage_id>/edit', methods=['GET', 'POST'])
+@admin_bp.route('/content/benchmark/<int:passage_id>/edit', endpoint='benchmark_passage_edit')
+@admin_bp.route('/passages/<int:passage_id>/edit', endpoint='passage_edit')
 @admin_permission_required('typing.edit')
 def benchmark_passage_edit(passage_id):
     passage = TypingText.query.get_or_404(passage_id)
@@ -655,7 +657,8 @@ def benchmark_passage_edit(passage_id):
     return render_template('admin/benchmark_passage_form.html', action="Edit", passage=passage)
 
 
-@admin_bp.route('/content/benchmark/<int:passage_id>/delete', methods=['POST'])
+@admin_bp.route('/content/benchmark/<int:passage_id>/delete', methods=['POST'], endpoint='benchmark_passage_delete')
+@admin_bp.route('/passages/<int:passage_id>/delete', methods=['POST'], endpoint='passage_delete')
 @admin_permission_required('typing.delete')
 def benchmark_passage_delete(passage_id):
     passage = TypingText.query.get_or_404(passage_id)
@@ -667,7 +670,8 @@ def benchmark_passage_delete(passage_id):
     return redirect(url_for('admin.benchmark_passages'))
 
 
-@admin_bp.route('/content/benchmark/bulk-import', methods=['GET', 'POST'])
+@admin_bp.route('/content/benchmark/bulk-import', methods=['GET', 'POST'], endpoint='benchmark_bulk_import')
+@admin_bp.route('/passages/bulk-import', methods=['GET', 'POST'], endpoint='passage_bulk_import')
 @admin_permission_required('typing.create')
 def benchmark_bulk_import():
     if request.method == 'POST':
@@ -724,7 +728,8 @@ def benchmark_bulk_import():
     return render_template('admin/benchmark_bulk_import.html')
 
 
-@admin_bp.route('/content/benchmark/sample-csv')
+@admin_bp.route('/content/benchmark/sample-csv', endpoint='benchmark_sample_csv')
+@admin_bp.route('/passages/sample-csv', endpoint='passage_sample_csv')
 @admin_permission_required('typing.view')
 def benchmark_sample_csv():
     output = io.StringIO()
@@ -1842,7 +1847,7 @@ def system_settings():
             val = request.form.get(k, '').strip()
             cfg = PlatformConfig.query.filter_by(key=k).first()
             if not cfg:
-                cfg = PlatformConfig(key=key, value=val, updated_by=current_user.username)
+                cfg = PlatformConfig(key=k, value=val, updated_by=current_user.username)
                 db.session.add(cfg)
             else:
                 cfg.value = val

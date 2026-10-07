@@ -415,21 +415,21 @@
       </li>
     </ul>
 
-    <!-- 2. Sector Passage CMS (Decoupled & Non-Bulky) -->
+    <!-- 2. Sector Passage CMS (Decoupled & Explicitly Routed) -->
     <div class="sidebar-section-title">Sector Passage CMS</div>
     <ul class="sidebar-nav">
       <li>
-        <a href="{{ url_for('admin.passages_list') }}" class="sidebar-link {{ 'active' if request.endpoint in ['admin.passages_list', 'admin.passage_create', 'admin.passage_edit'] else '' }}">
+        <a href="{{ url_for('admin.benchmark_passages') }}" class="sidebar-link {{ 'active' if request.endpoint in ['admin.benchmark_passages', 'admin.passages_list', 'admin.benchmark_passage_create', 'admin.benchmark_passage_edit', 'admin.benchmark_bulk_import'] else '' }}">
           ⚡ Benchmark Passages
         </a>
       </li>
       <li>
-        <a href="{{ url_for('admin.challenges_manage') }}" class="sidebar-link {{ 'active' if request.endpoint == 'admin.challenges_manage' else '' }}">
+        <a href="{{ url_for('admin.challenges_manage') }}" class="sidebar-link {{ 'active' if request.endpoint in ['admin.challenges_manage', 'admin.missions_bulk_import'] else '' }}">
           🛰️ 24H Daily & Missions
         </a>
       </li>
       <li>
-        <a href="{{ url_for('admin.games_list') }}" class="sidebar-link {{ 'active' if request.endpoint in ['admin.games_list', 'admin.game_edit'] else '' }}">
+        <a href="{{ url_for('admin.arcade_content_manage') }}" class="sidebar-link {{ 'active' if request.endpoint in ['admin.arcade_content_manage', 'admin.arcade_bulk_import'] else '' }}">
           🕹️ Arcade Wordbanks
         </a>
       </li>
@@ -439,7 +439,7 @@
         </a>
       </li>
       <li>
-        <a href="{{ url_for('admin.passage_collections') }}" class="sidebar-link {{ 'active' if request.endpoint == 'admin.passage_collections' else '' }}">
+        <a href="{{ url_for('admin.multiplayer_passages') }}" class="sidebar-link {{ 'active' if request.endpoint in ['admin.multiplayer_passages', 'admin.multiplayer_bulk_import'] else '' }}">
           🏎️ 1v1 Grid Passages
         </a>
       </li>
