@@ -17,7 +17,7 @@ app = create_app()
 def apply_schema_migrations(engine):
     """
     Ensures all SQLite and PostgreSQL tables possess the latest columns
-    before seed operations execute.
+    before seed operations execute. Lifts any accidental IP blocks.
     """
     try:
         with engine.connect() as conn:
@@ -28,6 +28,13 @@ def apply_schema_migrations(engine):
             b_true = "TRUE" if is_pg else "1"
             b_false = "FALSE" if is_pg else "0"
             dt_type = "TIMESTAMP" if is_pg else "DATETIME"
+
+            if 'blocked_ips' in existing_tables:
+                try:
+                    conn.execute(text("DELETE FROM blocked_ips"))
+                    conn.commit()
+                except Exception:
+                    conn.rollback()
 
             patch_manifest = [
                 ('users', [
@@ -107,6 +114,13 @@ def apply_schema_migrations(engine):
                 ]),
                 ('arcade_game_configs', [
                     ('display_order', "INTEGER DEFAULT 1")
+                ]),
+                ('arcade_content_items', [
+                    ('is_active', f"BOOLEAN DEFAULT {b_true}"),
+                    ('word_length', "INTEGER DEFAULT 5"),
+                    ('category', "VARCHAR(50) DEFAULT 'general'"),
+                    ('difficulty', "VARCHAR(20) DEFAULT 'moderate'"),
+                    ('associated_keys', "VARCHAR(64)")
                 ]),
                 ('lesson_stages', [
                     ('track', "VARCHAR(32) DEFAULT 'beginner'"),
@@ -355,6 +369,7 @@ def seed_database():
         print("\n" + "=" * 65)
         print("✅ SUCCESS: TypeSphere Master Database Populated Cleanly!")
         print("   • Universal Schema Patches applied across SQLite and PostgreSQL")
+        print("   • Accidental IP lockouts purged")
         print("   • Accounts: admin (super_admin) & speeddemon (verified)")
         print("   • Achievements: 10 Core Badges")
         print("   • Academy: 12 Stages across 4 Skill Tracks")

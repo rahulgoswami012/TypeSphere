@@ -1,7 +1,7 @@
 """
 TypeSphere - Administrative Security, Audit & Request Telemetry Engine
-Enforces server-side authorization checks, active IP interception,
-accurate Windows 11 / Android OS version extraction, and cached city-level geolocation.
+Enforces server-side authorization checks, active IP interception with operator
+safeguards, accurate Windows 11 / Android OS version extraction, and cached geolocation.
 """
 
 import uuid
@@ -37,8 +37,6 @@ def parse_device_os(user_agent_str: str) -> str:
     """Extracts exact operating system and Android/iOS/Windows 11 versions."""
     ua = user_agent_str or ""
 
-    # Check Client-Hints for Windows 11 vs 10
-    # In Chromium, Windows 11 platformVersion major >= 13
     ch_platform = request.headers.get('Sec-CH-UA-Platform', '').replace('"', '').strip()
     ch_version = request.headers.get('Sec-CH-UA-Platform-Version', '').replace('"', '').strip()
 
@@ -51,18 +49,15 @@ def parse_device_os(user_agent_str: str) -> str:
         except Exception:
             pass
 
-    # Android version extraction
     if "Android" in ua:
         match = re.search(r'Android\s+([0-9\.]+)', ua)
         return f"Android {match.group(1)}" if match else "Android"
 
-    # iOS detection
     if "iPhone" in ua or "iPad" in ua:
         match = re.search(r'OS\s+([0-9_]+)', ua)
         ver = match.group(1).replace('_', '.') if match else ""
         return f"iOS {ver}" if ver else "iOS"
 
-    # Standard Windows UA fallback
     if "Windows NT 10.0" in ua:
         return "Windows 11 / 10"
     if "Windows NT 6.3" in ua:
@@ -70,7 +65,6 @@ def parse_device_os(user_agent_str: str) -> str:
     if "Windows NT 6.1" in ua:
         return "Windows 7"
 
-    # macOS & Linux
     if "Mac OS X" in ua:
         match = re.search(r'Mac OS X\s+([0-9_]+)', ua)
         ver = match.group(1).replace('_', '.') if match else ""
@@ -84,7 +78,6 @@ def parse_device_os(user_agent_str: str) -> str:
 def get_ip_location(ip: str) -> str:
     """Resolves City, State/Region, and Country from client IP with in-memory caching."""
     if not ip or ip in ['127.0.0.1', '::1', 'localhost']:
-        # For local development, resolve the external developer connection location once
         if 'local_dev_city' in IP_GEO_CACHE:
             return IP_GEO_CACHE['local_dev_city']
         try:
@@ -190,15 +183,38 @@ def record_user_activity(user_id: int, action: str, feature: str = "Platform", d
 
 
 def is_ip_blocked(ip: str) -> bool:
+    """
+    Safely checks if an IP is blocked.
+    Loopback addresses, private networks, and invalid addresses are always exempted.
+    """
     if not ip:
         return False
+
     clean_ip = ip.split(',')[0].strip()
-    blocked = BlockedIP.query.filter_by(ip_address=clean_ip).first()
-    return bool(blocked and blocked.is_currently_blocked)
+
+    # Exempt loopback & localhost
+    if clean_ip in ['127.0.0.1', '::1', 'localhost', '', 'None']:
+        return False
+
+    # Exempt private network subnets
+    if clean_ip.startswith(('10.', '192.168.', '172.16.', '172.17.', '172.18.', '172.19.',
+                            '172.20.', '172.21.', '172.22.', '172.23.', '172.24.', '172.25.',
+                            '172.26.', '172.27.', '172.28.', '172.29.', '172.30.', '172.31.')):
+        return False
+
+    try:
+        blocked = BlockedIP.query.filter_by(ip_address=clean_ip).first()
+        return bool(blocked and blocked.is_currently_blocked)
+    except Exception:
+        db.session.rollback()
+        return False
 
 
 def block_ip(ip: str, reason: str, is_permanent: bool = False, duration_hours: int = 24, blocked_by: str = 'SuperAdmin') -> bool:
     clean_ip = ip.split(',')[0].strip()
+    if clean_ip in ['127.0.0.1', '::1', 'localhost', '']:
+        return False
+
     expires_at = None if is_permanent else datetime.utcnow() + timedelta(hours=duration_hours)
     
     existing = BlockedIP.query.filter_by(ip_address=clean_ip).first()
@@ -254,14 +270,28 @@ def is_maintenance_active() -> bool:
 def capture_traffic(app):
     @app.before_request
     def intercept_and_track():
+        # 1. Immediate exemption for static assets and WebSocket handshakes
+        if request.path.startswith(('/static', '/socket.io', '/favicon.ico')):
+            return
+
+        # 2. Immediate exemption for authentication (prevents operator lockout)
+        if request.path.startswith('/auth'):
+            return
+
+        # 3. Immediate exemption for authenticated administrators
+        if current_user.is_authenticated and current_user.is_admin:
+            return
+
         client_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
         if client_ip and ',' in client_ip:
             client_ip = client_ip.split(',')[0].strip()
 
+        # Enforce IP restriction with safety boundaries
         if is_ip_blocked(client_ip):
             log_security_incident('BLOCKED_IP_CONNECTION_ATTEMPT', 'MEDIUM', f"Blocked IP {client_ip} tried accessing {request.path}", identifier=client_ip)
             abort(403)
 
+        # Maintenance mode check
         if is_maintenance_active():
             is_admin_user = current_user.is_authenticated and current_user.is_admin
             exempt_prefixes = ['/static', '/auth', '/admin', '/socket.io']

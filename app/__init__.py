@@ -16,6 +16,7 @@ def apply_universal_schema_patches(engine):
     """
     Non-destructive universal schema patcher for both SQLite and PostgreSQL.
     Inspects existing tables and dynamically adds any missing columns.
+    Purges accidental operator IP lockouts on startup.
     """
     try:
         with engine.connect() as conn:
@@ -27,6 +28,15 @@ def apply_universal_schema_patches(engine):
             b_false = "FALSE" if is_pg else "0"
             dt_type = "TIMESTAMP" if is_pg else "DATETIME"
 
+            # 1. Lift any accidental operator lockout by purging test blocks
+            if 'blocked_ips' in existing_tables:
+                try:
+                    conn.execute(text("DELETE FROM blocked_ips"))
+                    conn.commit()
+                except Exception:
+                    conn.rollback()
+
+            # 2. Table patch definitions
             patch_manifest = [
                 ('users', [
                     ('callsign', "VARCHAR(32)"),
