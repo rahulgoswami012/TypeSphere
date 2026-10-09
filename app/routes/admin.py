@@ -768,7 +768,7 @@ def benchmark_sample_csv():
 # 7. SECTOR: 24H DAILY RECON & TACTICAL MISSIONS
 # ==============================================================
 
-@admin_bp.route('/content/missions')
+@admin_bp.route('/content/missions', endpoint='challenges_manage')
 @admin_bp.route('/challenges')
 @admin_permission_required('challenges.view')
 def challenges_manage():
@@ -959,7 +959,7 @@ def missions_sample_csv():
 # 8. SECTOR: 1V1 MULTIPLAYER GRID PASSAGES
 # ==============================================================
 
-@admin_bp.route('/content/multiplayer')
+@admin_bp.route('/content/multiplayer', endpoint='multiplayer_passages')
 @admin_permission_required('typing.view')
 def multiplayer_passages():
     page = request.args.get('page', 1, type=int)
@@ -1112,7 +1112,7 @@ def multiplayer_sample_csv():
 # 9. SECTOR: ARCADE WORDBANKS & CONTENT MANAGEMENT
 # ==============================================================
 
-@admin_bp.route('/content/arcade')
+@admin_bp.route('/content/arcade', endpoint='arcade_content_manage')
 @admin_permission_required('games.view')
 def arcade_content_manage():
     page = request.args.get('page', 1, type=int)
@@ -1294,7 +1294,7 @@ def reorder_games():
 # 11. SECTOR: FLIGHT SCHOOL ACADEMY STAGES
 # ==============================================================
 
-@admin_bp.route('/content/academy')
+@admin_bp.route('/content/academy', endpoint='academy_manage')
 @admin_bp.route('/academy')
 @admin_permission_required('academy.view')
 def academy_manage():
@@ -1326,9 +1326,66 @@ def stage_edit(stage_id):
 
 
 # ==============================================================
-# 12. TAXONOMY & CATEGORIES MANAGER
+# 12. SECTOR: PASSAGE COLLECTIONS / PACKS
 # ==============================================================
 
+@admin_bp.route('/content/collections', endpoint='passage_collections')
+@admin_bp.route('/passages/collections')
+@admin_permission_required('typing.view')
+def passage_collections():
+    if request.method == 'POST':
+        title = request.form.get('title', '').strip()
+        description = request.form.get('description', '').strip()
+        is_active = request.form.get('is_active') == 'on'
+
+        if not title:
+            flash("Collection title is required.", "danger")
+            return redirect(url_for('admin.passage_collections'))
+
+        clean_slug = re.sub(r'[^a-zA-Z0-9]+', '-', title.lower()).strip('-')[:120] or "pack"
+        unique_slug = clean_slug
+        counter = 1
+        while PassageCollection.query.filter_by(slug=unique_slug).first():
+            unique_slug = f"{clean_slug}-{counter}"
+            counter += 1
+
+        new_col = PassageCollection(title=title, slug=unique_slug, description=description, is_active=is_active, created_by=current_user.username)
+        db.session.add(new_col)
+        db.session.commit()
+        flash(f"Passage collection '{title}' created.", "success")
+        return redirect(url_for('admin.passage_collections'))
+
+    collections = PassageCollection.query.order_by(PassageCollection.id.desc()).all()
+    return render_template('admin/passage_collections.html', collections=collections)
+
+
+@admin_bp.route('/content/collections/<int:collection_id>/toggle', methods=['POST'], endpoint='toggle_collection')
+@admin_bp.route('/passages/collections/<int:collection_id>/toggle', methods=['POST'])
+@admin_permission_required('typing.edit')
+def toggle_collection(collection_id):
+    col = PassageCollection.query.get_or_404(collection_id)
+    col.is_active = not col.is_active
+    db.session.commit()
+    flash(f"Collection '{col.title}' toggled.", "success")
+    return redirect(url_for('admin.passage_collections'))
+
+
+@admin_bp.route('/content/collections/<int:collection_id>/delete', methods=['POST'], endpoint='delete_collection')
+@admin_bp.route('/passages/collections/<int:collection_id>/delete', methods=['POST'])
+@admin_permission_required('typing.delete')
+def delete_collection(collection_id):
+    col = PassageCollection.query.get_or_404(collection_id)
+    db.session.delete(col)
+    db.session.commit()
+    flash(f"Collection '{col.title}' deleted.", "info")
+    return redirect(url_for('admin.passage_collections'))
+
+
+# ==============================================================
+# 13. SECTOR: TAXONOMY & CATEGORIES MANAGER
+# ==============================================================
+
+@admin_bp.route('/content/categories', endpoint='passage_categories')
 @admin_bp.route('/passages/categories')
 @admin_permission_required('typing.view')
 def passage_categories():
@@ -1388,7 +1445,7 @@ def prune_unused_tags():
 
 
 # ==============================================================
-# 13. CERTIFICATES, LEADERBOARDS & COMMUNITY
+# 14. CERTIFICATES, LEADERBOARDS & COMMUNITY
 # ==============================================================
 
 @admin_bp.route('/certificates')
@@ -1514,7 +1571,7 @@ def respond_feedback(feedback_id):
 
 
 # ==============================================================
-# 14. SECURITY & ACTIVE IP MANAGEMENT
+# 15. SECURITY & ACTIVE IP MANAGEMENT
 # ==============================================================
 
 @admin_bp.route('/security')
@@ -1564,7 +1621,7 @@ def handle_unblock_ip(block_id):
 
 
 # ==============================================================
-# 15. WEBSITE CONTROL & NAVIGATION CMS
+# 16. WEBSITE CONTROL & NAVIGATION CMS
 # ==============================================================
 
 @admin_bp.route('/website')
@@ -1651,7 +1708,7 @@ def delete_navigation_item(item_id):
 
 
 # ==============================================================
-# 16. RUNTIME FLAGS, ANALYTICS & HEALTH
+# 17. RUNTIME FLAGS, ANALYTICS & HEALTH
 # ==============================================================
 
 @admin_bp.route('/flags')

@@ -11,8 +11,8 @@
     </p>
   </div>
   <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
-    <a href="{{ url_for('admin.passages_list') }}" class="btn btn-sm">All Passages</a>
-    <a href="{{ url_for('admin.passage_create') }}" class="btn btn-sm">+ Add Passage</a>
+    <a href="{{ url_for('admin.benchmark_passages') }}" class="btn btn-sm">Benchmark Texts</a>
+    <a href="{{ url_for('admin.benchmark_passage_create') }}" class="btn btn-sm">+ Add Text</a>
     <a href="{{ url_for('admin.passage_collections') }}" class="btn btn-sm">Collections</a>
     <a href="{{ url_for('admin.passage_categories') }}" class="btn btn-sm btn-primary">Categories & Rules</a>
     <a href="{{ url_for('admin.export_csv', data_type='passages') }}" class="btn btn-sm">Export CSV</a>
@@ -38,7 +38,7 @@
         <tr>
           <td><strong style="color:var(--admin-text-main);">{{ cat_name or 'Uncategorized' }}</strong></td>
           <td>
-            <a href="{{ url_for('admin.passages_list', category=cat_name) }}" style="color:var(--admin-accent); font-family:var(--admin-mono); font-weight:700; text-decoration:none;">
+            <a href="{{ url_for('admin.benchmark_passages', discipline=cat_name) }}" style="color:var(--admin-accent); font-family:var(--admin-mono); font-weight:700; text-decoration:none;">
               {{ cnt }} passages &rarr;
             </a>
           </td>
@@ -81,7 +81,7 @@
             </div>
           </td>
           <td>
-            <a href="{{ url_for('admin.passages_list', exam_profile=profile_code) }}" style="color:var(--admin-accent); font-family:var(--admin-mono); font-weight:700; text-decoration:none;">
+            <a href="{{ url_for('admin.benchmark_passages', q=profile_code) }}" style="color:var(--admin-accent); font-family:var(--admin-mono); font-weight:700; text-decoration:none;">
               {{ cnt }} passages &rarr;
             </a>
           </td>
@@ -112,7 +112,7 @@
         <tr>
           <td><strong style="text-transform:capitalize;">{{ (p_type or 'paragraph')|replace('_', ' ') }}</strong></td>
           <td>
-            <a href="{{ url_for('admin.passages_list', passage_type=p_type) }}" style="color:var(--admin-accent); font-family:var(--admin-mono); font-weight:700; text-decoration:none;">
+            <a href="{{ url_for('admin.benchmark_passages', q=p_type) }}" style="color:var(--admin-accent); font-family:var(--admin-mono); font-weight:700; text-decoration:none;">
               {{ cnt }} passages &rarr;
             </a>
           </td>

@@ -444,7 +444,12 @@
         </a>
       </li>
       <li>
-        <a href="{{ url_for('admin.passage_categories') }}" class="sidebar-link {{ 'active' if request.endpoint == 'admin.passage_categories' else '' }}">
+        <a href="{{ url_for('admin.passage_collections') }}" class="sidebar-link {{ 'active' if request.endpoint in ['admin.passage_collections'] else '' }}">
+          📁 Passage Collections
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('admin.passage_categories') }}" class="sidebar-link {{ 'active' if request.endpoint in ['admin.passage_categories'] else '' }}">
           🏷️ Categories & Rules
         </a>
       </li>

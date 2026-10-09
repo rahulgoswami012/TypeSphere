@@ -27,7 +27,6 @@ def apply_universal_schema_patches(engine):
             b_false = "FALSE" if is_pg else "0"
             dt_type = "TIMESTAMP" if is_pg else "DATETIME"
 
-            # Table patch definitions: (table_name, [(col_name, col_sql_def)])
             patch_manifest = [
                 ('users', [
                     ('callsign', "VARCHAR(32)"),
@@ -67,6 +66,13 @@ def apply_universal_schema_patches(engine):
                 ]),
                 ('arcade_game_configs', [
                     ('display_order', "INTEGER DEFAULT 1")
+                ]),
+                ('arcade_content_items', [
+                    ('is_active', f"BOOLEAN DEFAULT {b_true}"),
+                    ('word_length', "INTEGER DEFAULT 5"),
+                    ('category', "VARCHAR(50) DEFAULT 'general'"),
+                    ('difficulty', "VARCHAR(20) DEFAULT 'moderate'"),
+                    ('associated_keys', "VARCHAR(64)")
                 ]),
                 ('lesson_stages', [
                     ('track', "VARCHAR(32) DEFAULT 'beginner'"),
