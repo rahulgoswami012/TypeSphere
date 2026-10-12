@@ -2,30 +2,32 @@
 {% block title %}Touch Typing Academy & Flight Tracks | TypeSphere{% endblock %}
 {% block content %}
 <div class="card" style="max-width: 1100px; margin: 0 auto; padding: 1.5rem;">
-    <!-- Academy Header & Diagnostic Benchmark Banner -->
+    <!-- Academy Header & Diagnostic Benchmark Banner (Issues 1 & 2 Fixes) -->
     <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:1.25rem; margin-bottom:1.5rem; flex-wrap:wrap; gap:0.75rem;">
         <div>
             <div style="display:flex; align-items:center; gap:0.55rem;">
-                <span style="font-size:1.8rem;">🎓</span>
+                <span style="font-size:1.8rem;" aria-hidden="true">🎓</span>
                 <div>
                     <h1 style="font-size:1.65rem; font-weight:800; margin:0;">Touch Typing Academy</h1>
-                    <span style="font-size:0.75rem; font-weight:800; color:var(--accent); text-transform:uppercase; letter-spacing:0.06em;">Multi-Track Structured Flight Curriculum</span>
+                    <span style="font-size:var(--text-sm, 0.875rem); font-weight:700; color:var(--accent); text-transform:uppercase; letter-spacing:0.05em;">
+                        Multi-Track Structured Flight Curriculum
+                    </span>
                 </div>
             </div>
-            <p style="color:var(--text-secondary); font-size:0.86rem; margin-top:0.35rem; line-height:1.5;">
+            <p style="color:var(--text-secondary); font-size:var(--text-sm, 0.875rem); margin-top:0.35rem; line-height:1.6;">
                 From baseline Home Row resting anchors to advanced programming brackets. Each stage requires multi-attempt verified completion to guarantee genuine muscle memory retention.
             </p>
         </div>
 
-        <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
-            <a href="{{ url_for('learn.skill_assessment') }}" class="btn btn-primary btn-sm" style="font-weight:800; padding:0.55rem 1.15rem; box-shadow:0 0 14px var(--accent-glow);">
+        <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center;">
+            <a href="{{ url_for('learn.skill_assessment') }}" class="btn btn-primary" style="font-weight:800; padding:0.625rem 1.25rem; font-size:var(--text-sm, 0.875rem); box-shadow:0 0 14px var(--accent-glow);">
                 🎯 Take 60s Placement Diagnostic &rarr;
             </a>
             <a href="{{ url_for('typing.test_page') }}" class="btn btn-sm">&larr; Free Benchmark</a>
         </div>
     </div>
 
-    <!-- Skill Track Navigation Pills (Point 8: Anchors directly to #track-stages) -->
+    <!-- Skill Track Navigation Pills -->
     <div style="display:flex; gap:0.4rem; margin-bottom:1.5rem; flex-wrap:wrap;">
         <a href="{{ url_for('learn.index', track='beginner') }}#track-stages" class="btn btn-sm {{ 'btn-primary active-choice' if active_track == 'beginner' else '' }}" style="font-weight:700;">
             🌱 Beginner (0–40 WPM)
@@ -42,8 +44,8 @@
     </div>
 
     <!-- Active Track Description Card -->
-    <div class="card" style="background:var(--bg-card); border-left:3px solid var(--accent); padding:0.85rem 1.15rem; margin-bottom:1.5rem;">
-        <div style="font-size:0.86rem; color:var(--text-secondary); line-height:1.5;">
+    <div class="card" style="background:var(--bg-card); border-left:3px solid var(--accent); padding:1rem 1.25rem; margin-bottom:1.5rem;">
+        <div style="font-size:var(--text-sm, 0.875rem); color:var(--text-secondary); line-height:1.6;">
             {% if active_track == 'beginner' %}
                 <strong>Beginner Flight Track:</strong> Establishes foundational muscle memory. Focuses exclusively on Home Row tactile resting points, vertical finger stretches to the top row, and downward bottom row tucks without lifting palms off the desk.
             {% elif active_track == 'intermediate' %}
@@ -56,26 +58,30 @@
         </div>
     </div>
 
-    <!-- Point 8: Stage Anchor Target -->
-    <div id="track-stages" style="scroll-margin-top: 75px;"></div>
+    <!-- Stage Anchor Target & Semantic Heading H2 (Issue 6 Fix) -->
+    <div id="track-stages" style="scroll-margin-top: 75px; margin-bottom: 0.75rem;">
+        <h2 style="font-size:var(--text-md, 1.25rem); font-weight:800; color:var(--text-primary); margin:0;">
+            {{ active_track|capitalize }} Flight Stages
+        </h2>
+    </div>
 
-    <!-- Stages Grid (Point 10: Clean Unclipped Badges) -->
+    <!-- Stages Grid (Issues 3, 4, 8 Fixes) -->
     <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap:1.25rem;">
         {% for st in stages %}
         {% set prog = progress_map.get(st.id) %}
         <div class="card" style="background:var(--bg-card); margin-bottom:0; display:flex; flex-direction:column; justify-content:space-between; border-color:{{ 'var(--success)' if prog and prog.completed else 'var(--border-color)' }};">
             <div>
-                <!-- Clean unclipped badge header -->
+                <!-- Clean Unclipped Badge in Title Case (Issue 3 Fix) -->
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.65rem; flex-wrap:nowrap; gap:0.5rem;">
-                    <span style="font-size:0.72rem; font-weight:800; color:var(--accent); background:var(--accent-glow); padding:0.2rem 0.5rem; border-radius:4px; text-transform:uppercase; letter-spacing:0.04em; white-space:nowrap;">
-                        Stage {{ st.stage_number }} &bull; {{ st.track|upper }}
+                    <span style="font-size:var(--text-xs, 0.8125rem); font-weight:700; color:var(--accent); background:var(--accent-glow); padding:0.2rem 0.55rem; border-radius:4px; letter-spacing:0.02em; white-space:nowrap;">
+                        Stage {{ st.stage_number }} &bull; {{ st.track|capitalize }}
                     </span>
                     {% if prog and prog.completed %}
-                        <span style="font-size:0.72rem; font-weight:800; color:var(--success); background:var(--success-bg); padding:0.2rem 0.5rem; border-radius:4px; white-space:nowrap;">
-                            ✓ MASTERED
+                        <span style="font-size:var(--text-xs, 0.8125rem); font-weight:700; color:var(--success); background:var(--success-bg); padding:0.2rem 0.55rem; border-radius:4px; white-space:nowrap;">
+                            ✓ Mastered
                         </span>
                     {% else %}
-                        <span style="font-size:0.72rem; color:var(--text-muted); font-weight:700; white-space:nowrap;">
+                        <span style="font-size:var(--text-xs, 0.8125rem); color:var(--text-muted); font-weight:600; white-space:nowrap;">
                             Req: {{ st.min_wpm_to_pass|int }} WPM / {{ st.min_accuracy_to_pass|int }}%
                         </span>
                     {% endif %}
@@ -86,19 +92,20 @@
                 </h3>
                 
                 {% if st.focus_keys %}
-                <div style="font-family:var(--font-mono); font-size:0.78rem; color:var(--warning); font-weight:700; margin-bottom:0.5rem;">
+                <div style="font-family:var(--font-mono); font-size:var(--text-xs, 0.8125rem); color:var(--warning); font-weight:700; margin-bottom:0.5rem;">
                     Focus Keys: {{ st.focus_keys }}
                 </div>
                 {% endif %}
 
-                <p style="color:var(--text-secondary); font-size:0.85rem; line-height:1.5; margin-bottom:1rem;">
+                <!-- Standardized Body Copy Size (Issue 4 Fix) -->
+                <p style="color:var(--text-secondary); font-size:var(--text-sm, 0.875rem); line-height:1.6; margin-bottom:1rem;">
                     {{ st.description }}
                 </p>
             </div>
 
             <div>
                 {% if prog %}
-                <div style="background:var(--bg-secondary); padding:0.45rem 0.65rem; border-radius:var(--radius-sm); margin-bottom:0.75rem; font-size:0.76rem; display:flex; justify-content:space-between; align-items:center;">
+                <div style="background:var(--bg-secondary); padding:0.45rem 0.65rem; border-radius:var(--radius-sm); margin-bottom:0.75rem; font-size:var(--text-xs, 0.8125rem); display:flex; justify-content:space-between; align-items:center;">
                     <span style="color:var(--text-muted);">Mastery Progress:</span>
                     <strong>
                         <span style="color:{{ 'var(--success)' if prog.completed else 'var(--accent)' }};">{{ prog.successful_attempts }}</span> / {{ st.required_attempts or 2 }} Passes
@@ -107,7 +114,8 @@
                 </div>
                 {% endif %}
 
-                <a href="{{ url_for('learn.lesson', slug=st.slug) }}" class="btn btn-primary btn-sm" style="width:100%; justify-content:center; padding:0.55rem; font-weight:800;">
+                <!-- Outlined Secondary Button Preserves Hierarchy (Issue 8 Fix) -->
+                <a href="{{ url_for('learn.lesson', slug=st.slug) }}" class="btn btn-sm" style="width:100%; justify-content:center; padding:0.55rem; font-weight:700;">
                     Practice Stage {{ st.stage_number }} &rarr;
                 </a>
             </div>
@@ -120,7 +128,6 @@
 {% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    // Point 8: Auto-scroll to stages grid if URL includes hash or track parameter
     if (window.location.hash === '#track-stages' || window.location.search.includes('track=')) {
         const anchor = document.getElementById('track-stages');
         if (anchor) {

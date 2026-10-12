@@ -31,7 +31,6 @@
         })();
     </script>
 
-    <!-- Distinctive Typographical Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500&family=Roboto+Slab:wght@500;600;700;800&family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -59,7 +58,8 @@
 
         <div id="mobile-nav-backdrop" class="mobile-nav-backdrop" onclick="closeMobileNav()"></div>
 
-        <aside id="mobile-nav-drawer" class="mobile-nav-drawer">
+        <!-- Mobile Navigation Drawer (Issue 10 Fix: aria-hidden added & managed) -->
+        <aside id="mobile-nav-drawer" class="mobile-nav-drawer" aria-hidden="true">
             <div class="mobile-drawer-header">
                 <div style="display:flex; align-items:center; gap:0.5rem; font-weight:800; color:var(--accent);">
                     <span class="brand-sphere-icon" style="width:22px; height:22px;">
@@ -72,44 +72,32 @@
 
             {% if is_registered_pilot %}
                 <div style="background:var(--bg-card); padding:0.75rem 1rem; border-radius:var(--radius-sm); border:1px solid var(--border-color); margin-bottom:1rem;">
-                    <div style="font-size:0.72rem; color:var(--text-muted); text-transform:uppercase; font-weight:700;">Active Pilot</div>
+                    <div style="font-size:var(--text-2xs); color:var(--text-muted); text-transform:uppercase; font-weight:700;">Active Pilot</div>
                     <div style="font-weight:800; font-size:1.05rem; color:var(--accent);">{{ current_pilot.display_callsign }}</div>
-                    <div style="font-size:0.78rem; color:var(--text-secondary);">{{ current_pilot.rank_division }} &bull; {{ current_pilot.elo_rating }} MMR</div>
+                    <div style="font-size:var(--text-xs); color:var(--text-secondary);">{{ current_pilot.rank_division }} &bull; {{ current_pilot.elo_rating }} MMR</div>
                 </div>
             {% else %}
-                <div style="background:var(--bg-card); padding:0.75rem 1rem; border-radius:var(--radius-sm); border:1px solid var(--border-color); margin-bottom:1rem; font-size:0.85rem;">
-                    <div style="font-size:0.72rem; color:var(--text-muted); text-transform:uppercase; font-weight:700;">Pilot Status</div>
+                <div style="background:var(--bg-card); padding:0.75rem 1rem; border-radius:var(--radius-sm); border:1px solid var(--border-color); margin-bottom:1rem; font-size:var(--text-sm);">
+                    <div style="font-size:var(--text-2xs); color:var(--text-muted); text-transform:uppercase; font-weight:700;">Pilot Status</div>
                     <div style="font-weight:800; color:var(--warning);">Cadet (Guest Flight)</div>
                 </div>
             {% endif %}
 
             <ul class="mobile-drawer-links">
-                {% if dynamic_nav_items %}
-                    {% for item in dynamic_nav_items %}
-                        {% if (not is_registered_pilot and item.for_guests) or (is_registered_pilot and item.for_pilots) %}
-                        <li>
-                            <a href="{{ item.url }}" class="nav-link {{ 'active' if request.path == item.url else '' }}" {% if item.highlight_color %}style="color:{{ item.highlight_color }}; font-weight:700;"{% endif %} onclick="closeMobileNav()">
-                                {{ item.label }}
-                            </a>
-                        </li>
-                        {% endif %}
-                    {% endfor %}
-                {% else %}
-                    <li><a href="{{ url_for('typing.test_page') }}" class="nav-link {{ 'active' if request.endpoint == 'typing.test_page' else '' }}" onclick="closeMobileNav()">⚡ Flight Benchmark</a></li>
-                    <li><a href="{{ url_for('learn.index') }}" class="nav-link {{ 'active' if request.endpoint.startswith('learn.') else '' }}" style="color:var(--accent);" onclick="closeMobileNav()">🎓 Flight School</a></li>
-                    <li><a href="{{ url_for('games.index') }}" class="nav-link {{ 'active' if request.endpoint.startswith('games.') else '' }}" style="color:var(--warning);" onclick="closeMobileNav()">🕹️ Arcade Hangar</a></li>
-                    <li><a href="{{ url_for('typing.practice_page') }}" class="nav-link {{ 'active' if request.endpoint == 'typing.practice_page' else '' }}" onclick="closeMobileNav()">🎯 AI Diagnostic</a></li>
-                    <li><a href="{{ url_for('challenges.index') }}" class="nav-link {{ 'active' if request.endpoint.startswith('challenges.') else '' }}" onclick="closeMobileNav()">🔥 Mission Briefs</a></li>
-                    <li><a href="{{ url_for('leaderboard.index') }}" class="nav-link {{ 'active' if request.endpoint == 'leaderboard.index' else '' }}" onclick="closeMobileNav()">🏆 Flight Standings</a></li>
-                    <li><a href="{{ url_for('multiplayer.index') }}" class="nav-link {{ 'active' if request.endpoint.startswith('multiplayer.') else '' }}" onclick="closeMobileNav()">🏎️ 1v1 Air Grid</a></li>
-                    <li><a href="{{ url_for('typing.help_page') }}" class="nav-link {{ 'active' if request.endpoint == 'typing.help_page' else '' }}" onclick="closeMobileNav()">📖 Flight Manual</a></li>
-                    <li><a href="{{ url_for('settings.index') }}" class="nav-link {{ 'active' if request.endpoint == 'settings.index' else '' }}" onclick="closeMobileNav()">⚙️ Cockpit Settings</a></li>
-                {% endif %}
+                <li><a href="{{ url_for('typing.test_page') }}" class="nav-link {{ 'active' if request.endpoint == 'typing.test_page' else '' }}" onclick="closeMobileNav()">⚡ Benchmark</a></li>
+                <li><a href="{{ url_for('learn.index') }}" class="nav-link {{ 'active' if request.endpoint.startswith('learn.') else '' }}" style="color:var(--accent);" onclick="closeMobileNav()">🎓 Flight School</a></li>
+                <li><a href="{{ url_for('games.index') }}" class="nav-link {{ 'active' if request.endpoint.startswith('games.') else '' }}" style="color:var(--warning);" onclick="closeMobileNav()">🕹️ Arcade</a></li>
+                <li><a href="{{ url_for('challenges.index') }}" class="nav-link {{ 'active' if request.endpoint.startswith('challenges.') else '' }}" onclick="closeMobileNav()">🔥 Tactical Missions</a></li>
+                <li><a href="{{ url_for('multiplayer.index') }}" class="nav-link {{ 'active' if request.endpoint.startswith('multiplayer.') else '' }}" onclick="closeMobileNav()">🏎️ 1v1 Air Grid</a></li>
+                <li><a href="{{ url_for('leaderboard.index') }}" class="nav-link {{ 'active' if request.endpoint == 'leaderboard.index' else '' }}" onclick="closeMobileNav()">🏆 Standings</a></li>
+                <li><a href="{{ url_for('typing.practice_page') }}" class="nav-link {{ 'active' if request.endpoint == 'typing.practice_page' else '' }}" onclick="closeMobileNav()">🎯 AI Coach</a></li>
+                <li><a href="{{ url_for('typing.help_page') }}" class="nav-link {{ 'active' if request.endpoint == 'typing.help_page' else '' }}" onclick="closeMobileNav()">📖 Flight Manual</a></li>
+                <li><a href="{{ url_for('settings.index') }}" class="nav-link {{ 'active' if request.endpoint == 'settings.index' else '' }}" onclick="closeMobileNav()">⚙️ Cockpit Settings</a></li>
 
                 {% if is_registered_pilot %}
                     <li><a href="{{ url_for('dashboard.index') }}" class="nav-link" style="font-weight:700;" onclick="closeMobileNav()">👤 Pilot Dossier</a></li>
                     {% if current_pilot.is_admin %}
-                    <li><a href="{{ url_for('admin.dashboard') }}" class="nav-link" style="color:var(--warning); font-weight:800;" onclick="closeMobileNav()">🛡️ Control Center</a></li>
+                    <li><a href="{{ url_for('admin.dashboard') }}" class="nav-link" style="color:var(--warning); font-weight:800;" onclick="closeMobileNav()">🛡️ Control Tower</a></li>
                     {% endif %}
                     <li><a href="{{ url_for('auth.logout') }}" class="btn btn-sm" style="width:100%; margin-top:0.75rem;">Disengage Account</a></li>
                 {% else %}
@@ -119,7 +107,7 @@
             </ul>
         </aside>
 
-        <!-- Top Fixed 48px Cockpit Navigation -->
+        <!-- Top Fixed 48px Cockpit Navigation (Consolidated - Issue 7 Fix) -->
         <nav class="navbar">
             <a href="{{ url_for('typing.test_page') }}" class="brand">
                 <span class="brand-sphere-icon">
@@ -131,50 +119,47 @@
                 TypeSphere
             </a>
 
-            <!-- Desktop Dynamic Navigation Items with Active Route State -->
+            <!-- Consolidated Navbar Eliminating Clutter -->
             <ul class="nav-links">
-                {% if dynamic_nav_items %}
-                    {% for item in dynamic_nav_items %}
-                        {% if (not is_registered_pilot and item.for_guests) or (is_registered_pilot and item.for_pilots) %}
-                        <li>
-                            <a href="{{ item.url }}" class="nav-link {{ 'active' if request.path == item.url else '' }}" {% if item.highlight_color %}style="color:{{ item.highlight_color }}; font-weight:700;"{% endif %}>
-                                {{ item.label }}
-                            </a>
-                        </li>
-                        {% endif %}
-                    {% endfor %}
-                {% else %}
-                    <li><a href="{{ url_for('typing.test_page') }}" class="nav-link {{ 'active' if request.endpoint == 'typing.test_page' else '' }}">⚡ Benchmark</a></li>
-                    <li><a href="{{ url_for('learn.index') }}" class="nav-link {{ 'active' if request.endpoint.startswith('learn.') else '' }}" style="color:var(--accent); font-weight:700;">🎓 Flight School</a></li>
-                    <li><a href="{{ url_for('games.index') }}" class="nav-link {{ 'active' if request.endpoint.startswith('games.') else '' }}" style="color:var(--warning); font-weight:700;">🕹️ Arcade</a></li>
-                    <li><a href="{{ url_for('typing.practice_page') }}" class="nav-link {{ 'active' if request.endpoint == 'typing.practice_page' else '' }}">🎯 AI Coach</a></li>
-                    <li><a href="{{ url_for('challenges.index') }}" class="nav-link {{ 'active' if request.endpoint.startswith('challenges.') else '' }}">🔥 Missions</a></li>
-                    <li><a href="{{ url_for('leaderboard.index') }}" class="nav-link {{ 'active' if request.endpoint == 'leaderboard.index' else '' }}">🏆 Standings</a></li>
-                    <li><a href="{{ url_for('multiplayer.index') }}" class="nav-link {{ 'active' if request.endpoint.startswith('multiplayer.') else '' }}">🏎️ 1v1 Grid</a></li>
-                    <li><a href="{{ url_for('typing.help_page') }}" class="nav-link {{ 'active' if request.endpoint == 'typing.help_page' else '' }}">📖 Manual</a></li>
-                    <li><a href="{{ url_for('settings.index') }}" class="nav-link {{ 'active' if request.endpoint == 'settings.index' else '' }}">⚙️ Cockpit</a></li>
-                {% endif %}
+                <li><a href="{{ url_for('typing.test_page') }}" class="nav-link {{ 'active' if request.endpoint == 'typing.test_page' else '' }}">⚡ Benchmark</a></li>
+                <li><a href="{{ url_for('learn.index') }}" class="nav-link {{ 'active' if request.endpoint.startswith('learn.') else '' }}" style="color:var(--accent); font-weight:700;">🎓 Flight School</a></li>
+                <li><a href="{{ url_for('games.index') }}" class="nav-link {{ 'active' if request.endpoint.startswith('games.') else '' }}" style="color:var(--warning); font-weight:700;">🕹️ Arcade</a></li>
 
+                <!-- Consolidated Missions & Air Grid Dropdown -->
+                <li class="nav-dropdown">
+                    <button type="button" class="nav-link dropdown-toggle {{ 'active' if (request.endpoint.startswith('challenges.') or request.endpoint.startswith('multiplayer.') or request.endpoint == 'leaderboard.index' or request.endpoint == 'typing.practice_page') else '' }}">
+                        Missions &amp; Grid ▾
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a href="{{ url_for('challenges.index') }}">🔥 Tactical Missions</a></li>
+                        <li><a href="{{ url_for('multiplayer.index') }}">🏎️ 1v1 Air Grid</a></li>
+                        <li><a href="{{ url_for('leaderboard.index') }}">🏆 Standings</a></li>
+                        <li><a href="{{ url_for('typing.practice_page') }}">🎯 AI Coach</a></li>
+                    </ul>
+                </li>
+
+                <li><a href="{{ url_for('typing.help_page') }}" class="nav-link {{ 'active' if request.endpoint == 'typing.help_page' else '' }}">📖 Manual</a></li>
+
+                <!-- Consolidated Pilot Menu Dropdown -->
                 {% if is_registered_pilot %}
-                    <li>
-                        <a href="{{ url_for('dashboard.index') }}" class="nav-link {{ 'active' if request.endpoint.startswith('dashboard.') else '' }}" style="font-weight:700; color:var(--text-primary);">
-                            <span style="font-size:0.75rem; padding:0.15rem 0.4rem; border-radius:4px; background:{{ current_pilot.rank_badge.bg }}; color:{{ current_pilot.rank_badge.color }}; margin-right:0.25rem;">
-                                {{ current_pilot.rank_badge.icon }}
-                            </span>
-                            {{ current_pilot.display_callsign }}
-                        </a>
-                    </li>
-                    {% if current_pilot.is_admin %}
-                    <li>
-                        <a href="{{ url_for('admin.dashboard') }}" class="btn btn-sm" style="border-color:var(--warning); color:var(--warning); font-weight:800;">
-                            Control Tower
-                        </a>
-                    </li>
-                    {% endif %}
-                    <li><a href="{{ url_for('auth.logout') }}" class="btn btn-sm">Exit</a></li>
+                <li class="nav-dropdown">
+                    <button type="button" class="btn btn-sm active-choice" style="gap:0.35rem;">
+                        <span>{{ current_pilot.rank_badge.icon }}</span>
+                        <span>{{ current_pilot.display_callsign }}</span> ▾
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a href="{{ url_for('dashboard.index') }}">👤 Pilot Dossier</a></li>
+                        <li><a href="{{ url_for('settings.index') }}">⚙️ Cockpit Settings</a></li>
+                        {% if current_pilot.is_admin %}
+                        <li><a href="{{ url_for('admin.dashboard') }}" style="color:var(--warning); font-weight:700;">🛡️ Control Tower</a></li>
+                        {% endif %}
+                        <li class="dropdown-divider"></li>
+                        <li><a href="{{ url_for('auth.logout') }}">Disengage Account</a></li>
+                    </ul>
+                </li>
                 {% else %}
-                    <li><a href="{{ url_for('auth.login') }}" class="nav-link">Sign In</a></li>
-                    <li><a href="{{ url_for('auth.register') }}" class="btn btn-primary btn-sm">Enlist Pilot</a></li>
+                <li><a href="{{ url_for('auth.login') }}" class="nav-link">Sign In</a></li>
+                <li><a href="{{ url_for('auth.register') }}" class="btn btn-primary btn-sm">Enlist Pilot</a></li>
                 {% endif %}
             </ul>
 
@@ -186,10 +171,9 @@
 
     <!-- Main Viewport Deck -->
     <main class="container" {% if request.endpoint in ['auth.login', 'auth.register'] %}style="min-height:auto; padding:1rem; width:100%; display:flex; flex-direction:column; align-items:center; justify-content:center;"{% elif platform_announcement %}style="padding-top: calc(48px + 1.25rem);"{% endif %}>
-        <!-- Flash Alert Wrapper with Proper Alignment -->
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
-                <div id="flash-alerts-wrapper" style="width: 100%; margin: 0 auto 1rem auto;">
+                <div id="flash-alerts-wrapper">
                     {% for category, msg in messages %}
                         <div class="alert-box alert-{{ category }}">
                             <span>{{ msg }}</span>
@@ -204,6 +188,7 @@
     </main>
 
     {% if request.endpoint not in ['auth.login', 'auth.register'] %}
+    <!-- Footer (Issues 4, 5, 6, 9 Fixes) -->
     <footer class="app-footer">
         <div class="footer-container">
             <div class="footer-grid">
@@ -215,7 +200,7 @@
                         TypeSphere Cockpit
                     </div>
                     <p class="footer-tagline">
-                        Next-Generation Flight Intelligence & Biometric Telemetry Engine. Standardized for Indian typists, students, competitive racers, and examination benchmarks.
+                        Next-Generation Flight Intelligence &amp; Biometric Telemetry Engine. Standardized for Indian typists, students, competitive racers, and examination benchmarks.
                     </p>
                     <div class="footer-status-pill">
                         <span class="status-dot"></span>
@@ -235,13 +220,13 @@
                 </div>
 
                 <div class="footer-links-col">
-                    <h4>Operations & Support</h4>
+                    <h4>Operations &amp; Support</h4>
                     <ul>
-                        <li><a href="{{ url_for('typing.help_page') }}">Flight Manual & FAQ</a></li>
-                        <li><a href="{{ url_for('feedback.ratings') }}">Pilot Reviews & Ratings</a></li>
+                        <li><a href="{{ url_for('typing.help_page') }}">Flight Manual &amp; FAQ</a></li>
+                        <li><a href="{{ url_for('feedback.ratings') }}">Pilot Reviews &amp; Ratings</a></li>
                         <li><a href="{{ url_for('feedback.submit_feedback') }}">Submit Engineering Feedback</a></li>
                         <li><a href="{{ url_for('feedback.contact') }}">Contact Dispatch</a></li>
-                        <li><a href="{{ url_for('settings.index') }}">Ergonomics, Themes & HUD</a></li>
+                        <li><a href="{{ url_for('settings.index') }}">Ergonomics, Themes &amp; HUD</a></li>
                     </ul>
                 </div>
             </div>
@@ -262,14 +247,20 @@
         function openMobileNav() {
             const drawer = document.getElementById('mobile-nav-drawer');
             const backdrop = document.getElementById('mobile-nav-backdrop');
-            if (drawer) drawer.classList.add('open');
+            if (drawer) {
+                drawer.classList.add('open');
+                drawer.setAttribute('aria-hidden', 'false');
+            }
             if (backdrop) backdrop.classList.add('active');
             document.body.style.overflow = 'hidden';
         }
         function closeMobileNav() {
             const drawer = document.getElementById('mobile-nav-drawer');
             const backdrop = document.getElementById('mobile-nav-backdrop');
-            if (drawer) drawer.classList.remove('open');
+            if (drawer) {
+                drawer.classList.remove('open');
+                drawer.setAttribute('aria-hidden', 'true');
+            }
             if (backdrop) backdrop.classList.remove('active');
             document.body.style.overflow = '';
         }
